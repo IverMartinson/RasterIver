@@ -1,1 +1,0 @@
-gdb -ex run builds/final\ binaries/example.bin
