@@ -213,8 +213,13 @@ RI_result debug(char *string, ...){
 
     va_list args;
     va_start(args, string);
+
+    char prefix[100] = "[RasterIver] ";
     
-    vprintf(strcat("[RasterIver] ", string), args);
+    strcat(prefix, string);
+
+    vprintf(prefix, args);
+    printf("\n");
 
     va_end(args);
 
@@ -369,7 +374,7 @@ RI_result RI_Stop(){
 RI_result RI_RequestPolygons(int RI_PolygonsToRequest){
     polygon_count = RI_PolygonsToRequest;
     
-    debug("Requesting %d Polygons...\n", polygon_count);
+    debug("Requesting %d Polygons...", polygon_count);
 
     if (polygons != NULL){
         free(polygons);
@@ -393,10 +398,10 @@ RI_result RI_RequestPolygons(int RI_PolygonsToRequest){
     input_memory_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(float) * 3 * 3 * polygon_count, polygons, &error);
     
     if (input_memory_buffer == NULL) {
-        debug("OpenCL buffer creation failed for polygons.\n");
+        debug("OpenCL buffer creation failed for polygons.");
     }
 
-    debug("Request for %d Polygons Granted\n", polygon_count);
+    debug("Request for %d Polygons Granted", polygon_count);
     
     return erchk(error);
 }
