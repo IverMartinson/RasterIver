@@ -142,14 +142,6 @@ __kernel void raster_kernel(__global float* polygons, __global uint* frame_buffe
     frame_buffer[id_y * width + id_x] = 0xFF000000 | (intensity << 16) | (intensity << 8) | intensity;\
 }\n";
 
-typedef int RI_result;
-typedef cl_uint RI_uint;
-
-const RI_result RI_ERROR = -1;
-const RI_result RI_SUCCESS = 0;
-const RI_result RI_NOT_RUNNING = -2;
-const RI_result RI_RUNNING = 1;
-
 RI_result erchk_func(cl_int error, int line, char *file){
     if (error != CL_SUCCESS){
         printf("OpenCL Error: %d at line %d at file %s\n", error, line, file);
@@ -174,6 +166,7 @@ int running = 1;
 int frame = 0;
 
 int show_debug = 0;
+int debug_verbose = 0;
 // -----
 
 // ----- Rendering Vars
@@ -206,8 +199,8 @@ size_t size_2d[2];
 RI_uint pattern;
 // -----
 
-RI_result debug(char *string, ...){
-    if (!show_debug){
+RI_result debug(char *string, int verbose, ...){
+    if (!show_debug || !debug_verbose){
         return RI_ERROR;
     }
 
@@ -226,53 +219,62 @@ RI_result debug(char *string, ...){
     return RI_SUCCESS;
 }
 
-RI_result RI_SetDebugFlag(int RI_ShowDebugFlag){
-    show_debug = RI_ShowDebugFlag;
+RI_result RI_SetFlag(RI_flag RI_FlagToSet, int RI_Value){
+    switch(RI_FlagToSet){
+        case RI_FLAG_DEBUG:
+            show_debug = RI_Value;
+            break;
+        
+        case RI_FLAG_DEBUG_VERBOSE:
+            debug_verbose = RI_Value;
+            break;
 
+        case RI_FLAG_SHOW_Z_BUFFER:
+            show_z_buffer = RI_Value;
+            break;
+
+        default:
+            break;
+    }
+    
     return RI_SUCCESS;
 }
 
 RI_result Rendering_init(char *title) {
-    debug("Initializing Rendering...");
+    debug("Initializing Rendering...", 0);
 
     frame_buffer = malloc(sizeof(RI_uint) * width * height);
     z_buffer = malloc(sizeof(float) * width * height);
 
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
-        debug("SDL_Init failed");
+        debug("SDL_Init failed", 1);
         return RI_ERROR;
     }
 
     if (width <= 0 || height <= 0) {
-        debug("Invalid width or height");
+        debug("Invalid width or height", 1);
         return RI_ERROR;
     }
 
     window = SDL_CreateWindow(title, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width, height, SDL_WINDOW_OPENGL);
     if (!window) {
-        debug("SDL_CreateWindow failed");
+        debug("SDL_CreateWindow failed", 1);
         return RI_ERROR;
     }
 
     renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
     if (!renderer) {
-        debug("SDL_CreateRenderer failed");
+        debug("SDL_CreateRenderer failed", 1);
         return RI_ERROR;
     }
 
     texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, width, height);
     if (!texture) {
-        debug("SDL_CreateTexture failed");
+        debug("SDL_CreateTexture failed", 1);
         return RI_ERROR;
     }
 
-    debug("Initialized Rendering");
-
-    return RI_SUCCESS;
-}
-
-RI_result RI_ShowZBuffer(int RI_ShowZBufferFlag){
-    show_z_buffer = RI_ShowZBufferFlag;
+    debug("Initialized Rendering", 0);
 
     return RI_SUCCESS;
 }
@@ -284,19 +286,19 @@ RI_result RI_SetBackground(RI_uint RI_BackgroundColor){
 }    
 
 RI_result OpenCL_init(){
-    debug("Initializing OpenCL...");
+    debug("Initializing OpenCL...", 0);
 
     clGetPlatformIDs(1, &platform, &number_of_platforms);
     
     if(number_of_platforms == 0){
-        printf("No OpenCL Platforms\n");
+        debug("No OpenCL Platforms", 1);
         return RI_ERROR;
     }
     
     clGetDeviceIDs(platform, CL_DEVICE_TYPE_GPU, 1, &device, &number_of_devices);
     
     if (number_of_devices == 0){
-        printf("No Valid GPU's Found\n");
+        debug("No Valid GPU's Found", 1);
         return RI_ERROR;
     }
     
@@ -329,13 +331,13 @@ RI_result OpenCL_init(){
     
     pattern = 0x22222222;
 
-    debug("Initialized OpenCL");
+    debug("Initialized OpenCL", 0);
     
     return RI_SUCCESS;
 }
 
 RI_result RI_Stop(){
-    debug("Stopping...");
+    debug("Stopping...", 0);
 
     running = 0;
 
@@ -354,19 +356,19 @@ RI_result RI_Stop(){
     if (polygons != NULL)
         free(polygons);
     else
-        debug("Polygons Was Unset on Stop");
+        debug("Polygons Was Unset on Stop", 1);
 
     if (frame_buffer != NULL)
         free(frame_buffer);
     else
-        debug("Frame-Buffer Was Unset on Stop");
+        debug("Frame-Buffer Was Unset on Stop", 1);
     
     if (z_buffer != NULL)
         free(z_buffer);
     else   
-        debug("Z-Buffer Was Unset on Stop");
+        debug("Z-Buffer Was Unset on Stop", 1);
 
-    debug("Stopped");
+    debug("Stopped", 0);
 
     return RI_SUCCESS;
 }
@@ -374,7 +376,7 @@ RI_result RI_Stop(){
 RI_result RI_RequestPolygons(int RI_PolygonsToRequest){
     polygon_count = RI_PolygonsToRequest;
     
-    debug("Requesting %d Polygons...", polygon_count);
+    debug("Requesting %d Polygons...", 1, polygon_count);
 
     if (polygons != NULL){
         free(polygons);
@@ -383,7 +385,7 @@ RI_result RI_RequestPolygons(int RI_PolygonsToRequest){
     polygons = malloc(sizeof(float) * 3 * 3 * polygon_count);
     
     if (polygons == NULL){
-        debug("Malloc Error");
+        debug("Malloc Error", 1);
         return RI_ERROR;
     }
 
@@ -398,30 +400,30 @@ RI_result RI_RequestPolygons(int RI_PolygonsToRequest){
     input_memory_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(float) * 3 * 3 * polygon_count, polygons, &error);
     
     if (input_memory_buffer == NULL) {
-        debug("OpenCL buffer creation failed for polygons.");
+        debug("OpenCL buffer creation failed for polygons.", 1);
     }
 
-    debug("Request for %d Polygons Granted", polygon_count);
+    debug("Request for %d Polygons Granted", 1, polygon_count);
     
     return erchk(error);
 }
 
 RI_result RI_Tick(){
-    debug("Ticking...");
+    debug("Ticking...", 1);
 
     if (running) {
         if (polygons == NULL){
-            debug("Polygons is Unset");
+            debug("Polygons is Unset", 1);
             return RI_ERROR;
         }
 
         if (frame_buffer == NULL){
-            debug("Frame-Buffer is Unset");
+            debug("Frame Buffer is Unset", 1);
             return RI_ERROR;
         }
         
         if (z_buffer == NULL){
-            debug("Z-Buffer is Unset");
+            debug("Z Buffer is Unset", 1);
             return RI_ERROR;
         }
 
@@ -435,17 +437,22 @@ RI_result RI_Tick(){
             }
         }
 
-        //memset(&z_buffer, 0, sizeof(float) * width * height);
+        debug("Randomized Polygons", 1);
 
         erchk(clEnqueueWriteBuffer(queue, input_memory_buffer, CL_TRUE, 0, sizeof(float) * 3 * 3 * polygon_count, polygons, 0, NULL, NULL));
+        debug("Wrote Polygon Buffer", 1);
 
         erchk(clEnqueueFillBuffer(queue, output_memory_buffer, &pattern, sizeof(RI_uint), 0, sizeof(RI_uint) * width * height, 0, NULL, NULL));
+        debug("Cleared Frame Buffer", 1);
 
         erchk(clEnqueueNDRangeKernel(queue, compiled_kernel, 2, NULL, size_2d, NULL, 0, NULL, NULL));
+        debug("Ran Kernel", 1);
 
         erchk(clFinish(queue));
+        debug("Finished Queue", 1);
 
         erchk(clEnqueueReadBuffer(queue, output_memory_buffer, CL_TRUE, 0, sizeof(RI_uint) * width * height, &frame_buffer, 0, NULL, NULL));
+        debug("Read Frame Buffer", 1);
 
         SDL_Event event;
         while (SDL_PollEvent(&event)){
@@ -463,7 +470,7 @@ RI_result RI_Tick(){
         
         frame++;
         
-        debug("Ticked");
+        debug("Ticked", 1);
 
         return RI_SUCCESS;
     }
