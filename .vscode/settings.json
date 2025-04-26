@@ -1,0 +1,12 @@
+{
+    "files.associations": {
+        "rasteriver.h": "c",
+        "type_traits": "c",
+        "ratio": "c",
+        "system_error": "c",
+        "array": "c",
+        "functional": "c",
+        "tuple": "c",
+        "utility": "c"
+    }
+}
