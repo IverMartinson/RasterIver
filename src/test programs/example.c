@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include "rasteriver.h"
+#include "../RasterIver/headers/rasteriver.h"
 
 int main(){
     RI_SetDebugFlag(1);

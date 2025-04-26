@@ -3,7 +3,7 @@
 #include "math.h"
 #include "time.h"
 #include <CL/cl.h>
-#include "rasteriver.h"
+#include "../headers/rasteriver.h"
 #include <stdarg.h>
 
 const char* kernel_source = " \
