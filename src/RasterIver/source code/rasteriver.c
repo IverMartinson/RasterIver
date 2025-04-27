@@ -121,6 +121,7 @@ __kernel void raster_kernel(__global float* polygons, __global uint* frame_buffe
             if (z > z_pixel){ \
                 z_pixel = z; \
             } \
+             \
             else { \
                 continue; \
             } \
@@ -133,6 +134,8 @@ __kernel void raster_kernel(__global float* polygons, __global uint* frame_buffe
     return;\
     }\
     frame_buffer[id_y * width + id_x] = frame_pixel; \
+    \
+    frame_buffer[polygon_count] = 0xFFFFFFFF;\
     \
     if (!show_z_buffer){return;}\
     \
@@ -261,14 +264,6 @@ RI_result Rendering_init(char *title)
         return RI_ERROR;
     }
 
-    z_buffer = malloc(sizeof(float) * width * height);
-
-    if (z_buffer == NULL)
-    {
-        debug(1, "Couldn't Allocate Z Buffer");
-        return RI_ERROR;
-    }
-
     if (SDL_Init(SDL_INIT_VIDEO) < 0)
     {
         debug(1, "SDL_Init failed");
@@ -352,13 +347,6 @@ RI_result OpenCL_init(){
 
     debug(1, "Local Size: %d", local_size);
 
-    erchk(clSetKernelArg(compiled_kernel, 0, sizeof(cl_mem), &input_memory_buffer));
-    erchk(clSetKernelArg(compiled_kernel, 1, sizeof(cl_mem), &output_memory_buffer));
-    erchk(clSetKernelArg(compiled_kernel, 2, sizeof(int), &polygon_count));
-    erchk(clSetKernelArg(compiled_kernel, 3, sizeof(int), &width));
-    erchk(clSetKernelArg(compiled_kernel, 4, sizeof(int), &height));
-    erchk(clSetKernelArg(compiled_kernel, 5, sizeof(int), &show_z_buffer));
-
     size_2d[0] = width;
     size_2d[1] = height;
 
@@ -397,11 +385,6 @@ RI_result RI_Stop()
     else
         debug(1, "Frame-Buffer Was Unset on Stop");
 
-    if (z_buffer != NULL)
-        free(z_buffer);
-    else
-        debug(1, "Z-Buffer Was Unset on Stop");
-
     debug(0, "Stopped");
 
     return RI_SUCCESS;
@@ -427,15 +410,9 @@ RI_result RI_RequestPolygons(int RI_PolygonsToRequest){
         return RI_ERROR;
     }
 
-    for (int p = 0; p < polygon_count; p++)
+    for (int p = 0; p < polygon_count * 9; p++)
     {
-        for (int point = 0; point < 3; point++)
-        {
-            for (int i = 0; i < 3; i++)
-            {
-                polygons[i] = rand();
-            }
-        }
+        polygons[p] = rand() % 800;
     }
 
     input_memory_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, size, polygons, &error);
@@ -458,38 +435,32 @@ RI_result RI_Tick()
     {
         if (polygons == NULL)
         {
-            debug(1, "Polygons is Unset");
+            debug(1, "Polygons is not Allocated");
             return RI_ERROR;
         }
 
         if (frame_buffer == NULL)
         {
-            debug(1, "Frame Buffer is Unset");
+            debug(1, "Frame Buffer is not Allocated");
             return RI_ERROR;
         }
-
-        if (z_buffer == NULL)
+        
+        if (frame % 1 == 0)
         {
-            debug(1, "Z Buffer is Unset");
-            return RI_ERROR;
-        }
-
-        if (frame % 1009000000 == 0)
-        {
-            for (int p = 0; p < polygon_count; p++)
+            for (int p = 0; p < polygon_count * 9; p++)
             {
-                for (int point = 0; point < 3; point++)
-                {
-                    for (int i = 0; i < 3; i++)
-                    {
-                        polygons[i] = rand() % width + 1;
-                    }
-                }
+                polygons[p] = rand() % width + 1;
             }
 
             debug(1, "Randomized Polygons");
         }
 
+        erchk(clSetKernelArg(compiled_kernel, 0, sizeof(cl_mem), &input_memory_buffer));
+        erchk(clSetKernelArg(compiled_kernel, 1, sizeof(cl_mem), &output_memory_buffer));
+        erchk(clSetKernelArg(compiled_kernel, 2, sizeof(int), (void*)&polygon_count));
+        erchk(clSetKernelArg(compiled_kernel, 3, sizeof(int), (void*)&width));
+        erchk(clSetKernelArg(compiled_kernel, 4, sizeof(int), (void*)&height));
+        erchk(clSetKernelArg(compiled_kernel, 5, sizeof(int), (void*)&show_z_buffer));
 
         erchk(clEnqueueWriteBuffer(queue, input_memory_buffer, CL_TRUE, 0, sizeof(float) * 3 * 3 * polygon_count, polygons, 0, NULL, NULL));
         erchk(clFinish(queue));
