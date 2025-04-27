@@ -39,12 +39,14 @@ void norm(float dest[2], float a[2]){ \
     dest[1] = a[1] + b[1]; \
 } \
 \
-__kernel void raster_kernel(__global float* polygons, __global uint* frame_buffer, int polygon_count, int width, int height, int show_z_buffer){ \
+__kernel void raster_kernel(__global float* polygons, __global uint* frame_buffer, int polygon_count, int width, int height, int show_z_buffer, float highest_z){ \
     int id_x = get_global_id(0); \
     int id_y = get_global_id(1); \
     \
     float z_pixel = 0; \
     uint frame_pixel = 0x22222222; \
+    \
+    float biggest_z = 0;\
     \
     for (int polygon = 0; polygon < polygon_count; polygon++){ \
         int base = polygon * 9; \
@@ -137,9 +139,9 @@ __kernel void raster_kernel(__global float* polygons, __global uint* frame_buffe
     \
     if (!show_z_buffer){return;}\
     \
-    float z = clamp(z_pixel, 0.0f, 800.0f);\
+    float z = clamp(z_pixel, 0.0f, highest_z);\
     \
-    float norm_z = z / 800.0f;\
+    float norm_z = z / highest_z;\
     \
     uchar intensity = (uchar)(norm_z * 255.0f);\
     \
@@ -151,9 +153,10 @@ int width;
 int height;
 
 int show_z_buffer = 0;
+float highest_z = 0;
 
 int polygon_count;
-float *polygons = NULL;
+RI_polygons polygons = NULL;
 
 int running = 1;
 int frame = 0;
@@ -303,7 +306,7 @@ RI_result RI_SetBackground(RI_uint RI_BackgroundColor)
     return RI_SUCCESS;
 }
 
-RI_result RI_RequestPolygons(int RI_PolygonsToRequest){
+RI_polygons RI_RequestPolygons(int RI_PolygonsToRequest){
     polygon_count = RI_PolygonsToRequest;
     
     int size = sizeof(float) * 3 * 3 * polygon_count;
@@ -320,7 +323,7 @@ RI_result RI_RequestPolygons(int RI_PolygonsToRequest){
     if (polygons == NULL)
     {
         debug(1, "Malloc Error");
-        return RI_ERROR;
+        return (float*)RI_ERROR;
     }
     
     for (int p = 0; p < polygon_count * 9; p++)
@@ -337,7 +340,7 @@ RI_result RI_RequestPolygons(int RI_PolygonsToRequest){
     
     debug(1, "Request for %d Polygons Granted", polygon_count);
     
-    return erchk(error);
+    return polygons;
 }
 
 RI_result RI_SetFpsCap(int RI_FpsCap){
@@ -345,7 +348,7 @@ RI_result RI_SetFpsCap(int RI_FpsCap){
 
     return RI_SUCCESS;
 }
-// ----- Set Value Functions
+
 
 // ----- Renderer Action Functions
 RI_result RI_Tick()
@@ -370,14 +373,14 @@ RI_result RI_Tick()
             return RI_ERROR;
         }
         
-        if (frame % 1 == 0)
-        {
-            for (int p = 0; p < polygon_count * 9; p++)
-            {
-                polygons[p] = rand() % width + 1;
+        if (show_z_buffer){
+            for (int p = 2; p < polygon_count * 9; p+=3){
+                if (polygons[p] > highest_z){
+                    highest_z = polygons[p];
+                }
             }
-
-            debug(1, "Randomized Polygons");
+            
+            debug(1, "Highest Z: %f", highest_z);
         }
 
         erchk(clSetKernelArg(compiled_kernel, 0, sizeof(cl_mem), &input_memory_buffer));
@@ -385,7 +388,8 @@ RI_result RI_Tick()
         erchk(clSetKernelArg(compiled_kernel, 2, sizeof(int), (void*)&polygon_count));
         erchk(clSetKernelArg(compiled_kernel, 3, sizeof(int), (void*)&width));
         erchk(clSetKernelArg(compiled_kernel, 4, sizeof(int), (void*)&height));
-        erchk(clSetKernelArg(compiled_kernel, 5, sizeof(int), (void*)&show_z_buffer));
+        erchk(clSetKernelArg(compiled_kernel, 5, sizeof(int), (void*)&show_z_buffer)); 
+        erchk(clSetKernelArg(compiled_kernel, 6, sizeof(float), (void*)&highest_z));
 
         erchk(clEnqueueWriteBuffer(queue, input_memory_buffer, CL_TRUE, 0, sizeof(float) * 3 * 3 * polygon_count, polygons, 0, NULL, NULL));
         erchk(clFinish(queue));
@@ -401,8 +405,8 @@ RI_result RI_Tick()
 
         // for (int i = 0; i < passes; i++)
         // {
-            erchk(clEnqueueNDRangeKernel(queue, compiled_kernel, 2, NULL, size_2d, local_size_2d, 0, NULL, NULL));
-            erchk(clFinish(queue));
+        erchk(clEnqueueNDRangeKernel(queue, compiled_kernel, 2, NULL, size_2d, local_size_2d, 0, NULL, NULL));
+        erchk(clFinish(queue));
 
             // debug(1, "Ran Kernel (pass %d/%d)", i + 1, passes);
         // }

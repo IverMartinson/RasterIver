@@ -6,6 +6,7 @@
 typedef int RI_result;
 typedef int RI_flag;
 typedef uint32_t RI_uint;
+typedef float* RI_polygons;
 
 // RI_result
 typedef enum {
@@ -28,11 +29,12 @@ typedef enum {
 RI_result RI_Init();
 RI_result RI_Stop();
 RI_result RI_IsRunning();
-RI_result RI_RequestPolygons(int RI_PolygonsToRequest);
+RI_polygons RI_RequestPolygons(int RI_PolygonsToRequest);
 RI_result RI_Tick();
 RI_result RI_SetBackground(RI_uint RI_BackgroundColor);
 RI_result RI_ShowZBuffer(int RI_ShowZBufferFlag);
 RI_result RI_SetFlag(RI_flag RI_FlagToSet, int RI_Value);
 RI_result RI_SetFpsCap(int RI_FpsCap);
+RI_result RI_ListFlags();
 
 #endif // RASTERIVER_H
