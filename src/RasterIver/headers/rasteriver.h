@@ -19,11 +19,13 @@ typedef enum {
 
 // RI_flag
 typedef enum {
-    RI_FLAG_DEBUG           = 0,
-    RI_FLAG_DEBUG_VERBOSE   = 1,
-    RI_FLAG_SHOW_Z_BUFFER   = 2,
-    RI_FLAG_SHOW_FPS        = 3,
-    RI_FLAG_DEBUG_FPS       = 4,
+    RI_FLAG_DEBUG               = 0,
+    RI_FLAG_DEBUG_VERBOSE       = 1,
+    RI_FLAG_SHOW_Z_BUFFER       = 2,
+    RI_FLAG_SHOW_FPS            = 3,
+    RI_FLAG_DEBUG_FPS           = 4,
+    RI_FLAG_CLEAN_POLYGONS      = 5,
+    RI_FLAG_POPULATE_POLYGONS   = 6,
 } RI_flag_enum;
 
 RI_result   RI_Init();

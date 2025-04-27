@@ -9,6 +9,7 @@
         "tuple": "c",
         "utility": "c",
         "cl.h": "c",
-        "stdio.h": "c"
+        "stdio.h": "c",
+        "stdint.h": "c"
     }
 }

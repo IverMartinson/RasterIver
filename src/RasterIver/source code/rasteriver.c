@@ -60,6 +60,10 @@ __kernel void raster_kernel(__global float* polygons, __global uint* frame_buffe
         float y2 = polygons[base + 7]; \
         float z2 = polygons[base + 8]; \
         \
+        if (isinf(x0) || isinf(y0) || isinf(z0) || isinf(x1) || isinf(y1) || isinf(z1) || isinf(x2) || isinf(y2) || isinf(z2)){\
+            return;\
+        }\
+        \
         float smallest_x = x0; \
         float largest_x = x0; \
         float smallest_y = y0; \
@@ -165,6 +169,8 @@ int show_debug = 0;
 int debug_verbose = 0;
 int show_fps = 0;
 int debug_fps = 0;
+int clean_polygons = 0;
+int populate_polygons = 0;
 
 Uint64 start_time;
 double frame_time_ms;
@@ -262,6 +268,8 @@ RI_result RI_ListFlags(){
     printf("RI_FLAG_SHOW_Z_BUFFER: Whether or not to render the Z buffer");
     printf("RI_FLAG_SHOW_FPS: Render FPS on screen");
     printf("RI_FLAG_DEBUG_FPS: Debug FPS into the console");
+    printf("RI_FLAG_CLEAN_POLYGONS: When requesting polygons, write INF to the array. (INF means a triangle doesn't exist. Useful for if you allocate more space than there are triangles, but inefficient if you call RI_RequestPolygons frequently\n)");
+    printf("RI_FLAG_POPULATE_POLYGONS: When requesting polygons, populate the array with random triangles (useful for testing/benchmark)\n");
 
     return RI_SUCCESS;
 }
@@ -290,6 +298,14 @@ RI_result RI_SetFlag(RI_flag RI_FlagToSet, int RI_Value)
 
     case RI_FLAG_DEBUG_FPS:
         debug_fps = RI_Value;
+        break;
+
+    case RI_FLAG_CLEAN_POLYGONS:
+        clean_polygons = RI_Value;
+        break;
+    
+    case RI_FLAG_POPULATE_POLYGONS:
+        populate_polygons = RI_Value;
         break;
 
     default:
@@ -326,9 +342,18 @@ RI_polygons RI_RequestPolygons(int RI_PolygonsToRequest){
         return (float*)RI_ERROR;
     }
     
-    for (int p = 0; p < polygon_count * 9; p++)
-    {
-        polygons[p] = rand() % 800;
+    
+    for (int p = 0; p < polygon_count * 9; p += 3){     
+        if (clean_polygons){
+            polygons[p] = INFINITY;
+            polygons[p + 1] = INFINITY;
+            polygons[p + 2] = INFINITY;
+        }
+        else if (populate_polygons){
+            polygons[p] = rand() % width;
+            polygons[p + 1] = rand() % height;
+            polygons[p + 2] = rand() % ((width + height) / 2);
+        }
     }
     
     input_memory_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, size, polygons, &error);
@@ -595,7 +620,7 @@ RI_result OpenCL_init(){
 
 RI_result RI_Init(int RI_WindowWidth, int RI_WindowHeight, char *RI_WindowTitle)
 {
-    srand(time(NULL));
+    srand(time(NULL));                                                         
 
     width = RI_WindowWidth;
     height = RI_WindowHeight;
