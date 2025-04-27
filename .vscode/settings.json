@@ -8,6 +8,7 @@
         "functional": "c",
         "tuple": "c",
         "utility": "c",
-        "cl.h": "c"
+        "cl.h": "c",
+        "stdio.h": "c"
     }
 }

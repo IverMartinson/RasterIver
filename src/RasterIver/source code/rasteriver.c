@@ -135,8 +135,6 @@ __kernel void raster_kernel(__global float* polygons, __global uint* frame_buffe
     }\
     frame_buffer[id_y * width + id_x] = frame_pixel; \
     \
-    frame_buffer[polygon_count] = 0xFFFFFFFF;\
-    \
     if (!show_z_buffer){return;}\
     \
     float z = clamp(z_pixel, 0.0f, 800.0f);\
@@ -162,6 +160,15 @@ int frame = 0;
 
 int show_debug = 0;
 int debug_verbose = 0;
+int show_fps = 0;
+int debug_fps = 0;
+
+Uint64 start_time;
+double frame_time_ms;
+double fps;
+double elapsed_ticks;
+double delta_time;
+int fps_cap = -1;
 // ----- Internal Variables
 
 // ----- Rendering Vars
@@ -245,6 +252,16 @@ RI_result RI_IsRunning()
         return RI_NOT_RUNNING;
     }
 }
+
+RI_result RI_ListFlags(){
+    printf("RI_FLAG_DEBUG: Turns debugging on or off\n");
+    printf("RI_FLAG_DEBUG_VERBOSE: If debugging and verbose is on, print extra data\n");
+    printf("RI_FLAG_SHOW_Z_BUFFER: Whether or not to render the Z buffer");
+    printf("RI_FLAG_SHOW_FPS: Render FPS on screen");
+    printf("RI_FLAG_DEBUG_FPS: Debug FPS into the console");
+
+    return RI_SUCCESS;
+}
 // ----- Value Return Functions
 
 // ----- Set Value Functions
@@ -264,8 +281,16 @@ RI_result RI_SetFlag(RI_flag RI_FlagToSet, int RI_Value)
         show_z_buffer = RI_Value;
         break;
 
-    default:
+    case RI_FLAG_SHOW_FPS:
+        show_fps = RI_Value;
         break;
+
+    case RI_FLAG_DEBUG_FPS:
+        debug_fps = RI_Value;
+        break;
+
+    default:
+        return RI_INVALID_FLAG;
     }
 
     return RI_SUCCESS;
@@ -314,11 +339,21 @@ RI_result RI_RequestPolygons(int RI_PolygonsToRequest){
     
     return erchk(error);
 }
+
+RI_result RI_SetFpsCap(int RI_FpsCap){
+    fps_cap = RI_FpsCap;
+
+    return RI_SUCCESS;
+}
 // ----- Set Value Functions
 
 // ----- Renderer Action Functions
 RI_result RI_Tick()
 {
+    if (show_fps || debug_fps){
+        start_time = SDL_GetPerformanceCounter();
+    }
+    
     debug(1, "Ticking...");
     
     if (running)
@@ -395,6 +430,25 @@ RI_result RI_Tick()
         frame++;
 
         debug(1, "Ticked");
+
+        if (fps_cap > 0 && fps > fps_cap){
+            elapsed_ticks = SDL_GetPerformanceCounter() - start_time;
+            delta_time = elapsed_ticks / (double)SDL_GetPerformanceFrequency();
+            
+            double target_frame_time = 1.0 / fps_cap;
+
+            SDL_Delay((Uint32)((target_frame_time - delta_time) * 1000.0));
+        }
+        
+        if (show_fps || debug_fps){
+            elapsed_ticks = SDL_GetPerformanceCounter() - start_time;
+            delta_time = elapsed_ticks / (double)SDL_GetPerformanceFrequency();
+            fps = 1.0 / delta_time;
+        }
+        
+        if (debug_fps){
+            debug(0, "FPS: %lf (%d polygons, %d pixels)", fps, polygon_count, width * height);
+        }
 
         return RI_SUCCESS;
     }
