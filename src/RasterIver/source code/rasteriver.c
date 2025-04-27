@@ -148,7 +148,7 @@ __kernel void raster_kernel(__global float* polygons, __global uint* frame_buffe
     frame_buffer[id_y * width + id_x] = 0xFF000000 | (intensity << 16) | (intensity << 8) | intensity;\
 }\n";
 
-// ----- Rasteriver Vars
+// ----- Internal Variables
 int width;
 int height;
 
@@ -162,7 +162,7 @@ int frame = 0;
 
 int show_debug = 0;
 int debug_verbose = 0;
-// -----
+// ----- Internal Variables
 
 // ----- Rendering Vars
 SDL_Window *window;
@@ -171,7 +171,7 @@ SDL_Texture *texture;
 
 RI_uint *frame_buffer;
 float *z_buffer;
-// -----
+// ----- Rendering Vars
 
 // ----- OpenCL Vars
 cl_platform_id platform;
@@ -193,8 +193,9 @@ size_t size_2d[2];
 size_t local_size;
 
 RI_uint pattern;
-// -----
+// ----- OpenCL Vars
 
+// ----- Internal Functions
 RI_result debug(int verbose, char *string, ...)
 {
     if (!show_debug || (verbose && !debug_verbose))
@@ -230,7 +231,23 @@ RI_result erchk_func(cl_int error, int line, char *file)
 }
 
 #define erchk(error) erchk_func(error, __LINE__, __FILE__)
+// ----- Internal Functions
 
+// ----- Value Return Functions
+RI_result RI_IsRunning()
+{
+    if (running)
+    {
+        return RI_RUNNING;
+    }
+    else
+    {
+        return RI_NOT_RUNNING;
+    }
+}
+// ----- Value Return Functions
+
+// ----- Set Value Functions
 RI_result RI_SetFlag(RI_flag RI_FlagToSet, int RI_Value)
 {
     switch (RI_FlagToSet)
@@ -254,54 +271,6 @@ RI_result RI_SetFlag(RI_flag RI_FlagToSet, int RI_Value)
     return RI_SUCCESS;
 }
 
-RI_result Rendering_init(char *title)
-{
-    frame_buffer = malloc(sizeof(RI_uint) * width * height);
-
-    if (frame_buffer == NULL)
-    {
-        debug(1, "Couldn't Allocate Frame Buffer");
-        return RI_ERROR;
-    }
-
-    if (SDL_Init(SDL_INIT_VIDEO) < 0)
-    {
-        debug(1, "SDL_Init failed");
-        return RI_ERROR;
-    }
-
-    if (width <= 0 || height <= 0)
-    {
-        debug(1, "Invalid width or height");
-        return RI_ERROR;
-    }
-
-    window = SDL_CreateWindow(title, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width, height, SDL_WINDOW_OPENGL);
-    if (!window)
-    {
-        debug(1, "SDL_CreateWindow failed");
-        return RI_ERROR;
-    }
-
-    renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
-    if (!renderer)
-    {
-        debug(1, "SDL_CreateRenderer failed");
-        return RI_ERROR;
-    }
-
-    texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, width, height);
-    if (!texture)
-    {
-        debug(1, "SDL_CreateTexture failed");
-        return RI_ERROR;
-    }
-
-    debug(0, "Initialized Rendering");
-
-    return RI_SUCCESS;
-}
-
 RI_result RI_SetBackground(RI_uint RI_BackgroundColor)
 {
     pattern = RI_BackgroundColor;
@@ -309,128 +278,49 @@ RI_result RI_SetBackground(RI_uint RI_BackgroundColor)
     return RI_SUCCESS;
 }
 
-RI_result OpenCL_init(){
-    clGetPlatformIDs(1, &platform, &number_of_platforms);
-
-    if (number_of_platforms == 0)
-    {
-        debug(1, "No OpenCL Platforms");
-        return RI_ERROR;
-    }
-
-    clGetDeviceIDs(platform, CL_DEVICE_TYPE_GPU, 1, &device, &number_of_devices);
-
-    if (number_of_devices == 0)
-    {
-        debug(1, "No Valid GPU's Found");
-        return RI_ERROR;
-    }
-
-    context = clCreateContext(NULL, 1, &device, NULL, NULL, &error);
-    erchk(error);
-    queue = clCreateCommandQueue(context, device, 0, &error);
-    erchk(error);
-
-    output_memory_buffer = clCreateBuffer(context, CL_MEM_WRITE_ONLY, sizeof(RI_uint) * width * height, NULL, &error);
-    erchk(error);
-
-    kernel_program = clCreateProgramWithSource(context, 1, &kernel_source, NULL, &error);
-    erchk(error);
-
-    error = clBuildProgram(kernel_program, 1, &device, NULL, NULL, NULL);
-    erchk(error);
-
-    compiled_kernel = clCreateKernel(kernel_program, "raster_kernel", &error);
-    erchk(error);
-
-    erchk(clGetKernelWorkGroupInfo(compiled_kernel, device, CL_KERNEL_WORK_GROUP_SIZE, sizeof(local_size), &local_size, NULL));
-
-    debug(1, "Local Size: %d", local_size);
-
-    size_2d[0] = width;
-    size_2d[1] = height;
-
-    pattern = 0x22222222;
-
-    debug(0, "Initialized OpenCL");
-
-    return RI_SUCCESS;
-}
-
-RI_result RI_Stop()
-{
-    debug(0, "Stopping...");
-
-    running = 0;
-
-    clReleaseMemObject(input_memory_buffer);
-    clReleaseMemObject(output_memory_buffer);
-    clReleaseKernel(compiled_kernel);
-    clReleaseProgram(kernel_program);
-    clReleaseCommandQueue(queue);
-    clReleaseContext(context);
-
-    SDL_DestroyTexture(texture);
-    SDL_DestroyRenderer(renderer);
-    SDL_DestroyWindow(window);
-    SDL_Quit();
-
-    if (polygons != NULL)
-        free(polygons);
-    else
-        debug(1, "Polygons Was Unset on Stop");
-
-    if (frame_buffer != NULL)
-        free(frame_buffer);
-    else
-        debug(1, "Frame-Buffer Was Unset on Stop");
-
-    debug(0, "Stopped");
-
-    return RI_SUCCESS;
-}
-
 RI_result RI_RequestPolygons(int RI_PolygonsToRequest){
     polygon_count = RI_PolygonsToRequest;
-
+    
     int size = sizeof(float) * 3 * 3 * polygon_count;
-
+    
     debug(1, "Requesting %d Polygons... (%d bytes)", polygon_count, size);
-
+    
     if (polygons != NULL)
     {
         free(polygons);
     }
-
+    
     polygons = malloc(size);
-
+    
     if (polygons == NULL)
     {
         debug(1, "Malloc Error");
         return RI_ERROR;
     }
-
+    
     for (int p = 0; p < polygon_count * 9; p++)
     {
         polygons[p] = rand() % 800;
     }
-
+    
     input_memory_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, size, polygons, &error);
-
+    
     if (input_memory_buffer == NULL)
     {
         debug(1, "OpenCL buffer creation failed for polygons.");
     }
-
+    
     debug(1, "Request for %d Polygons Granted", polygon_count);
-
+    
     return erchk(error);
 }
+// ----- Set Value Functions
 
+// ----- Renderer Action Functions
 RI_result RI_Tick()
 {
     debug(1, "Ticking...");
-
+    
     if (running)
     {
         if (polygons == NULL)
@@ -514,16 +404,135 @@ RI_result RI_Tick()
     }
 }
 
-RI_result RI_IsRunning()
+RI_result RI_Stop()
 {
-    if (running)
-    {
-        return RI_RUNNING;
-    }
+    debug(0, "Stopping...");
+
+    running = 0;
+
+    clReleaseMemObject(input_memory_buffer);
+    clReleaseMemObject(output_memory_buffer);
+    clReleaseKernel(compiled_kernel);
+    clReleaseProgram(kernel_program);
+    clReleaseCommandQueue(queue);
+    clReleaseContext(context);
+
+    SDL_DestroyTexture(texture);
+    SDL_DestroyRenderer(renderer);
+    SDL_DestroyWindow(window);
+    SDL_Quit();
+
+    if (polygons != NULL)
+        free(polygons);
     else
+        debug(1, "Polygons Was Unset on Stop");
+
+    if (frame_buffer != NULL)
+        free(frame_buffer);
+    else
+        debug(1, "Frame-Buffer Was Unset on Stop");
+
+    debug(0, "Stopped");
+
+    return RI_SUCCESS;
+}
+// ----- Renderer Action Functions
+
+// ----- INIT
+RI_result Rendering_init(char *title)
+{
+    frame_buffer = malloc(sizeof(RI_uint) * width * height);
+
+    if (frame_buffer == NULL)
     {
-        return RI_NOT_RUNNING;
+        debug(1, "Couldn't Allocate Frame Buffer");
+        return RI_ERROR;
     }
+
+    if (SDL_Init(SDL_INIT_VIDEO) < 0)
+    {
+        debug(1, "SDL_Init failed");
+        return RI_ERROR;
+    }
+
+    if (width <= 0 || height <= 0)
+    {
+        debug(1, "Invalid width or height");
+        return RI_ERROR;
+    }
+
+    window = SDL_CreateWindow(title, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width, height, SDL_WINDOW_OPENGL);
+    if (!window)
+    {
+        debug(1, "SDL_CreateWindow failed");
+        return RI_ERROR;
+    }
+
+    renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+    if (!renderer)
+    {
+        debug(1, "SDL_CreateRenderer failed");
+        return RI_ERROR;
+    }
+
+    texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, width, height);
+    if (!texture)
+    {
+        debug(1, "SDL_CreateTexture failed");
+        return RI_ERROR;
+    }
+
+    debug(0, "Initialized Rendering");
+
+    return RI_SUCCESS;
+}
+
+RI_result OpenCL_init(){
+    clGetPlatformIDs(1, &platform, &number_of_platforms);
+
+    if (number_of_platforms == 0)
+    {
+        debug(1, "No OpenCL Platforms");
+        return RI_ERROR;
+    }
+
+    clGetDeviceIDs(platform, CL_DEVICE_TYPE_GPU, 1, &device, &number_of_devices);
+
+    if (number_of_devices == 0)
+    {
+        debug(1, "No Valid GPU's Found");
+        return RI_ERROR;
+    }
+
+    context = clCreateContext(NULL, 1, &device, NULL, NULL, &error);
+    erchk(error);
+    queue = clCreateCommandQueue(context, device, 0, &error);
+    erchk(error);
+
+    output_memory_buffer = clCreateBuffer(context, CL_MEM_WRITE_ONLY, sizeof(RI_uint) * width * height, NULL, &error);
+    erchk(error);
+
+    kernel_program = clCreateProgramWithSource(context, 1, &kernel_source, NULL, &error);
+    erchk(error);
+
+    error = clBuildProgram(kernel_program, 1, &device, NULL, NULL, NULL);
+    erchk(error);
+
+    compiled_kernel = clCreateKernel(kernel_program, "raster_kernel", &error);
+    erchk(error);
+
+    erchk(clGetKernelWorkGroupInfo(compiled_kernel, device, CL_KERNEL_WORK_GROUP_SIZE, sizeof(local_size), &local_size, NULL));
+
+    debug(1, "Local Size: %d", local_size);
+
+    size_2d[0] = width;
+    size_2d[1] = height;
+
+    pattern = 0x22222222;
+
+    debug(0, "Initialized OpenCL");
+
+    return RI_SUCCESS;
 }
 
 RI_result RI_Init(int RI_WindowWidth, int RI_WindowHeight, char *RI_WindowTitle)
@@ -542,3 +551,4 @@ RI_result RI_Init(int RI_WindowWidth, int RI_WindowHeight, char *RI_WindowTitle)
 
     return RI_SUCCESS;
 }
+// ----- INIT
