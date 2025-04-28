@@ -1,10 +1,11 @@
-#include "stdlib.h"
-#include "SDL2/SDL.h"
-#include "math.h"
-#include "time.h"
+#include <stdlib.h>
+#include <SDL2/SDL.h>
+#include <math.h>
+#include <time.h>
 #include <CL/cl.h>
 #include "../headers/rasteriver.h"
 #include <stdarg.h>
+#include <SDL2/SDL_ttf.h>
 
 const char *kernel_source = " \
 int is_intersecting(float a, float b, float c, float d, float p, float q, float r, float s) { \
@@ -186,7 +187,15 @@ SDL_Renderer *renderer;
 SDL_Texture *texture;
 
 RI_uint *frame_buffer;
-float *z_buffer;
+
+char *font_file = "src/fonts/OxygenMono.ttf";
+int font_size = 24;
+TTF_Font *font;
+SDL_Color font_color = {255, 255, 255, 255};
+
+SDL_Surface *fps_surface;
+SDL_Texture *fps_text;
+SDL_Rect fps_rect;
 // ----- Rendering Vars
 
 // ----- OpenCL Vars
@@ -214,8 +223,7 @@ RI_uint pattern;
 // ----- Internal Functions
 RI_result debug(int verbose, char *string, ...)
 {
-    if (!show_debug || (verbose && !debug_verbose))
-    {
+    if (!show_debug || (verbose && !debug_verbose)){
         return RI_ERROR;
     }
 
@@ -238,9 +246,9 @@ RI_result erchk_func(cl_int error, int line, char *file)
 {
     if (error != CL_SUCCESS)
     {
-        debug(1, "OpenCL Error: %d at line %d at file %s", error, line, file);
+        debug(0, "OpenCL Error: %d at line %d at file %s", error, line, file);
 
-        return RI_ERROR;
+        RI_Stop();
     }
 
     return RI_SUCCESS;
@@ -338,10 +346,9 @@ RI_polygons RI_RequestPolygons(int RI_PolygonsToRequest){
     
     if (polygons == NULL)
     {
-        debug(1, "Malloc Error");
+        debug(0, "Malloc Error");
         return (float*)RI_ERROR;
     }
-    
     
     for (int p = 0; p < polygon_count * 9; p += 3){     
         if (clean_polygons){
@@ -360,7 +367,7 @@ RI_polygons RI_RequestPolygons(int RI_PolygonsToRequest){
     
     if (input_memory_buffer == NULL)
     {
-        debug(1, "OpenCL buffer creation failed for polygons.");
+        debug(0, "OpenCL buffer creation Failed for polygons.");
     }
     
     debug(1, "Request for %d Polygons Granted", polygon_count);
@@ -374,10 +381,38 @@ RI_result RI_SetFpsCap(int RI_FpsCap){
     return RI_SUCCESS;
 }
 
+RI_result RI_SetFontColor(RI_uint RI_FontColorRGBA){
+    font_color.r = (RI_FontColorRGBA >> 24) & 0xFF;
+    font_color.g = (RI_FontColorRGBA >> 16) & 0xFF;
+    font_color.b = (RI_FontColorRGBA >> 8) & 0xFF;
+    font_color.a = RI_FontColorRGBA & 0xFF;
+
+    return RI_SUCCESS;
+}
+
+RI_result RI_SetFontSize(int RI_FontSize){
+    font_size = RI_FontSize;
+    
+    return RI_SUCCESS;    
+}
+
+RI_result RI_SetFontFile(char *RI_PathToFontFile){
+    TTF_Font* font_check = TTF_OpenFont(RI_PathToFontFile, 24);
+
+    if (font_check == NULL){
+        return RI_ERROR;
+    }
+
+    font_file = RI_PathToFontFile;
+
+    font = TTF_OpenFont(font_file, font_size);
+
+    return RI_SUCCESS;
+}
+// ----- Set Value Functions
 
 // ----- Renderer Action Functions
-RI_result RI_Tick()
-{
+RI_result RI_Tick(){
     if (show_fps || debug_fps){
         start_time = SDL_GetPerformanceCounter();
     }
@@ -388,13 +423,13 @@ RI_result RI_Tick()
     {
         if (polygons == NULL)
         {
-            debug(1, "Polygons is not Allocated");
+            debug(0, "Polygons is not Allocated");
             return RI_ERROR;
         }
 
         if (frame_buffer == NULL)
         {
-            debug(1, "Frame Buffer is not Allocated");
+            debug(0, "Frame Buffer is not Allocated");
             return RI_ERROR;
         }
         
@@ -454,18 +489,33 @@ RI_result RI_Tick()
 
         SDL_RenderClear(renderer);
         SDL_RenderCopy(renderer, texture, NULL, NULL);
+
+        if (show_fps){
+            char fps_string[50];
+            
+            sprintf(fps_string, "%.0f FPS", fps);
+
+            fps_surface = TTF_RenderText_Blended(font, fps_string, font_color);
+            fps_text = SDL_CreateTextureFromSurface(renderer, fps_surface);
+            
+            fps_rect.x = 5;
+            fps_rect.y = 0;
+            fps_rect.h = fps_surface->h;
+            fps_rect.w = fps_surface->w;
+
+            SDL_RenderCopy(renderer, fps_text, NULL, &fps_rect);
+        }
+
         SDL_RenderPresent(renderer);
 
         frame++;
-
-        debug(1, "Ticked");
-
+        
         if (fps_cap > 0 && fps > fps_cap){
             elapsed_ticks = SDL_GetPerformanceCounter() - start_time;
             delta_time = elapsed_ticks / (double)SDL_GetPerformanceFrequency();
             
             double target_frame_time = 1.0 / fps_cap;
-
+            
             SDL_Delay((Uint32)((target_frame_time - delta_time) * 1000.0));
         }
         
@@ -478,7 +528,9 @@ RI_result RI_Tick()
         if (debug_fps){
             debug(0, "FPS: %lf (%d polygons, %d pixels)", fps, polygon_count, width * height);
         }
-
+        
+        debug(1, "Ticked");
+        
         return RI_SUCCESS;
     }
     else
@@ -500,20 +552,26 @@ RI_result RI_Stop()
     clReleaseCommandQueue(queue);
     clReleaseContext(context);
 
+    SDL_FreeSurface(fps_surface);
+    SDL_DestroyTexture(fps_text);
+
     SDL_DestroyTexture(texture);
     SDL_DestroyRenderer(renderer);
+    
     SDL_DestroyWindow(window);
     SDL_Quit();
+    
+    TTF_Quit();
 
     if (polygons != NULL)
         free(polygons);
     else
-        debug(1, "Polygons Was Unset on Stop");
+        debug(0, "Polygons Was Unset on Stop");
 
     if (frame_buffer != NULL)
         free(frame_buffer);
     else
-        debug(1, "Frame-Buffer Was Unset on Stop");
+        debug(0, "Frame-Buffer Was Unset on Stop");
 
     debug(0, "Stopped");
 
@@ -522,46 +580,67 @@ RI_result RI_Stop()
 // ----- Renderer Action Functions
 
 // ----- INIT
-RI_result Rendering_init(char *title)
-{
+RI_result Rendering_init(char *title){
+    debug(0, "Initializing Rendering...");
+
     frame_buffer = malloc(sizeof(RI_uint) * width * height);
 
     if (frame_buffer == NULL)
     {
-        debug(1, "Couldn't Allocate Frame Buffer");
+        debug(0, "Couldn't Allocate Frame Buffer");
         return RI_ERROR;
     }
 
     if (SDL_Init(SDL_INIT_VIDEO) < 0)
     {
-        debug(1, "SDL_Init failed");
+        debug(0, "SDL_Init Failed: %s", SDL_GetError());
         return RI_ERROR;
+    }
+
+    if (TTF_Init() == -1) {
+        debug(0, "TFF_Init Failed: %s", TTF_GetError());
+        SDL_Quit();
+        return -1;
     }
 
     if (width <= 0 || height <= 0)
     {
-        debug(1, "Invalid width or height");
+        debug(0, "Invalid width or height");
         return RI_ERROR;
     }
 
     window = SDL_CreateWindow(title, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width, height, SDL_WINDOW_OPENGL);
     if (!window)
     {
-        debug(1, "SDL_CreateWindow failed");
+        debug(0, "SDL_CreateWindow Failed");
         return RI_ERROR;
     }
 
     renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
     if (!renderer)
     {
-        debug(1, "SDL_CreateRenderer failed");
+        debug(0, "SDL_CreateRenderer Failed");
         return RI_ERROR;
     }
 
     texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, width, height);
     if (!texture)
     {
-        debug(1, "SDL_CreateTexture failed");
+        debug(0, "SDL_CreateTexture Failed");
+        return RI_ERROR;
+    }
+    
+    font = TTF_OpenFont(font_file, font_size);
+
+    fps_surface = TTF_RenderText_Solid(font, "FPS", font_color);
+    if (fps_surface == NULL){
+        debug(0, "TTF_RenderText_Solid Failed: %s", TTF_GetError());
+        return RI_ERROR;
+    }
+
+    fps_text = SDL_CreateTextureFromSurface(renderer, fps_surface);
+    if (fps_text == NULL){
+        debug(0, "SDL_CreateTextureFromSurface Failed");
         return RI_ERROR;
     }
 
@@ -571,11 +650,13 @@ RI_result Rendering_init(char *title)
 }
 
 RI_result OpenCL_init(){
+    debug(0, "Initialiing OpenCL...");
+
     clGetPlatformIDs(1, &platform, &number_of_platforms);
 
     if (number_of_platforms == 0)
     {
-        debug(1, "No OpenCL Platforms");
+        debug(0, "No OpenCL Platforms");
         return RI_ERROR;
     }
 
@@ -583,7 +664,7 @@ RI_result OpenCL_init(){
 
     if (number_of_devices == 0)
     {
-        debug(1, "No Valid GPU's Found");
+        debug(0, "No Valid GPU's Found");
         return RI_ERROR;
     }
 
@@ -625,12 +706,13 @@ RI_result RI_Init(int RI_WindowWidth, int RI_WindowHeight, char *RI_WindowTitle)
     width = RI_WindowWidth;
     height = RI_WindowHeight;
 
-    if (OpenCL_init() == RI_ERROR)
-    {
+    if (OpenCL_init() == RI_ERROR){
         return RI_ERROR;
     }
 
-    Rendering_init(RI_WindowTitle);
+    if (Rendering_init(RI_WindowTitle) == RI_ERROR){
+        return RI_ERROR;
+    }
 
     return RI_SUCCESS;
 }

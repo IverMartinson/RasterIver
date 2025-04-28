@@ -1,7 +1,7 @@
 COMPILER=gcc
 FLAGS_ALL=-g -Wall -Wextra
 FLAGS_EXAMPLE=-Lbuilds/final\ binaries -lrasteriver -Wl,-rpath=builds/final\ binaries/
-FLAGS_LIB=-D CL_TARGET_OPENCL_VERSION=120 -fPIC -shared -lc -lSDL2 -lm -lOpenCL
+FLAGS_LIB=-D CL_TARGET_OPENCL_VERSION=120 -fPIC -shared -lc -lSDL2 -lSDL2_ttf -lm -lOpenCL
 
 example.bin: rasteriver.so
 	$(COMPILER) $(FLAGS_ALL) src/test\ programs/example.c -o builds/final\ binaries/example.bin $(FLAGS_EXAMPLE) 
