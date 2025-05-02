@@ -314,10 +314,21 @@ void malloc_objects(int objects, char **file_names){
         free(triangles);
     } 
 
-    verticies = malloc(sizeof(RI_verticies) * num_verticies * vs);
-    normals = malloc(sizeof(RI_verticies) * num_normals * vs);
-    uvs = malloc(sizeof(RI_verticies) * num_uvs * vs);
-    triangles = malloc(sizeof(RI_triangles) * num_faces * ts);
+    if (num_verticies > 0){
+        verticies = malloc(sizeof(RI_verticies) * num_verticies * vs);
+    }
+    
+    if (num_normals > 0){
+        normals = malloc(sizeof(RI_verticies) * num_normals * vs);
+    }
+
+    if (num_uvs > 0){
+        uvs = malloc(sizeof(RI_verticies) * num_uvs * vs);
+    }
+
+    if (num_faces > 0){
+        triangles = malloc(sizeof(RI_triangles) * num_faces * ts);
+    }
 
     debug(0, "vert %d", num_verticies);
     debug(0, "norm %d", num_normals);
@@ -356,6 +367,8 @@ load_object_return load_object(char *object_path, int object_offset){
                 &triangles[(ct + cur_faces) * ts + 1], &triangles[(ct + cur_faces) * ts + 4], &triangles[(ct + cur_faces) * ts + 7], 
                 &triangles[(ct + cur_faces) * ts + 2], &triangles[(ct + cur_faces) * ts + 5], &triangles[(ct + cur_faces) * ts + 8]);
             
+                debug(1, "Matches: %d", matches);
+
             if (matches != 9){
                 triangles[(ct + cur_faces) * ts + 0] = -1;
                 triangles[(ct + cur_faces) * ts + 1] = -1;
@@ -369,13 +382,16 @@ load_object_return load_object(char *object_path, int object_offset){
                 triangles[(ct + cur_faces) * ts + 7] = -1;
                 triangles[(ct + cur_faces) * ts + 8] = -1;
 
-                if (matches == 6){
+                if (strchr(line, '/')){
+                    debug(1, "Obj file uses X//X X//X X//X");
                     sscanf(line, "f %d//%d %d//%d %d//%d", 
                         &triangles[(ct + cur_faces) * ts + 0], &triangles[(ct + cur_faces) * ts + 6], 
                         &triangles[(ct + cur_faces) * ts + 1], &triangles[(ct + cur_faces) * ts + 7], 
                         &triangles[(ct + cur_faces) * ts + 2], &triangles[(ct + cur_faces) * ts + 8]);
                 }
-                else if (matches == 3){
+                else {
+                    debug(1, "Obj file uses X X X");
+
                     sscanf(line, "f %d %d %d", 
                         &triangles[(ct + cur_faces) * ts + 0], 
                         &triangles[(ct + cur_faces) * ts + 1], 
@@ -449,8 +465,23 @@ RI_result RI_RequestObjects(RI_newObject *RI_ObjectBuffer, int RI_ObjectsToReque
 
     for (int object = 0; object < object_count; object++){
         RI_newObject cur_object = RI_ObjectBuffer[object];
+
+        int base = object * object_size;
+        objects[base + 10] = cur_verticies;
         
         load_object_return return_values = load_object((char *)cur_object.file_path, object);
+
+        objects[base + 9] = cur_faces;
+        
+        objects[base + 0] = cur_object.x;
+        objects[base + 1] = cur_object.y;
+        objects[base + 2] = cur_object.z;
+        objects[base + 3] = cur_object.r_x;
+        objects[base + 4] = cur_object.r_y;
+        objects[base + 5] = cur_object.r_z;
+        objects[base + 6] = cur_object.s_x;
+        objects[base + 7] = cur_object.s_y;
+        objects[base + 8] = cur_object.s_z;
     }
     
     debug(0, "%d", sizeof(RI_verticies) * num_uvs * vs + sizeof(RI_triangles) * num_faces * vs + sizeof(RI_verticies) * num_verticies * vs + sizeof(RI_verticies) * num_normals * vs + size);
@@ -462,34 +493,42 @@ RI_result RI_RequestObjects(RI_newObject *RI_ObjectBuffer, int RI_ObjectsToReque
         debug(0, "clCreateBuffer Failed for Objects Buffer");
     }
 
-    triangles_memory_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(RI_triangles) * num_faces * ts, triangles, &error);
-    erchk(error);
+    if (num_faces > 0){
+        triangles_memory_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(RI_triangles) * num_faces * ts, triangles, &error);
+        erchk(error);
     
-    if (triangles_memory_buffer == NULL){
-        debug(0, "clCreateBuffer Failed for Triangles Buffer");
+        if (triangles_memory_buffer == NULL){
+            debug(0, "clCreateBuffer Failed for Triangles Buffer");
+        }
     }
 
-    verticies_memory_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(RI_verticies) * num_verticies * vs, verticies, &error);
-    erchk(error);
+    if (num_verticies > 0){
+        verticies_memory_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(RI_verticies) * num_verticies * vs, verticies, &error);
+        erchk(error);
     
-    if (verticies_memory_buffer == NULL){
-        debug(0, "clCreateBuffer Failed for Verticies Buffer");
+        if (verticies_memory_buffer == NULL){
+            debug(0, "clCreateBuffer Failed for Verticies Buffer");
+        }
     }
-    
-    normals_memory_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(RI_verticies) * num_normals * vs, normals, &error);
-    erchk(error);
-    
-    if (normals_memory_buffer == NULL){
-        debug(0, "clCreateBuffer Failed for Normals Buffer");
-    }
-    
-    uvs_memory_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(RI_verticies) * num_uvs * vs, uvs, &error);
-    erchk(error);
 
-    if (uvs_memory_buffer == NULL){
-        debug(0, "clCreateBuffer Failed for UVS Buffer");
-    }
+    if (num_normals > 0){
+        normals_memory_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(RI_verticies) * num_normals * vs, normals, &error);
+        erchk(error);
     
+        if (normals_memory_buffer == NULL){
+            debug(0, "clCreateBuffer Failed for Normals Buffer");
+        }
+    }
+
+    if (num_uvs > 0){
+        uvs_memory_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(RI_verticies) * num_uvs * vs, uvs, &error);
+        erchk(error);
+
+        if (uvs_memory_buffer == NULL){
+            debug(0, "clCreateBuffer Failed for UVS Buffer");
+        }
+    }
+
     debug(1, "Request for %d Objects Granted", object_count);
     
     return objects;
@@ -548,7 +587,69 @@ RI_result RI_Tick(){
         }
 
         if (be_master_renderer){
-            
+            erchk(clSetKernelArg(compiled_kernel_master, 0, sizeof(cl_mem), &object_memory_buffer));
+            erchk(clSetKernelArg(compiled_kernel_master, 1, sizeof(cl_mem), &verticies_memory_buffer));
+            erchk(clSetKernelArg(compiled_kernel_master, 2, sizeof(cl_mem), &normals_memory_buffer));
+            erchk(clSetKernelArg(compiled_kernel_master, 3, sizeof(cl_mem), &uvs_memory_buffer));
+            erchk(clSetKernelArg(compiled_kernel_master, 4, sizeof(cl_mem), &triangles_memory_buffer));
+            erchk(clSetKernelArg(compiled_kernel_master, 5, sizeof(cl_mem), &output_memory_buffer));
+            erchk(clSetKernelArg(compiled_kernel_master, 6, sizeof(int), (void*)&object_count));
+            erchk(clSetKernelArg(compiled_kernel_master, 7, sizeof(int), (void*)&width));
+            erchk(clSetKernelArg(compiled_kernel_master, 8, sizeof(int), (void*)&height));
+            erchk(clSetKernelArg(compiled_kernel_master, 9, sizeof(int), (void*)&show_z_buffer)); 
+            erchk(clSetKernelArg(compiled_kernel_master, 10, sizeof(float), (void*)&highest_z));
+
+            if (object_count > 0) {
+                erchk(clEnqueueWriteBuffer(queue, object_memory_buffer, CL_TRUE, 0, sizeof(int) * object_size * object_count, objects, 0, NULL, NULL));
+                erchk(clFinish(queue));
+
+                debug(1, "Wrote Objects Buffer");
+            }
+
+            if (num_verticies > 0){
+                erchk(clEnqueueWriteBuffer(queue, verticies_memory_buffer, CL_TRUE, 0, sizeof(float) * 3 * num_verticies, verticies, 0, NULL, NULL));
+                erchk(clFinish(queue));
+
+                debug(1, "Wrote Verticies Buffer");
+            }
+
+            if (num_normals > 0){
+                erchk(clEnqueueWriteBuffer(queue, normals_memory_buffer, CL_TRUE, 0, sizeof(float) * 3 * num_normals, normals, 0, NULL, NULL));
+                erchk(clFinish(queue));
+
+                debug(1, "Wrote Normals Buffer");
+            }
+
+            if (num_uvs > 0){
+                erchk(clEnqueueWriteBuffer(queue, uvs_memory_buffer, CL_TRUE, 0, sizeof(float) * 3 * num_uvs, uvs, 0, NULL, NULL));
+                erchk(clFinish(queue));
+
+                debug(1, "Wrote UVS Buffer");
+            }
+
+            if (num_faces > 0){
+                erchk(clEnqueueWriteBuffer(queue, triangles_memory_buffer, CL_TRUE, 0, sizeof(int) * 9 * num_faces, triangles, 0, NULL, NULL));
+                erchk(clFinish(queue));
+
+                debug(1, "Wrote Triangles Buffer");
+            }
+
+            erchk(clEnqueueFillBuffer(queue, output_memory_buffer, &pattern, sizeof(RI_uint), 0, sizeof(RI_uint) * width * height, 0, NULL, NULL));
+            erchk(clFinish(queue));
+
+            debug(1, "Cleared Frame Buffer");
+
+            size_t local_size_2d[2] = {sqrt(local_size), sqrt(local_size)};
+
+            // for (int i = 0; i < passes; i++)
+            // {
+            erchk(clEnqueueNDRangeKernel(queue, compiled_kernel_master, 2, NULL, size_2d, local_size_2d, 0, NULL, NULL));
+        
+            erchk(clFinish(queue));
+
+            erchk(clEnqueueReadBuffer(queue, output_memory_buffer, CL_TRUE, 0, sizeof(RI_uint) * width * height, frame_buffer, 0, NULL, NULL));
+            erchk(clFinish(queue));
+            debug(1, "Read Frame Buffer");
         }
         else{
             if (polygons == NULL)

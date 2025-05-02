@@ -14,8 +14,8 @@ typedef char* RI_textures;
 
 // the size of each object instance in the objects array
 // xyz + rot(xyz) + scale(xyz) = 9
-// 9 + polygon count + polygon index + texture index = 12
-#define object_size 12
+// 9 + polygon count + polygon index + vertex index + texture index = 13
+#define object_size 13
 
 // vertex size
 // the size of each instance of verticies
@@ -247,7 +247,7 @@ void norm(float dest[2], float a[2]){ \
     dest[1] = a[1] + b[1]; \
 } \
 \
-__kernel void raster_kernel(__global float* polygons, __global uint* frame_buffer, int polygon_count, int width, int height, int show_z_buffer, float highest_z){ \
+__kernel void raster_kernel(__global int* objects, __global float* verticies, __global float* normals, __global float* uvs, __global int* triangles, __global uint* frame_buffer, int object_count, int width, int height, int show_z_buffer, float highest_z){ \
     int id_x = get_global_id(0); \
     int id_y = get_global_id(1); \
     \
@@ -256,93 +256,118 @@ __kernel void raster_kernel(__global float* polygons, __global uint* frame_buffe
     \
     float biggest_z = 0;\
     \
-    for (int polygon = 0; polygon < polygon_count; polygon++){ \
-        int base = polygon * 9; \
-        float x0 = polygons[base]; \
-        float y0 = polygons[base + 1]; \
-        float z0 = polygons[base + 2]; \
-        float x1 = polygons[base + 3]; \
-        float y1 = polygons[base + 4]; \
-        float z1 = polygons[base + 5]; \
-        float x2 = polygons[base + 6]; \
-        float y2 = polygons[base + 7]; \
-        float z2 = polygons[base + 8]; \
+    for (int object = 0; object < object_count; object++){ \
+        int base = object * 12;\
         \
-        if (isinf(x0) || isinf(y0) || isinf(z0) || isinf(x1) || isinf(y1) || isinf(z1) || isinf(x2) || isinf(y2) || isinf(z2)){\
-            return;\
+        int object_x =   objects[base + 0];    \
+        int object_y =   objects[base + 1];    \
+        int object_z =   objects[base + 2];    \
+        int object_r_x = objects[base + 3];    \
+        int object_r_y = objects[base + 4];    \
+        int object_r_z = objects[base + 5];    \
+        int object_s_x = objects[base + 6];    \
+        int object_s_y = objects[base + 7];    \
+        int object_s_z = objects[base + 8];    \
+\
+        int polygon_count = objects[9];\
+        int polygon_offset = objects[10];\
+        int vertex_offset = objects[11];\
+        int texture_index = objects[12];\
+        \
+        for (int polygon = polygon_offset; polygon < polygon_count + polygon_offset; polygon++){\
+            base = polygon * 9; \
+            int i0 = triangles[base + 0] * 3;\
+            int i1 = triangles[base + 1] * 3;\
+            int i2 = triangles[base + 2] * 3;\
+            \
+            float x0 = verticies[i0 + 0] * object_s_x + object_x;\
+            float y0 = verticies[i0 + 1] * object_s_y + object_y;\
+            float z0 = verticies[i0 + 2] * object_s_z + object_z;\
+            \
+            float x1 = verticies[i1 + 0] * object_s_x + object_x;\
+            float y1 = verticies[i1 + 1] * object_s_y + object_y;\
+            float z1 = verticies[i1 + 2] * object_s_z + object_z;\
+            \
+            float x2 = verticies[i2 + 0] * object_s_x + object_x;\
+            float y2 = verticies[i2 + 1] * object_s_y + object_y;\
+            float z2 = verticies[i2 + 2] * object_s_z + object_z;\
+            \
+            if (isinf(x0) || isinf(y0) || isinf(z0) || isinf(x1) || isinf(y1) || isinf(z1) || isinf(x2) || isinf(y2) || isinf(z2)){\
+                return;\
+            }\
+            \
+            float smallest_x = x0; \
+            float largest_x = x0; \
+            float smallest_y = y0; \
+            float largest_y = y0; \
+            \
+            for (int point = 0; point < 3; point++){ \
+                float x = verticies[base + point * 3]; \
+                float y = verticies[base + point * 3 + 1]; \
+                \
+                if (x > largest_x){ \
+                    largest_x = x; \
+                } \
+                \
+                if (x < smallest_x){ \
+                    smallest_x = x; \
+                } \
+                \
+                if (y > largest_y){ \
+                    largest_y = y; \
+                } \
+                \
+                if (y < smallest_y){\
+                    smallest_y = y;\
+                } \
+            } \
+            \
+            smallest_x = fmin(smallest_x, 0); \
+            largest_x = fmax(largest_x, width); \
+            smallest_y = fmin(smallest_y, 0); \
+            largest_y = fmax(largest_y, height); \
+            \
+            if (id_x >= smallest_x && id_x <= largest_x && id_y >= smallest_y && id_y <= largest_y){ \
+                int intersections = 0; \
+                \
+                intersections += is_intersecting(id_x, id_y, 10000, 100000, x0, y0, x1, y1); \
+                intersections += is_intersecting(id_x, id_y, 10000, 100000, x1, y1, x2, y2); \
+                intersections += is_intersecting(id_x, id_y, 10000, 100000, x2, y2, x0, y0); \
+                \
+                if (intersections % 2 == 0){ \
+                    continue; \
+                } \
+                \
+                float denominator = (y1 - y2) * (x0 - x2) + (x2 - x1) * (y0 - y2); \
+                float w0 = ((y1 - y2) * (id_x - x2) + (x2 - x1) * (id_y - y2)) / denominator; \
+                float w1 = ((y2 - y0) * (id_x - x0) + (x0 - x2) * (id_y - y2)) / denominator; \
+                float w2 = 1.0 - w0 - w1; \
+                \
+                if (denominator < 0) { \
+                    w0 = -w0; \
+                    w1 = -w1; \
+                    w2 = -w2; \
+                    denominator = -denominator; \
+                } \
+                \
+                float z = w0 * z0 + w1 * z1 + w2 * z2; \
+                \
+                if (z < 0){ \
+                    z *= -1; \
+                } \
+                \
+                if (z > z_pixel){ \
+                    z_pixel = z; \
+                } \
+                \
+                else { \
+                    continue; \
+                } \
+                \
+                frame_pixel = 0xFFFFFFFF / polygon_count * (polygon + 1); \
+            } \
         }\
-        \
-        float smallest_x = x0; \
-        float largest_x = x0; \
-        float smallest_y = y0; \
-        float largest_y = y0; \
-        \
-        for (int point = 0; point < 3; point++){ \
-            float x = polygons[base + point * 3]; \
-            float y = polygons[base + point * 3 + 1]; \
-            \
-            if (x > largest_x){ \
-                largest_x = x; \
-            } \
-            \
-            if (x < smallest_x){ \
-                smallest_x = x; \
-            } \
-            \
-            if (y > largest_y){ \
-                largest_y = y; \
-            } \
-            \
-            if (y < smallest_y){\
-                smallest_y = y;\
-            } \
-        } \
-        \
-        smallest_x = fmin(smallest_x, 0); \
-        largest_x = fmax(largest_x, width); \
-        smallest_y = fmin(smallest_y, 0); \
-        largest_y = fmax(largest_y, height); \
-        \
-        if (id_x >= smallest_x && id_x <= largest_x && id_y >= smallest_y && id_y <= largest_y){ \
-            int intersections = 0; \
-            \
-            intersections += is_intersecting(id_x, id_y, 10000, 100000, x0, y0, x1, y1); \
-            intersections += is_intersecting(id_x, id_y, 10000, 100000, x1, y1, x2, y2); \
-            intersections += is_intersecting(id_x, id_y, 10000, 100000, x2, y2, x0, y0); \
-            \
-            if (intersections % 2 == 0){ \
-                continue; \
-            } \
-            \
-            float denominator = (y1 - y2) * (x0 - x2) + (x2 - x1) * (y0 - y2); \
-            float w0 = ((y1 - y2) * (id_x - x2) + (x2 - x1) * (id_y - y2)) / denominator; \
-            float w1 = ((y2 - y0) * (id_x - x0) + (x0 - x2) * (id_y - y2)) / denominator; \
-            float w2 = 1.0 - w0 - w1; \
-            \
-            if (denominator < 0) { \
-                w0 = -w0; \
-                w1 = -w1; \
-                w2 = -w2; \
-                denominator = -denominator; \
-            } \
-            \
-            float z = w0 * z0 + w1 * z1 + w2 * z2; \
-            \
-            if (z < 0){ \
-                z *= -1; \
-            } \
-            \
-            if (z > z_pixel){ \
-                z_pixel = z; \
-            } \
-             \
-            else { \
-                continue; \
-            } \
-            \
-            frame_pixel = 0xFFFFFFFF / polygon_count * (polygon + 1); \
-        } \
-    } \
+    }\
     \
     if (id_y * width + id_x > width * height){\
     return;\
