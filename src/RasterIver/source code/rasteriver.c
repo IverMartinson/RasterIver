@@ -5,153 +5,8 @@
 #include <CL/cl.h>
 #include "../headers/rasteriver.h"
 #include <stdarg.h>
+#include <stdio.h>
 #include <SDL2/SDL_ttf.h>
-
-const char *kernel_source = " \
-int is_intersecting(float a, float b, float c, float d, float p, float q, float r, float s) { \
-    float det, gamma, lambda; \
-    \
-    det = (c - a) * (s - q) - (r - p) * (d - b); \
-    \
-    if (det == 0) { \
-        return 1; \
-    }  \
-    else { \
-        lambda = ((s - q) * (r - a) + (p - r) * (s - b)) / det; \
-        gamma = ((b - d) * (r - a) + (c - a) * (s - b)) / det; \
-        return (0 < lambda && lambda < 1) && (0 < gamma && gamma < 1); \
-    } \
-} \
-\
-void norm(float dest[2], float a[2]){ \
-    float magnitude = sqrt(a[0] * a[0] + a[1] * a[1]); \
-    \
-    dest[0] = a[0] / magnitude; \
-    dest[1] = a[1] / magnitude; \
-    } \
-    \
-    void sub(float dest[2], float a[2], float b[2]){ \
-    dest[0] = a[0] - b[0]; \
-    dest[1] = a[1] - b[1]; \
-    } \
-    \
-    void add(float dest[2], float a[2], float b[2]){ \
-    dest[0] = a[0] + b[0]; \
-    dest[1] = a[1] + b[1]; \
-} \
-\
-__kernel void raster_kernel(__global float* polygons, __global uint* frame_buffer, int polygon_count, int width, int height, int show_z_buffer, float highest_z){ \
-    int id_x = get_global_id(0); \
-    int id_y = get_global_id(1); \
-    \
-    float z_pixel = 0; \
-    uint frame_pixel = 0x22222222; \
-    \
-    float biggest_z = 0;\
-    \
-    for (int polygon = 0; polygon < polygon_count; polygon++){ \
-        int base = polygon * 9; \
-        float x0 = polygons[base]; \
-        float y0 = polygons[base + 1]; \
-        float z0 = polygons[base + 2]; \
-        float x1 = polygons[base + 3]; \
-        float y1 = polygons[base + 4]; \
-        float z1 = polygons[base + 5]; \
-        float x2 = polygons[base + 6]; \
-        float y2 = polygons[base + 7]; \
-        float z2 = polygons[base + 8]; \
-        \
-        if (isinf(x0) || isinf(y0) || isinf(z0) || isinf(x1) || isinf(y1) || isinf(z1) || isinf(x2) || isinf(y2) || isinf(z2)){\
-            return;\
-        }\
-        \
-        float smallest_x = x0; \
-        float largest_x = x0; \
-        float smallest_y = y0; \
-        float largest_y = y0; \
-        \
-        for (int point = 0; point < 3; point++){ \
-            float x = polygons[base + point * 3]; \
-            float y = polygons[base + point * 3 + 1]; \
-            \
-            if (x > largest_x){ \
-                largest_x = x; \
-            } \
-            \
-            if (x < smallest_x){ \
-                smallest_x = x; \
-            } \
-            \
-            if (y > largest_y){ \
-                largest_y = y; \
-            } \
-            \
-            if (y < smallest_y){\
-                smallest_y = y;\
-            } \
-        } \
-        \
-        smallest_x = fmin(smallest_x, 0); \
-        largest_x = fmax(largest_x, width); \
-        smallest_y = fmin(smallest_y, 0); \
-        largest_y = fmax(largest_y, height); \
-        \
-        if (id_x >= smallest_x && id_x <= largest_x && id_y >= smallest_y && id_y <= largest_y){ \
-            int intersections = 0; \
-            \
-            intersections += is_intersecting(id_x, id_y, 10000, 100000, x0, y0, x1, y1); \
-            intersections += is_intersecting(id_x, id_y, 10000, 100000, x1, y1, x2, y2); \
-            intersections += is_intersecting(id_x, id_y, 10000, 100000, x2, y2, x0, y0); \
-            \
-            if (intersections % 2 == 0){ \
-                continue; \
-            } \
-            \
-            float denominator = (y1 - y2) * (x0 - x2) + (x2 - x1) * (y0 - y2); \
-            float w0 = ((y1 - y2) * (id_x - x2) + (x2 - x1) * (id_y - y2)) / denominator; \
-            float w1 = ((y2 - y0) * (id_x - x0) + (x0 - x2) * (id_y - y2)) / denominator; \
-            float w2 = 1.0 - w0 - w1; \
-            \
-            if (denominator < 0) { \
-                w0 = -w0; \
-                w1 = -w1; \
-                w2 = -w2; \
-                denominator = -denominator; \
-            } \
-            \
-            float z = w0 * z0 + w1 * z1 + w2 * z2; \
-            \
-            if (z < 0){ \
-                z *= -1; \
-            } \
-            \
-            if (z > z_pixel){ \
-                z_pixel = z; \
-            } \
-             \
-            else { \
-                continue; \
-            } \
-            \
-            frame_pixel = 0xFFFFFFFF / polygon_count * (polygon + 1); \
-        } \
-    } \
-    \
-    if (id_y * width + id_x > width * height){\
-    return;\
-    }\
-    frame_buffer[id_y * width + id_x] = frame_pixel; \
-    \
-    if (!show_z_buffer){return;}\
-    \
-    float z = clamp(z_pixel, 0.0f, highest_z);\
-    \
-    float norm_z = z / highest_z;\
-    \
-    uchar intensity = (uchar)(norm_z * 255.0f);\
-    \
-    frame_buffer[id_y * width + id_x] = 0xFF000000 | (intensity << 16) | (intensity << 8) | intensity;\
-}\n";
 
 // ----- Internal Variables
 int width;
@@ -163,6 +18,14 @@ float highest_z = 0;
 int polygon_count;
 RI_polygons polygons = NULL;
 
+int object_count;
+RI_objects objects;
+RI_verticies verticies;
+RI_verticies normals;
+RI_verticies uvs;
+RI_triangles triangles;
+RI_textures textures;
+
 int running = 1;
 int frame = 0;
 
@@ -172,6 +35,7 @@ int show_fps = 0;
 int debug_fps = 0;
 int clean_polygons = 0;
 int populate_polygons = 0;
+int be_master_renderer = 0;
 
 Uint64 start_time;
 double frame_time_ms;
@@ -211,8 +75,17 @@ cl_command_queue queue;
 cl_mem input_memory_buffer;
 cl_mem output_memory_buffer;
 
-cl_program kernel_program;
-cl_kernel compiled_kernel;
+cl_mem object_memory_buffer;
+cl_mem triangles_memory_buffer;
+cl_mem verticies_memory_buffer;
+cl_mem normals_memory_buffer;
+cl_mem uvs_memory_buffer;
+
+cl_program kernel_program_non_master;
+cl_kernel compiled_kernel_non_master;
+
+cl_program kernel_program_master;
+cl_kernel compiled_kernel_master;
 
 size_t size_2d[2];
 size_t local_size;
@@ -248,7 +121,7 @@ RI_result erchk_func(cl_int error, int line, char *file)
     {
         debug(0, "OpenCL Error: %d at line %d at file %s", error, line, file);
 
-        RI_Stop();
+        RI_Stop(0);
     }
 
     return RI_SUCCESS;
@@ -278,6 +151,7 @@ RI_result RI_ListFlags(){
     printf("RI_FLAG_DEBUG_FPS: Debug FPS into the console");
     printf("RI_FLAG_CLEAN_POLYGONS: When requesting polygons, write INF to the array. (INF means a triangle doesn't exist. Useful for if you allocate more space than there are triangles, but inefficient if you call RI_RequestPolygons frequently\n)");
     printf("RI_FLAG_POPULATE_POLYGONS: When requesting polygons, populate the array with random triangles (useful for testing/benchmark)\n");
+    printf("RI_FLAG_BE_MASTER_RENDERER: If this is 0, RasterIver only acts as a polygon renderer. If 1, you get all the features like objects and rotations.\n");
 
     return RI_SUCCESS;
 }
@@ -314,6 +188,10 @@ RI_result RI_SetFlag(RI_flag RI_FlagToSet, int RI_Value)
     
     case RI_FLAG_POPULATE_POLYGONS:
         populate_polygons = RI_Value;
+        break;
+
+    case RI_FLAG_BE_MASTER_RENDERER:
+        be_master_renderer = RI_Value;
         break;
 
     default:
@@ -367,12 +245,254 @@ RI_polygons RI_RequestPolygons(int RI_PolygonsToRequest){
     
     if (input_memory_buffer == NULL)
     {
-        debug(0, "OpenCL buffer creation Failed for polygons.");
+        debug(0, "clCreateBuffer Failed for Requested Polygons");
     }
+
+    erchk(error);
     
     debug(1, "Request for %d Polygons Granted", polygon_count);
     
     return polygons;
+}
+
+int num_verticies = 0;
+int num_normals = 0;
+int num_uvs = 0;
+int num_faces = 0;
+
+int cur_verticies = 0;
+int cur_normals = 0;
+int cur_uvs = 0;
+int cur_faces = 0;
+
+void slice(char *string, char *result, int start, int end){
+    strncpy(result, string + start, end - start);
+}
+
+void malloc_objects(int objects, char **file_names){
+    for (int i = 0; i < objects; i++){
+        FILE *file = fopen(file_names[i], "r");
+
+        if(file == NULL){
+            debug(0, "Error Opening Object File");
+            RI_Stop(0);
+        }
+
+        char line[256];
+
+        while (fgets(line, sizeof(line), file)) {
+            if (line[0] == 'f' && line[1] == ' ') {
+                num_faces++;
+            } 
+            else if (line[0] == 'v' && line[1] == ' ') {
+                num_verticies++;
+            } 
+            else if (line[0] == 'v' && line[1] == 'n') {
+                num_normals++;
+            } 
+            else if (line[0] == 'v' && line[1] == 't') {
+                num_uvs++;
+            } 
+        }
+
+        fclose(file);
+    }
+
+    if(verticies != NULL){
+        free(verticies);
+    } 
+
+    if(normals != NULL){
+        free(normals);
+    } 
+    
+    if(uvs != NULL){
+        free(uvs);
+    } 
+
+    if(triangles != NULL){
+        free(triangles);
+    } 
+
+    verticies = malloc(sizeof(RI_verticies) * num_verticies * vs);
+    normals = malloc(sizeof(RI_verticies) * num_normals * vs);
+    uvs = malloc(sizeof(RI_verticies) * num_uvs * vs);
+    triangles = malloc(sizeof(RI_triangles) * num_faces * ts);
+
+    debug(0, "vert %d", num_verticies);
+    debug(0, "norm %d", num_normals);
+    debug(0, "uvs %d", num_uvs);
+    debug(0, "tri %d", num_faces);
+
+    return;
+}
+
+load_object_return load_object(char *object_path, int object_offset){
+    debug(1, "Loading Object #%d...", object_offset + 1);
+
+    debug(1, "Opening File \"%s\"...", object_path);
+
+    FILE *file = fopen(object_path, "r");
+
+    if(file == NULL){
+        debug(0, "Error Opening Object File");
+        RI_Stop(0);
+    }
+
+    char line[256];
+    
+
+    // current triangle
+    int ct = 0;
+    int cn = 0;
+    int cv = 0;
+    int cu = 0;
+
+    while (fgets(line, sizeof(line), file)) {
+        if (line[0] == 'f' && line[1] == ' ') {
+
+            int matches = sscanf(line, "f %d/%d/%d %d/%d/%d %d/%d/%d/", 
+                &triangles[(ct + cur_faces) * ts + 0], &triangles[(ct + cur_faces) * ts + 3], &triangles[(ct + cur_faces) * ts + 6], 
+                &triangles[(ct + cur_faces) * ts + 1], &triangles[(ct + cur_faces) * ts + 4], &triangles[(ct + cur_faces) * ts + 7], 
+                &triangles[(ct + cur_faces) * ts + 2], &triangles[(ct + cur_faces) * ts + 5], &triangles[(ct + cur_faces) * ts + 8]);
+            
+            if (matches != 9){
+                triangles[(ct + cur_faces) * ts + 0] = -1;
+                triangles[(ct + cur_faces) * ts + 1] = -1;
+                triangles[(ct + cur_faces) * ts + 2] = -1;
+                
+                triangles[(ct + cur_faces) * ts + 3] = -1;
+                triangles[(ct + cur_faces) * ts + 4] = -1;
+                triangles[(ct + cur_faces) * ts + 5] = -1;
+                
+                triangles[(ct + cur_faces) * ts + 6] = -1;
+                triangles[(ct + cur_faces) * ts + 7] = -1;
+                triangles[(ct + cur_faces) * ts + 8] = -1;
+
+                if (matches == 6){
+                    sscanf(line, "f %d//%d %d//%d %d//%d", 
+                        &triangles[(ct + cur_faces) * ts + 0], &triangles[(ct + cur_faces) * ts + 6], 
+                        &triangles[(ct + cur_faces) * ts + 1], &triangles[(ct + cur_faces) * ts + 7], 
+                        &triangles[(ct + cur_faces) * ts + 2], &triangles[(ct + cur_faces) * ts + 8]);
+                }
+                else if (matches == 3){
+                    sscanf(line, "f %d %d %d", 
+                        &triangles[(ct + cur_faces) * ts + 0], 
+                        &triangles[(ct + cur_faces) * ts + 1], 
+                        &triangles[(ct + cur_faces) * ts + 2]);
+                }
+            }
+
+            ct++;
+        }
+        else if (line[0] == 'v' && line[1] == ' ') {
+            sscanf(line, "v %f %f %f", &verticies[(cv + cur_verticies) * vs + 0], &verticies[(cv + cur_verticies) * vs + 1], &verticies[(cv + cur_verticies) * vs + 2]);
+
+            cv++;
+        } 
+        else if (line[0] == 'v' && line[1] == 'n') {
+            cn++;
+        } 
+        else if (line[0] == 'v' && line[1] == 't') {
+            cu++;
+        } 
+    }
+
+    cur_faces += ct;
+    cur_verticies += cv;
+    cur_normals += cn;
+    cur_uvs += cu;
+
+    fclose(file);
+
+    load_object_return return_values = {
+        0, 0, 0, 0, 0
+    };
+
+    debug(1, "Done");
+
+    return return_values;
+}
+
+RI_result RI_RequestObjects(RI_newObject *RI_ObjectBuffer, int RI_ObjectsToRequest){
+    object_count = RI_ObjectsToRequest;
+    
+    debug(1, "Requesting %d Objects...", object_count);
+
+    if (objects != NULL)
+    {
+        free(objects);
+    }
+
+    int size = sizeof(int) * object_size * RI_ObjectsToRequest;
+
+    objects = malloc(size);
+    
+    if (objects == NULL){
+        debug(0, "Malloc Error");
+    }
+
+    char **file_names = malloc(RI_ObjectsToRequest * sizeof(char *));
+
+    for (int object = 0; object < object_count; object++){
+        file_names[object] = RI_ObjectBuffer[object].file_path;
+    }
+
+    malloc_objects(RI_ObjectsToRequest, file_names);
+    
+    free(file_names);
+
+    cur_verticies = 0;
+    cur_normals = 0;
+    cur_uvs = 0;
+    cur_faces = 0;
+
+    for (int object = 0; object < object_count; object++){
+        RI_newObject cur_object = RI_ObjectBuffer[object];
+        
+        load_object_return return_values = load_object((char *)cur_object.file_path, object);
+    }
+    
+    debug(0, "%d", sizeof(RI_verticies) * num_uvs * vs + sizeof(RI_triangles) * num_faces * vs + sizeof(RI_verticies) * num_verticies * vs + sizeof(RI_verticies) * num_normals * vs + size);
+
+    object_memory_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, size, objects, &error);
+    erchk(error);
+    
+    if (object_memory_buffer == NULL){
+        debug(0, "clCreateBuffer Failed for Objects Buffer");
+    }
+
+    triangles_memory_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(RI_triangles) * num_faces * ts, triangles, &error);
+    erchk(error);
+    
+    if (triangles_memory_buffer == NULL){
+        debug(0, "clCreateBuffer Failed for Triangles Buffer");
+    }
+
+    verticies_memory_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(RI_verticies) * num_verticies * vs, verticies, &error);
+    erchk(error);
+    
+    if (verticies_memory_buffer == NULL){
+        debug(0, "clCreateBuffer Failed for Verticies Buffer");
+    }
+    
+    normals_memory_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(RI_verticies) * num_normals * vs, normals, &error);
+    erchk(error);
+    
+    if (normals_memory_buffer == NULL){
+        debug(0, "clCreateBuffer Failed for Normals Buffer");
+    }
+    
+    uvs_memory_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(RI_verticies) * num_uvs * vs, uvs, &error);
+    erchk(error);
+
+    if (uvs_memory_buffer == NULL){
+        debug(0, "clCreateBuffer Failed for UVS Buffer");
+    }
+    
+    debug(1, "Request for %d Objects Granted", object_count);
+    
+    return objects;
 }
 
 RI_result RI_SetFpsCap(int RI_FpsCap){
@@ -421,59 +541,62 @@ RI_result RI_Tick(){
     
     if (running)
     {
-        if (polygons == NULL)
-        {
-            debug(0, "Polygons is not Allocated");
-            return RI_ERROR;
-        }
-
         if (frame_buffer == NULL)
         {
             debug(0, "Frame Buffer is not Allocated");
             return RI_ERROR;
         }
-        
-        if (show_z_buffer){
-            for (int p = 2; p < polygon_count * 9; p+=3){
-                if (polygons[p] > highest_z){
-                    highest_z = polygons[p];
-                }
+
+        if (be_master_renderer){
+            
+        }
+        else{
+            if (polygons == NULL)
+            {
+                debug(0, "Polygons is not Allocated");
+                return RI_ERROR;
             }
             
-            debug(1, "Highest Z: %f", highest_z);
+            if (show_z_buffer){
+                for (int p = 2; p < polygon_count * 9; p+=3){
+                    if (polygons[p] > highest_z){
+                        highest_z = polygons[p];
+                    }
+                }
+                
+                debug(1, "Highest Z: %f", highest_z);
+            }
+
+            erchk(clSetKernelArg(compiled_kernel_non_master, 0, sizeof(cl_mem), &input_memory_buffer));
+            erchk(clSetKernelArg(compiled_kernel_non_master, 1, sizeof(cl_mem), &output_memory_buffer));
+            erchk(clSetKernelArg(compiled_kernel_non_master, 2, sizeof(int), (void*)&polygon_count));
+            erchk(clSetKernelArg(compiled_kernel_non_master, 3, sizeof(int), (void*)&width));
+            erchk(clSetKernelArg(compiled_kernel_non_master, 4, sizeof(int), (void*)&height));
+            erchk(clSetKernelArg(compiled_kernel_non_master, 5, sizeof(int), (void*)&show_z_buffer)); 
+            erchk(clSetKernelArg(compiled_kernel_non_master, 6, sizeof(float), (void*)&highest_z));
+
+            erchk(clEnqueueWriteBuffer(queue, input_memory_buffer, CL_TRUE, 0, sizeof(float) * 3 * 3 * polygon_count, polygons, 0, NULL, NULL));
+            erchk(clFinish(queue));
+
+            debug(1, "Wrote Polygon Buffer");
+
+            erchk(clEnqueueFillBuffer(queue, output_memory_buffer, &pattern, sizeof(RI_uint), 0, sizeof(RI_uint) * width * height, 0, NULL, NULL));
+            erchk(clFinish(queue));
+
+            debug(1, "Cleared Frame Buffer");
+
+            size_t local_size_2d[2] = {sqrt(local_size), sqrt(local_size)};
+
+            // for (int i = 0; i < passes; i++)
+            // {
+            erchk(clEnqueueNDRangeKernel(queue, compiled_kernel_non_master, 2, NULL, size_2d, local_size_2d, 0, NULL, NULL));
+        
+            erchk(clFinish(queue));
+
+            erchk(clEnqueueReadBuffer(queue, output_memory_buffer, CL_TRUE, 0, sizeof(RI_uint) * width * height, frame_buffer, 0, NULL, NULL));
+            erchk(clFinish(queue));
+            debug(1, "Read Frame Buffer");
         }
-
-        erchk(clSetKernelArg(compiled_kernel, 0, sizeof(cl_mem), &input_memory_buffer));
-        erchk(clSetKernelArg(compiled_kernel, 1, sizeof(cl_mem), &output_memory_buffer));
-        erchk(clSetKernelArg(compiled_kernel, 2, sizeof(int), (void*)&polygon_count));
-        erchk(clSetKernelArg(compiled_kernel, 3, sizeof(int), (void*)&width));
-        erchk(clSetKernelArg(compiled_kernel, 4, sizeof(int), (void*)&height));
-        erchk(clSetKernelArg(compiled_kernel, 5, sizeof(int), (void*)&show_z_buffer)); 
-        erchk(clSetKernelArg(compiled_kernel, 6, sizeof(float), (void*)&highest_z));
-
-        erchk(clEnqueueWriteBuffer(queue, input_memory_buffer, CL_TRUE, 0, sizeof(float) * 3 * 3 * polygon_count, polygons, 0, NULL, NULL));
-        erchk(clFinish(queue));
-
-        debug(1, "Wrote Polygon Buffer");
-
-        erchk(clEnqueueFillBuffer(queue, output_memory_buffer, &pattern, sizeof(RI_uint), 0, sizeof(RI_uint) * width * height, 0, NULL, NULL));
-        erchk(clFinish(queue));
-
-        debug(1, "Cleared Frame Buffer");
-
-        size_t local_size_2d[2] = {sqrt(local_size), sqrt(local_size)};
-
-        // for (int i = 0; i < passes; i++)
-        // {
-        erchk(clEnqueueNDRangeKernel(queue, compiled_kernel, 2, NULL, size_2d, local_size_2d, 0, NULL, NULL));
-        erchk(clFinish(queue));
-
-            // debug(1, "Ran Kernel (pass %d/%d)", i + 1, passes);
-        // }
-
-        erchk(clEnqueueReadBuffer(queue, output_memory_buffer, CL_TRUE, 0, sizeof(RI_uint) * width * height, frame_buffer, 0, NULL, NULL));
-        erchk(clFinish(queue));
-        debug(1, "Read Frame Buffer");
 
         SDL_Event event;
         while (SDL_PollEvent(&event))
@@ -539,7 +662,7 @@ RI_result RI_Tick(){
     }
 }
 
-RI_result RI_Stop()
+RI_result RI_Stop(int quit)
 {
     debug(0, "Stopping...");
 
@@ -547,8 +670,15 @@ RI_result RI_Stop()
 
     clReleaseMemObject(input_memory_buffer);
     clReleaseMemObject(output_memory_buffer);
-    clReleaseKernel(compiled_kernel);
-    clReleaseProgram(kernel_program);
+    clReleaseMemObject(object_memory_buffer);
+    clReleaseMemObject(verticies_memory_buffer);
+    clReleaseMemObject(normals_memory_buffer);
+    clReleaseMemObject(uvs_memory_buffer);
+    clReleaseMemObject(triangles_memory_buffer);
+    clReleaseKernel(compiled_kernel_non_master);
+    clReleaseProgram(kernel_program_non_master);
+    clReleaseKernel(compiled_kernel_master);
+    clReleaseProgram(kernel_program_master);
     clReleaseCommandQueue(queue);
     clReleaseContext(context);
 
@@ -573,7 +703,31 @@ RI_result RI_Stop()
     else
         debug(0, "Frame-Buffer Was Unset on Stop");
 
+    if (objects != NULL)
+        free(objects);
+    else
+        debug(0, "Objects Was Unset on Stop");
+
+    if (verticies != NULL)
+        free(verticies);
+    else
+        debug(0, "Verticies Was Unset on Stop");
+
+    if (normals != NULL)
+        free(normals);
+    else
+        debug(0, "Normals Was Unset on Stop");
+
+    if (uvs != NULL)
+        free(uvs);
+    else
+        debug(0, "UVS Was Unset on Stop");
+
     debug(0, "Stopped");
+
+    if (quit){
+        exit(0);
+    }
 
     return RI_SUCCESS;
 }
@@ -676,16 +830,26 @@ RI_result OpenCL_init(){
     output_memory_buffer = clCreateBuffer(context, CL_MEM_WRITE_ONLY, sizeof(RI_uint) * width * height, NULL, &error);
     erchk(error);
 
-    kernel_program = clCreateProgramWithSource(context, 1, &kernel_source, NULL, &error);
+    kernel_program_non_master = clCreateProgramWithSource(context, 1, &kernel_source_non_master, NULL, &error);
     erchk(error);
 
-    error = clBuildProgram(kernel_program, 1, &device, NULL, NULL, NULL);
+    error = clBuildProgram(kernel_program_non_master, 1, &device, NULL, NULL, NULL);
     erchk(error);
 
-    compiled_kernel = clCreateKernel(kernel_program, "raster_kernel", &error);
+    compiled_kernel_non_master = clCreateKernel(kernel_program_non_master, "raster_kernel", &error);
     erchk(error);
 
-    erchk(clGetKernelWorkGroupInfo(compiled_kernel, device, CL_KERNEL_WORK_GROUP_SIZE, sizeof(local_size), &local_size, NULL));
+
+    kernel_program_master = clCreateProgramWithSource(context, 1, &kernel_source_master, NULL, &error);
+    erchk(error);
+
+    error = clBuildProgram(kernel_program_master, 1, &device, NULL, NULL, NULL);
+    erchk(error);
+
+    compiled_kernel_master = clCreateKernel(kernel_program_master, "raster_kernel", &error);
+    erchk(error);
+
+    erchk(clGetKernelWorkGroupInfo(compiled_kernel_master, device, CL_KERNEL_WORK_GROUP_SIZE, sizeof(local_size), &local_size, NULL));
 
     debug(1, "Local Size: %d", local_size);
 

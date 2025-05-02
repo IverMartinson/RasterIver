@@ -1,1 +1,1 @@
-gdb -ex run builds/final\ binaries/example.bin
+gdb -ex run builds/final\ binaries/main.bin
