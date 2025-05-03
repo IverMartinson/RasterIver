@@ -13,10 +13,12 @@ int main(){
     RI_SetFlag(RI_FLAG_DEBUG_VERBOSE, 1);
     RI_SetFlag(RI_FLAG_DEBUG_FPS, 0);
     RI_SetFlag(RI_FLAG_SHOW_FPS, 1);
+    RI_SetFlag(RI_FLAG_SHOW_FRAME, 1);
     RI_SetFlag(RI_FLAG_SHOW_Z_BUFFER, 0);
     RI_SetFlag(RI_FLAG_CLEAN_POLYGONS, 1);
     RI_SetFlag(RI_FLAG_POPULATE_POLYGONS, 0);
     RI_SetFlag(RI_FLAG_BE_MASTER_RENDERER, 1);
+    RI_SetFlag(RI_FLAG_SHOW_INFO, 1);
     RI_SetFpsCap(120);
 
     if (RI_Init(width, height, "Rasteriver Test") == RI_ERROR){

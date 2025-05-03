@@ -36,6 +36,9 @@ int debug_fps = 0;
 int clean_polygons = 0;
 int populate_polygons = 0;
 int be_master_renderer = 0;
+int debug_frame = 0;
+int show_frame = 0;
+int show_info = 0;
 
 Uint64 start_time;
 double frame_time_ms;
@@ -57,9 +60,9 @@ int font_size = 24;
 TTF_Font *font;
 SDL_Color font_color = {255, 255, 255, 255};
 
-SDL_Surface *fps_surface;
-SDL_Texture *fps_text;
-SDL_Rect fps_rect;
+SDL_Surface *text_surface;
+SDL_Texture *text_texture;
+SDL_Rect text_rect;
 // ----- Rendering Vars
 
 // ----- OpenCL Vars
@@ -192,6 +195,18 @@ RI_result RI_SetFlag(RI_flag RI_FlagToSet, int RI_Value)
 
     case RI_FLAG_BE_MASTER_RENDERER:
         be_master_renderer = RI_Value;
+        break;
+
+    case RI_FLAG_DEBUG_FRAME:
+        debug_frame = RI_Value;
+        break;
+
+    case RI_FLAG_SHOW_FRAME:
+        show_frame = RI_Value;
+        break;
+
+    case RI_FLAG_SHOW_INFO:
+        show_info = RI_Value;
         break;
 
     default:
@@ -714,20 +729,64 @@ RI_result RI_Tick(){
         SDL_RenderClear(renderer);
         SDL_RenderCopy(renderer, texture, NULL, NULL);
 
+        int total_text_height = 0;
+
         if (show_fps){
             char fps_string[50];
             
             sprintf(fps_string, "%.0f FPS", fps);
 
-            fps_surface = TTF_RenderText_Blended(font, fps_string, font_color);
-            fps_text = SDL_CreateTextureFromSurface(renderer, fps_surface);
+            text_surface = TTF_RenderText_Blended(font, fps_string, font_color);
+            text_texture = SDL_CreateTextureFromSurface(renderer, text_surface);
             
-            fps_rect.x = 5;
-            fps_rect.y = 0;
-            fps_rect.h = fps_surface->h;
-            fps_rect.w = fps_surface->w;
+            text_rect.x = 5;
+            text_rect.y = 0;
+            text_rect.h = text_surface->h;
+            text_rect.w = text_surface->w;
 
-            SDL_RenderCopy(renderer, fps_text, NULL, &fps_rect);
+            total_text_height += text_surface->h;
+
+            SDL_RenderCopy(renderer, text_texture, NULL, &text_rect);
+        }
+
+        if (debug_frame){
+            debug(0, "Frame: %d", frame);
+        }
+        
+        if (show_frame){
+            char frame_string[50];
+            
+            sprintf(frame_string, "Frame #%d", frame);
+
+            text_surface = TTF_RenderText_Blended(font, frame_string, font_color);
+            text_texture = SDL_CreateTextureFromSurface(renderer, text_surface);
+            
+            text_rect.x = 5;
+            text_rect.y = total_text_height;
+            text_rect.h = text_surface->h;
+            text_rect.w = text_surface->w;
+
+            total_text_height += text_surface->h;
+
+            SDL_RenderCopy(renderer, text_texture, NULL, &text_rect);
+        }
+
+        if (show_info){
+            char frame_string[50];
+            
+            sprintf(frame_string, "%d objects, %d triangles, %d verticies, %d normals, %d UVS, %d pixels (%dx%d), FPS cap: %d", object_count, num_faces, num_verticies, num_normals, num_uvs, width * height, width, height, fps_cap);
+
+            text_surface = TTF_RenderText_Blended_Wrapped(font, frame_string, font_color, width);
+            text_texture = SDL_CreateTextureFromSurface(renderer, text_surface);
+            
+            text_rect.x = 5;
+            text_rect.y = total_text_height;
+            text_rect.h = text_surface->h;
+            text_rect.w = text_surface->w;
+
+            total_text_height += text_surface->h;
+
+            SDL_RenderCopy(renderer, text_texture, NULL, &text_rect);
         }
 
         SDL_RenderPresent(renderer);
@@ -752,7 +811,7 @@ RI_result RI_Tick(){
         if (debug_fps){
             debug(0, "FPS: %lf (%d polygons, %d pixels)", fps, polygon_count, width * height);
         }
-        
+
         debug(1, "Ticked");
         
         return RI_SUCCESS;
@@ -783,8 +842,8 @@ RI_result RI_Stop(int quit)
     clReleaseCommandQueue(queue);
     clReleaseContext(context);
 
-    SDL_FreeSurface(fps_surface);
-    SDL_DestroyTexture(fps_text);
+    SDL_FreeSurface(text_surface);
+    SDL_DestroyTexture(text_texture);
 
     SDL_DestroyTexture(texture);
     SDL_DestroyRenderer(renderer);
@@ -887,14 +946,14 @@ RI_result Rendering_init(char *title){
     
     font = TTF_OpenFont(font_file, font_size);
 
-    fps_surface = TTF_RenderText_Solid(font, "FPS", font_color);
-    if (fps_surface == NULL){
+    text_surface = TTF_RenderText_Solid(font, "FPS", font_color);
+    if (text_surface == NULL){
         debug(0, "TTF_RenderText_Solid Failed: %s", TTF_GetError());
         return RI_ERROR;
     }
 
-    fps_text = SDL_CreateTextureFromSurface(renderer, fps_surface);
-    if (fps_text == NULL){
+    text_texture = SDL_CreateTextureFromSurface(renderer, text_surface);
+    if (text_texture == NULL){
         debug(0, "SDL_CreateTextureFromSurface Failed");
         return RI_ERROR;
     }
