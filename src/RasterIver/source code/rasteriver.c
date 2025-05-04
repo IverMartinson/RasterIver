@@ -345,11 +345,6 @@ void malloc_objects(int objects, char **file_names){
         triangles = malloc(sizeof(RI_triangles) * num_faces * ts);
     }
 
-    debug(0, "vert %d", num_verticies);
-    debug(0, "norm %d", num_normals);
-    debug(0, "uvs %d", num_uvs);
-    debug(0, "tri %d", num_faces);
-
     return;
 }
 
@@ -374,6 +369,8 @@ load_object_return load_object(char *object_path, int object_offset){
     int cv = 0;
     int cu = 0;
 
+    int obj_face_type = 0;
+
     while (fgets(line, sizeof(line), file)) {
         if (line[0] == 'f' && line[1] == ' ') {
 
@@ -381,8 +378,6 @@ load_object_return load_object(char *object_path, int object_offset){
                 &triangles[(ct + cur_faces) * ts + 0], &triangles[(ct + cur_faces) * ts + 3], &triangles[(ct + cur_faces) * ts + 6], 
                 &triangles[(ct + cur_faces) * ts + 1], &triangles[(ct + cur_faces) * ts + 4], &triangles[(ct + cur_faces) * ts + 7], 
                 &triangles[(ct + cur_faces) * ts + 2], &triangles[(ct + cur_faces) * ts + 5], &triangles[(ct + cur_faces) * ts + 8]);
-            
-                debug(1, "Matches: %d", matches);
 
             if (matches != 9){
                 triangles[(ct + cur_faces) * ts + 0] = -1;
@@ -398,14 +393,15 @@ load_object_return load_object(char *object_path, int object_offset){
                 triangles[(ct + cur_faces) * ts + 8] = -1;
 
                 if (strchr(line, '/')){
-                    debug(1, "Obj file uses X//X X//X X//X");
+                    obj_face_type = 1;
+
                     sscanf(line, "f %d//%d %d//%d %d//%d", 
                         &triangles[(ct + cur_faces) * ts + 0], &triangles[(ct + cur_faces) * ts + 6], 
                         &triangles[(ct + cur_faces) * ts + 1], &triangles[(ct + cur_faces) * ts + 7], 
                         &triangles[(ct + cur_faces) * ts + 2], &triangles[(ct + cur_faces) * ts + 8]);
                 }
                 else {
-                    debug(1, "Obj file uses X X X");
+                    obj_face_type = 2;
 
                     sscanf(line, "f %d %d %d", 
                         &triangles[(ct + cur_faces) * ts + 0], 
@@ -429,6 +425,28 @@ load_object_return load_object(char *object_path, int object_offset){
         } 
     }
 
+    switch(obj_face_type){
+        case 0:
+            debug(1, "OBJ file uses X/X/X X/X/X X/X/X");
+            break;
+            
+        case 1:
+            debug(1, "OBJ file uses X//X X//X X//X");
+            break;
+
+        case 2:
+            debug(1, "OBJ file uses X X X");
+            break;
+        
+        default:
+            break;
+    }
+
+    debug(1, "%d Triangles", ct);
+    debug(1, "%d Verticies", cv);
+    debug(1, "%d Normals", cn);
+    debug(1, "%d UVS", cu);
+
     cur_faces += ct;
     cur_verticies += cv;
     cur_normals += cn;
@@ -440,12 +458,10 @@ load_object_return load_object(char *object_path, int object_offset){
         0, 0, 0, 0, 0
     };
 
-    debug(1, "Done");
-
     return return_values;
 }
 
-RI_result RI_RequestObjects(RI_newObject *RI_ObjectBuffer, int RI_ObjectsToRequest){
+RI_objects RI_RequestObjects(RI_newObject *RI_ObjectBuffer, int RI_ObjectsToRequest){
     object_count = RI_ObjectsToRequest;
     
     debug(1, "Requesting %d Objects...", object_count);
@@ -482,24 +498,25 @@ RI_result RI_RequestObjects(RI_newObject *RI_ObjectBuffer, int RI_ObjectsToReque
         RI_newObject cur_object = RI_ObjectBuffer[object];
 
         int base = object * object_size;
-        objects[base + 10] = cur_verticies;
+        objects[base + 10] = cur_faces; // triangle offset
+        objects[base + 11] = cur_verticies; // vertex offset
         
-        load_object_return return_values = load_object((char *)cur_object.file_path, object);
+        load_object((char *)cur_object.file_path, object);
 
-        objects[base + 9] = cur_faces;
+        objects[base + 9] = cur_faces; // triangle count
         
-        objects[base + 0] = cur_object.x;
-        objects[base + 1] = cur_object.y;
-        objects[base + 2] = cur_object.z;
-        objects[base + 3] = cur_object.r_x;
-        objects[base + 4] = cur_object.r_y;
-        objects[base + 5] = cur_object.r_z;
-        objects[base + 6] = cur_object.s_x;
-        objects[base + 7] = cur_object.s_y;
-        objects[base + 8] = cur_object.s_z;
+        objects[base + 0] = cur_object.x; // x
+        objects[base + 1] = cur_object.y; // y
+        objects[base + 2] = cur_object.z; // z
+        objects[base + 3] = cur_object.r_x; // rotation x
+        objects[base + 4] = cur_object.r_y; // rotation y
+        objects[base + 5] = cur_object.r_z; // rotation z
+        objects[base + 6] = cur_object.s_x; // scale x
+        objects[base + 7] = cur_object.s_y; // scale y
+        objects[base + 8] = cur_object.s_z; // scale z
     }
     
-    debug(0, "%d", sizeof(RI_verticies) * num_uvs * vs + sizeof(RI_triangles) * num_faces * vs + sizeof(RI_verticies) * num_verticies * vs + sizeof(RI_verticies) * num_normals * vs + size);
+    debug(1, "Allocated %d Bytes for Objects", sizeof(RI_verticies) * num_uvs * vs + sizeof(RI_triangles) * num_faces * vs + sizeof(RI_verticies) * num_verticies * vs + sizeof(RI_verticies) * num_normals * vs + size);
 
     object_memory_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, size, objects, &error);
     erchk(error);
@@ -772,7 +789,7 @@ RI_result RI_Tick(){
         }
 
         if (show_info){
-            char frame_string[50];
+            char frame_string[256];
             
             sprintf(frame_string, "%d objects, %d triangles, %d verticies, %d normals, %d UVS, %d pixels (%dx%d), FPS cap: %d", object_count, num_faces, num_verticies, num_normals, num_uvs, width * height, width, height, fps_cap);
 
@@ -822,8 +839,7 @@ RI_result RI_Tick(){
     }
 }
 
-RI_result RI_Stop(int quit)
-{
+RI_result RI_Stop(int quit){
     debug(0, "Stopping...");
 
     running = 0;

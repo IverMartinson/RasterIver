@@ -63,7 +63,7 @@ RI_result   RI_Init();
 RI_result   RI_Stop();
 RI_result   RI_IsRunning();
 RI_polygons RI_RequestPolygons(int RI_PolygonsToRequest);
-RI_result   RI_RequestObjects(RI_newObject *RI_ObjectBuffer, int RI_ObjectsToRequest);
+RI_objects  RI_RequestObjects(RI_newObject *RI_ObjectBuffer, int RI_ObjectsToRequest);
 RI_result   RI_Tick();
 RI_result   RI_SetBackground(RI_uint RI_BackgroundColor);
 RI_result   RI_ShowZBuffer(int RI_ShowZBufferFlag);
@@ -260,7 +260,7 @@ __kernel void raster_kernel(__global int* objects, __global float* verticies, __
     float biggest_z = 0;\
     \
     for (int object = 0; object < object_count; object++){ \
-        int base = object * 12;\
+        int base = object * 13;\
         \
         int object_x =   objects[base + 0];    \
         int object_y =   objects[base + 1];    \
@@ -271,17 +271,17 @@ __kernel void raster_kernel(__global int* objects, __global float* verticies, __
         int object_s_x = objects[base + 6];    \
         int object_s_y = objects[base + 7];    \
         int object_s_z = objects[base + 8];    \
-\
-        int polygon_count = objects[9];\
-        int polygon_offset = objects[10];\
-        int vertex_offset = objects[11];\
-        int texture_index = objects[12];\
+        \
+        int polygon_count = objects[base + 9];\
+        int polygon_offset = objects[base + 10];\
+        int vertex_offset = objects[base + 11];\
+        int texture_index = objects[base + 12];\
         \
         for (int polygon = polygon_offset; polygon < polygon_count + polygon_offset; polygon++){\
-            base = polygon * 9; \
-            int i0 = triangles[base + 0] * 3;\
-            int i1 = triangles[base + 1] * 3;\
-            int i2 = triangles[base + 2] * 3;\
+        base = polygon * 9; \
+            int i0 = triangles[base + 0] * 3 + vertex_offset;\
+            int i1 = triangles[base + 1] * 3 + vertex_offset;\
+            int i2 = triangles[base + 2] * 3 + vertex_offset;\\
             \
             float x0 = verticies[i0 + 0] * object_s_x + object_x;\
             float y0 = verticies[i0 + 1] * object_s_y + object_y;\
@@ -372,12 +372,14 @@ __kernel void raster_kernel(__global int* objects, __global float* verticies, __
         }\
     }\
     \
-    if (id_y * width + id_x > width * height){\
-    return;\
+    if (id_y * width + id_x >= width * height){\
+        return;\
     }\
     frame_buffer[id_y * width + id_x] = frame_pixel; \
     \
-    if (!show_z_buffer){return;}\
+    if (!show_z_buffer){\
+        return;\
+    }\
     \
     float z = clamp(z_pixel, 0.0f, highest_z);\
     \
