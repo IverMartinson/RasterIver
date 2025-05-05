@@ -56,9 +56,10 @@ typedef enum {
     RI_FLAG_CLEAN_POLYGONS      = 5,
     RI_FLAG_POPULATE_POLYGONS   = 6,
     RI_FLAG_BE_MASTER_RENDERER  = 7,
-    RI_FLAG_DEBUG_FRAME  = 8,
-    RI_FLAG_SHOW_FRAME  = 9,
-    RI_FLAG_SHOW_INFO  = 10,
+    RI_FLAG_DEBUG_FRAME         = 8,
+    RI_FLAG_SHOW_FRAME          = 9,
+    RI_FLAG_SHOW_INFO           = 10,
+    RI_FLAG_DEBUG_TICK          = 11,
 } RI_flag_enum;
 
 RI_result   RI_Init();

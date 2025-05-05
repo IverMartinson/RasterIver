@@ -10,7 +10,8 @@ int main(){
     srand(time(NULL));                                                         
 
     RI_SetFlag(RI_FLAG_DEBUG, 1);
-    RI_SetFlag(RI_FLAG_DEBUG_VERBOSE, 0);
+    RI_SetFlag(RI_FLAG_DEBUG_VERBOSE, 1);
+    RI_SetFlag(RI_FLAG_DEBUG_TICK, 0);
     RI_SetFlag(RI_FLAG_DEBUG_FPS, 0);
     RI_SetFlag(RI_FLAG_SHOW_FPS, 1);
     RI_SetFlag(RI_FLAG_SHOW_FRAME, 1);

@@ -39,6 +39,7 @@ int be_master_renderer = 0;
 int debug_frame = 0;
 int show_frame = 0;
 int show_info = 0;
+int debug_tick = 0;
 
 Uint64 start_time;
 double frame_time_ms;
@@ -71,7 +72,6 @@ cl_device_id device;
 RI_uint number_of_platforms, number_of_devices;
 
 cl_int error;
-
 cl_context context;
 cl_command_queue queue;
 
@@ -100,6 +100,27 @@ RI_uint pattern;
 RI_result debug(int verbose, char *string, ...)
 {
     if (!show_debug || (verbose && !debug_verbose)){
+        return RI_ERROR;
+    }
+
+    va_list args;
+    va_start(args, string);
+
+    char prefix[100] = "[RasterIver] ";
+
+    strcat(prefix, string);
+
+    vprintf(prefix, args);
+    printf("\n");
+
+    va_end(args);
+
+    return RI_SUCCESS;
+}
+
+RI_result debug_tick_func(int verbose, char *string, ...)
+{
+    if (!show_debug || (verbose && !debug_verbose) || !debug_tick){
         return RI_ERROR;
     }
 
@@ -207,6 +228,10 @@ RI_result RI_SetFlag(RI_flag RI_FlagToSet, int RI_Value)
 
     case RI_FLAG_SHOW_INFO:
         show_info = RI_Value;
+        break;
+
+    case RI_FLAG_DEBUG_TICK:
+        debug_tick = RI_Value;
         break;
 
     default:
@@ -608,13 +633,13 @@ RI_result RI_Tick(){
         start_time = SDL_GetPerformanceCounter();
     }
     
-    debug(1, "Ticking...");
+    debug_tick_func(1, "Ticking...");
     
     if (running)
     {
         if (frame_buffer == NULL)
         {
-            debug(0, "Frame Buffer is not Allocated");
+            debug_tick_func(0, "Frame Buffer is not Allocated");
             return RI_ERROR;
         }
 
@@ -635,41 +660,41 @@ RI_result RI_Tick(){
                 erchk(clEnqueueWriteBuffer(queue, object_memory_buffer, CL_TRUE, 0, sizeof(int) * object_size * object_count, objects, 0, NULL, NULL));
                 erchk(clFinish(queue));
 
-                debug(1, "Wrote Objects Buffer");
+                debug_tick_func(1, "Wrote Objects Buffer");
             }
 
             if (num_verticies > 0){
                 erchk(clEnqueueWriteBuffer(queue, verticies_memory_buffer, CL_TRUE, 0, sizeof(float) * 3 * num_verticies, verticies, 0, NULL, NULL));
                 erchk(clFinish(queue));
 
-                debug(1, "Wrote Verticies Buffer");
+                debug_tick_func(1, "Wrote Verticies Buffer");
             }
 
             if (num_normals > 0){
                 erchk(clEnqueueWriteBuffer(queue, normals_memory_buffer, CL_TRUE, 0, sizeof(float) * 3 * num_normals, normals, 0, NULL, NULL));
                 erchk(clFinish(queue));
 
-                debug(1, "Wrote Normals Buffer");
+                debug_tick_func(1, "Wrote Normals Buffer");
             }
 
             if (num_uvs > 0){
                 erchk(clEnqueueWriteBuffer(queue, uvs_memory_buffer, CL_TRUE, 0, sizeof(float) * 3 * num_uvs, uvs, 0, NULL, NULL));
                 erchk(clFinish(queue));
 
-                debug(1, "Wrote UVS Buffer");
+                debug_tick_func(1, "Wrote UVS Buffer");
             }
 
             if (num_faces > 0){
                 erchk(clEnqueueWriteBuffer(queue, triangles_memory_buffer, CL_TRUE, 0, sizeof(int) * 9 * num_faces, triangles, 0, NULL, NULL));
                 erchk(clFinish(queue));
 
-                debug(1, "Wrote Triangles Buffer");
+                debug_tick_func(1, "Wrote Triangles Buffer");
             }
 
             erchk(clEnqueueFillBuffer(queue, output_memory_buffer, &pattern, sizeof(RI_uint), 0, sizeof(RI_uint) * width * height, 0, NULL, NULL));
             erchk(clFinish(queue));
 
-            debug(1, "Cleared Frame Buffer");
+            debug_tick_func(1, "Cleared Frame Buffer");
 
             size_t local_size_2d[2] = {sqrt(local_size), sqrt(local_size)};
 
@@ -680,12 +705,12 @@ RI_result RI_Tick(){
 
             erchk(clEnqueueReadBuffer(queue, output_memory_buffer, CL_TRUE, 0, sizeof(RI_uint) * width * height, frame_buffer, 0, NULL, NULL));
             erchk(clFinish(queue));
-            debug(1, "Read Frame Buffer");
+            debug_tick_func(1, "Read Frame Buffer");
         }
         else{
             if (polygons == NULL)
             {
-                debug(0, "Polygons is not Allocated");
+                debug_tick_func(0, "Polygons is not Allocated");
                 return RI_ERROR;
             }
             
@@ -696,7 +721,7 @@ RI_result RI_Tick(){
                     }
                 }
                 
-                debug(1, "Highest Z: %f", highest_z);
+                debug_tick_func(1, "Highest Z: %f", highest_z);
             }
 
             erchk(clSetKernelArg(compiled_kernel_non_master, 0, sizeof(cl_mem), &input_memory_buffer));
@@ -710,12 +735,12 @@ RI_result RI_Tick(){
             erchk(clEnqueueWriteBuffer(queue, input_memory_buffer, CL_TRUE, 0, sizeof(float) * 3 * 3 * polygon_count, polygons, 0, NULL, NULL));
             erchk(clFinish(queue));
 
-            debug(1, "Wrote Polygon Buffer");
+            debug_tick_func(1, "Wrote Polygon Buffer");
 
             erchk(clEnqueueFillBuffer(queue, output_memory_buffer, &pattern, sizeof(RI_uint), 0, sizeof(RI_uint) * width * height, 0, NULL, NULL));
             erchk(clFinish(queue));
 
-            debug(1, "Cleared Frame Buffer");
+            debug_tick_func(1, "Cleared Frame Buffer");
 
             size_t local_size_2d[2] = {sqrt(local_size), sqrt(local_size)};
 
@@ -727,7 +752,7 @@ RI_result RI_Tick(){
 
             erchk(clEnqueueReadBuffer(queue, output_memory_buffer, CL_TRUE, 0, sizeof(RI_uint) * width * height, frame_buffer, 0, NULL, NULL));
             erchk(clFinish(queue));
-            debug(1, "Read Frame Buffer");
+            debug_tick_func(1, "Read Frame Buffer");
         }
 
         SDL_Event event;
@@ -766,7 +791,7 @@ RI_result RI_Tick(){
         }
 
         if (debug_frame){
-            debug(0, "Frame: %d", frame);
+            debug_tick_func(0, "Frame: %d", frame);
         }
         
         if (show_frame){
@@ -825,10 +850,10 @@ RI_result RI_Tick(){
         }
         
         if (debug_fps){
-            debug(0, "FPS: %lf (%d polygons, %d pixels)", fps, polygon_count, width * height);
+            debug_tick_func(0, "FPS: %lf (%d polygons, %d pixels)", fps, polygon_count, width * height);
         }
 
-        debug(1, "Ticked");
+        debug_tick_func(1, "Ticked");
         
         return RI_SUCCESS;
     }
