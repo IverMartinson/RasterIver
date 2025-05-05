@@ -16,8 +16,8 @@ typedef char* RI_textures;
 
 // the size of each object instance in the objects array
 // xyz + rot(xyz) + scale(xyz) = 9
-// 9 + polygon count + polygon index + vertex index + texture index = 13
-#define object_size 13
+// 9 + polygon count + polygon index + vertex index + normal index + UV index + texture index = 15
+#define object_size 15
 
 // vertex size
 // the size of each instance of verticies

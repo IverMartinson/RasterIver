@@ -27,14 +27,14 @@ int main(){
     }
 
     RI_newObject object_buffer[5] = {
-        {200, 400, 400, 0, 0, 0, 100, 100, 100, "gourd.obj", "texture.png"},
-        {600, 400, 400, 0, 0, 0, 100, 100, 100, "obj_file.obj", "texture.png"},
-        {400, 400, 400, 0, 0, 0, 100, 100, 100, "obj_file.obj", "texture.png"},
-        {400, 400, 400, 0, 0, 0, 100, 100, 100, "obj_file.obj", "texture.png"},
-        {400, 400, 400, 0, 0, 0, 100, 100, 100, "obj_file.obj", "texture.png"},
+        {400, 400, 400, 0, 0, 0, 100, 100, 100, "objects/gourd.obj", "texture.png"},
+        {400, 400, 400, 0, 0, 0, 200, 200, 200, "objects/gordon_freeman.obj", "texture.png"},
+        {600, 400, 400, 0, 0, 0, 100, 100, 100, "objects/obj_file.obj", "texture.png"},
+        {400, 400, 400, 0, 0, 0, 100, 100, 100, "objects/obj_file.obj", "texture.png"},
+        {400, 400, 400, 0, 0, 0, 100, 100, 100, "objects/obj_file.obj", "texture.png"},
     };
 
-    RI_objects objects = RI_RequestObjects(object_buffer, 2);
+    RI_objects objects = RI_RequestObjects(object_buffer, 3);
 
     while (RI_IsRunning() == RI_RUNNING){
         RI_Tick();

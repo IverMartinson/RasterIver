@@ -41,7 +41,7 @@ __kernel void raster_kernel(__global int* objects, __global float* verticies, __
     float biggest_z = 0;\
     \
     for (int object = 0; object < object_count; object++){ \
-        int base = object * 13;\
+        int base = object * 15;\
         \
         int object_x =   objects[base + 0]; \
         int object_y =   objects[base + 1]; \
@@ -53,17 +53,17 @@ __kernel void raster_kernel(__global int* objects, __global float* verticies, __
         int object_s_y = objects[base + 7]; \
         int object_s_z = objects[base + 8]; \
         \
-        int polygon_count = objects[base + 9];\
-        int polygon_offset = objects[base + 10];\
-        int vertex_offset = objects[base + 11];\
-        int texture_index = objects[base + 12];\
+        int triangle_count = objects[base + 9];\
+        int triangle_index = objects[base + 10];\
+        int vertex_index = objects[base + 11];\
+        int texture_index = objects[base + 14];\
         \
-        for (int polygon = polygon_offset; polygon < polygon_count + polygon_offset; polygon++){\
-            int polygon_base = polygon * 9; \
+        for (int triangle = 0; triangle < triangle_count; triangle++){\
+            int triangle_base = (triangle + triangle_index) * 9; \
 \
-            int i0 = triangles[polygon_base + 0] * 3 + vertex_offset;\
-            int i1 = triangles[polygon_base + 1] * 3 + vertex_offset;\
-            int i2 = triangles[polygon_base + 2] * 3 + vertex_offset;\
+            int i0 = (vertex_index + triangles[triangle_base + 0]) * 3;\
+            int i1 = (vertex_index + triangles[triangle_base + 1]) * 3;\
+            int i2 = (vertex_index + triangles[triangle_base + 2]) * 3;\
             \
             float x0 = verticies[i0 + 0] * object_s_x + object_x;\
             float y0 = verticies[i0 + 1] * object_s_y + object_y;\
@@ -144,7 +144,7 @@ __kernel void raster_kernel(__global int* objects, __global float* verticies, __
                     continue; \
                 } \
 \
-                frame_pixel = 0xFFFFFFFF / polygon_count * (polygon + 1); \
+                frame_pixel = 0xFFFFFFFF / triangle_count * (triangle + 1); \
             } \
         }\
     }\
