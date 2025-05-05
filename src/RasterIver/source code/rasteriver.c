@@ -295,15 +295,15 @@ RI_polygons RI_RequestPolygons(int RI_PolygonsToRequest){
     return polygons;
 }
 
-int num_verticies = 0;
-int num_normals = 0;
-int num_uvs = 0;
-int num_faces = 0;
+int vertex_count = 0;
+int normal_count = 0;
+int uv_count = 0;
+int face_count = 0;
 
-int cur_verticies = 0;
-int cur_normals = 0;
-int cur_uvs = 0;
-int cur_faces = 0;
+int loading_object_current_verticies_count = 0;
+int loading_object_current_normals_count = 0;
+int loading_object_current_uvs_count = 0;
+int loading_object_current_faces_count = 0;
 
 void slice(char *string, char *result, int start, int end){
     strncpy(result, string + start, end - start);
@@ -322,16 +322,16 @@ void malloc_objects(int objects, char **file_names){
 
         while (fgets(line, sizeof(line), file)) {
             if (line[0] == 'f' && line[1] == ' ') {
-                num_faces++;
+                face_count++;
             } 
             else if (line[0] == 'v' && line[1] == ' ') {
-                num_verticies++;
+                vertex_count++;
             } 
             else if (line[0] == 'v' && line[1] == 'n') {
-                num_normals++;
+                normal_count++;
             } 
             else if (line[0] == 'v' && line[1] == 't') {
-                num_uvs++;
+                uv_count++;
             } 
         }
 
@@ -354,20 +354,20 @@ void malloc_objects(int objects, char **file_names){
         free(triangles);
     } 
 
-    if (num_verticies > 0){
-        verticies = malloc(sizeof(RI_verticies) * num_verticies * vs);
+    if (vertex_count > 0){
+        verticies = malloc(sizeof(RI_verticies) * vertex_count * vs);
     }
     
-    if (num_normals > 0){
-        normals = malloc(sizeof(RI_verticies) * num_normals * vs);
+    if (normal_count > 0){
+        normals = malloc(sizeof(RI_verticies) * normal_count * vs);
     }
 
-    if (num_uvs > 0){
-        uvs = malloc(sizeof(RI_verticies) * num_uvs * vs);
+    if (uv_count > 0){
+        uvs = malloc(sizeof(RI_verticies) * uv_count * vs);
     }
 
-    if (num_faces > 0){
-        triangles = malloc(sizeof(RI_triangles) * num_faces * ts);
+    if (face_count > 0){
+        triangles = malloc(sizeof(RI_triangles) * face_count * ts);
     }
 
     return;
@@ -400,45 +400,45 @@ load_object_return load_object(char *object_path, int object_offset, int base){
         if (line[0] == 'f' && line[1] == ' ') {
 
             int matches = sscanf(line, "f %d/%d/%d %d/%d/%d %d/%d/%d/", 
-                &triangles[(ct + cur_faces) * ts + 0], &triangles[(ct + cur_faces) * ts + 3], &triangles[(ct + cur_faces) * ts + 6], 
-                &triangles[(ct + cur_faces) * ts + 1], &triangles[(ct + cur_faces) * ts + 4], &triangles[(ct + cur_faces) * ts + 7], 
-                &triangles[(ct + cur_faces) * ts + 2], &triangles[(ct + cur_faces) * ts + 5], &triangles[(ct + cur_faces) * ts + 8]);
+                &triangles[(ct + loading_object_current_faces_count) * ts + 0], &triangles[(ct + loading_object_current_faces_count) * ts + 3], &triangles[(ct + loading_object_current_faces_count) * ts + 6], 
+                &triangles[(ct + loading_object_current_faces_count) * ts + 1], &triangles[(ct + loading_object_current_faces_count) * ts + 4], &triangles[(ct + loading_object_current_faces_count) * ts + 7], 
+                &triangles[(ct + loading_object_current_faces_count) * ts + 2], &triangles[(ct + loading_object_current_faces_count) * ts + 5], &triangles[(ct + loading_object_current_faces_count) * ts + 8]);
 
             if (matches != 9){
-                triangles[(ct + cur_faces) * ts + 0] = -1;
-                triangles[(ct + cur_faces) * ts + 1] = -1;
-                triangles[(ct + cur_faces) * ts + 2] = -1;
+                triangles[(ct + loading_object_current_faces_count) * ts + 0] = -1;
+                triangles[(ct + loading_object_current_faces_count) * ts + 1] = -1;
+                triangles[(ct + loading_object_current_faces_count) * ts + 2] = -1;
                 
-                triangles[(ct + cur_faces) * ts + 3] = -1;
-                triangles[(ct + cur_faces) * ts + 4] = -1;
-                triangles[(ct + cur_faces) * ts + 5] = -1;
+                triangles[(ct + loading_object_current_faces_count) * ts + 3] = -1;
+                triangles[(ct + loading_object_current_faces_count) * ts + 4] = -1;
+                triangles[(ct + loading_object_current_faces_count) * ts + 5] = -1;
                 
-                triangles[(ct + cur_faces) * ts + 6] = -1;
-                triangles[(ct + cur_faces) * ts + 7] = -1;
-                triangles[(ct + cur_faces) * ts + 8] = -1;
+                triangles[(ct + loading_object_current_faces_count) * ts + 6] = -1;
+                triangles[(ct + loading_object_current_faces_count) * ts + 7] = -1;
+                triangles[(ct + loading_object_current_faces_count) * ts + 8] = -1;
 
                 if (strchr(line, '/')){
                     obj_face_type = 1;
 
                     sscanf(line, "f %d//%d %d//%d %d//%d", 
-                        &triangles[(ct + cur_faces) * ts + 0], &triangles[(ct + cur_faces) * ts + 6], 
-                        &triangles[(ct + cur_faces) * ts + 1], &triangles[(ct + cur_faces) * ts + 7], 
-                        &triangles[(ct + cur_faces) * ts + 2], &triangles[(ct + cur_faces) * ts + 8]);
+                        &triangles[(ct + loading_object_current_faces_count) * ts + 0], &triangles[(ct + loading_object_current_faces_count) * ts + 6], 
+                        &triangles[(ct + loading_object_current_faces_count) * ts + 1], &triangles[(ct + loading_object_current_faces_count) * ts + 7], 
+                        &triangles[(ct + loading_object_current_faces_count) * ts + 2], &triangles[(ct + loading_object_current_faces_count) * ts + 8]);
                 }
                 else {
                     obj_face_type = 2;
 
                     sscanf(line, "f %d %d %d", 
-                        &triangles[(ct + cur_faces) * ts + 0], 
-                        &triangles[(ct + cur_faces) * ts + 1], 
-                        &triangles[(ct + cur_faces) * ts + 2]);
+                        &triangles[(ct + loading_object_current_faces_count) * ts + 0], 
+                        &triangles[(ct + loading_object_current_faces_count) * ts + 1], 
+                        &triangles[(ct + loading_object_current_faces_count) * ts + 2]);
                 }
             }
 
             ct++;
         }
         else if (line[0] == 'v' && line[1] == ' ') {
-            sscanf(line, "v %f %f %f", &verticies[(cv + cur_verticies) * vs + 0], &verticies[(cv + cur_verticies) * vs + 1], &verticies[(cv + cur_verticies) * vs + 2]);
+            sscanf(line, "v %f %f %f", &verticies[(cv + loading_object_current_verticies_count) * vs + 0], &verticies[(cv + loading_object_current_verticies_count) * vs + 1], &verticies[(cv + loading_object_current_verticies_count) * vs + 2]);
 
             cv++;
         } 
@@ -472,15 +472,15 @@ load_object_return load_object(char *object_path, int object_offset, int base){
     debug(1, "%d Normals", cn);
     debug(1, "%d UVS", cu);
 
-    debug(1, "Triangle Offset: %d", cur_faces);
-    debug(1, "Vertex Offset: %d", cur_verticies);
+    debug(1, "Triangle Offset: %d", loading_object_current_faces_count);
+    debug(1, "Vertex Offset: %d", loading_object_current_verticies_count);
 
     objects[base + 9] = ct; // triangle count
 
-    cur_faces += ct;
-    cur_verticies += cv;
-    cur_normals += cn;
-    cur_uvs += cu;
+    loading_object_current_faces_count += ct;
+    loading_object_current_verticies_count += cv;
+    loading_object_current_normals_count += cn;
+    loading_object_current_uvs_count += cu;
 
     fclose(file);
 
@@ -519,32 +519,32 @@ RI_objects RI_RequestObjects(RI_newObject *RI_ObjectBuffer, int RI_ObjectsToRequ
     
     free(file_names);
 
-    cur_verticies = 0;
-    cur_normals = 0;
-    cur_uvs = 0;
-    cur_faces = 0;
+    loading_object_current_verticies_count = 0;
+    loading_object_current_normals_count = 0;
+    loading_object_current_uvs_count = 0;
+    loading_object_current_faces_count = 0;
 
     for (int object = 0; object < object_count; object++){
-        RI_newObject cur_object = RI_ObjectBuffer[object];
+        RI_newObject loading_object_current_object_count = RI_ObjectBuffer[object];
 
         int base = object * object_size;
-        objects[base + 10] = cur_faces; // triangle offset
-        objects[base + 11] = cur_verticies; // vertex offset
+        objects[base + 10] = loading_object_current_faces_count; // triangle offset
+        objects[base + 11] = loading_object_current_verticies_count; // vertex offset
 
-        load_object((char *)cur_object.file_path, object, base);
+        load_object((char *)loading_object_current_object_count.file_path, object, base);
         
-        objects[base + 0] = cur_object.x; // x
-        objects[base + 1] = cur_object.y; // y
-        objects[base + 2] = cur_object.z; // z
-        objects[base + 3] = cur_object.r_x; // rotation x
-        objects[base + 4] = cur_object.r_y; // rotation y
-        objects[base + 5] = cur_object.r_z; // rotation z
-        objects[base + 6] = cur_object.s_x; // scale x
-        objects[base + 7] = cur_object.s_y; // scale y
-        objects[base + 8] = cur_object.s_z; // scale z
+        objects[base + 0] = loading_object_current_object_count.x; // x
+        objects[base + 1] = loading_object_current_object_count.y; // y
+        objects[base + 2] = loading_object_current_object_count.z; // z
+        objects[base + 3] = loading_object_current_object_count.r_x; // rotation x
+        objects[base + 4] = loading_object_current_object_count.r_y; // rotation y
+        objects[base + 5] = loading_object_current_object_count.r_z; // rotation z
+        objects[base + 6] = loading_object_current_object_count.s_x; // scale x
+        objects[base + 7] = loading_object_current_object_count.s_y; // scale y
+        objects[base + 8] = loading_object_current_object_count.s_z; // scale z
     }
     
-    debug(1, "Allocated %d Bytes for Objects", sizeof(RI_verticies) * num_uvs * vs + sizeof(RI_triangles) * num_faces * vs + sizeof(RI_verticies) * num_verticies * vs + sizeof(RI_verticies) * num_normals * vs + size);
+    debug(1, "Allocated %d Bytes for Objects", sizeof(RI_verticies) * uv_count * vs + sizeof(RI_triangles) * face_count * vs + sizeof(RI_verticies) * vertex_count * vs + sizeof(RI_verticies) * normal_count * vs + size);
 
     object_memory_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, size, objects, &error);
     erchk(error);
@@ -553,8 +553,8 @@ RI_objects RI_RequestObjects(RI_newObject *RI_ObjectBuffer, int RI_ObjectsToRequ
         debug(0, "clCreateBuffer Failed for Objects Buffer");
     }
 
-    if (num_faces > 0){
-        triangles_memory_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(RI_triangles) * num_faces * ts, triangles, &error);
+    if (face_count > 0){
+        triangles_memory_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(RI_triangles) * face_count * ts, triangles, &error);
         erchk(error);
     
         if (triangles_memory_buffer == NULL){
@@ -562,8 +562,8 @@ RI_objects RI_RequestObjects(RI_newObject *RI_ObjectBuffer, int RI_ObjectsToRequ
         }
     }
 
-    if (num_verticies > 0){
-        verticies_memory_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(RI_verticies) * num_verticies * vs, verticies, &error);
+    if (vertex_count > 0){
+        verticies_memory_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(RI_verticies) * vertex_count * vs, verticies, &error);
         erchk(error);
     
         if (verticies_memory_buffer == NULL){
@@ -571,8 +571,8 @@ RI_objects RI_RequestObjects(RI_newObject *RI_ObjectBuffer, int RI_ObjectsToRequ
         }
     }
 
-    if (num_normals > 0){
-        normals_memory_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(RI_verticies) * num_normals * vs, normals, &error);
+    if (normal_count > 0){
+        normals_memory_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(RI_verticies) * normal_count * vs, normals, &error);
         erchk(error);
     
         if (normals_memory_buffer == NULL){
@@ -580,8 +580,8 @@ RI_objects RI_RequestObjects(RI_newObject *RI_ObjectBuffer, int RI_ObjectsToRequ
         }
     }
 
-    if (num_uvs > 0){
-        uvs_memory_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(RI_verticies) * num_uvs * vs, uvs, &error);
+    if (uv_count > 0){
+        uvs_memory_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(RI_verticies) * uv_count * vs, uvs, &error);
         erchk(error);
 
         if (uvs_memory_buffer == NULL){
@@ -666,29 +666,29 @@ RI_result RI_Tick(){
                 debug_tick_func(1, "Wrote Objects Buffer");
             }
 
-            if (num_verticies > 0){
-                erchk(clEnqueueWriteBuffer(queue, verticies_memory_buffer, CL_TRUE, 0, sizeof(float) * 3 * num_verticies, verticies, 0, NULL, NULL));
+            if (vertex_count > 0){
+                erchk(clEnqueueWriteBuffer(queue, verticies_memory_buffer, CL_TRUE, 0, sizeof(float) * 3 * vertex_count, verticies, 0, NULL, NULL));
                 erchk(clFinish(queue));
 
                 debug_tick_func(1, "Wrote Verticies Buffer");
             }
 
-            if (num_normals > 0){
-                erchk(clEnqueueWriteBuffer(queue, normals_memory_buffer, CL_TRUE, 0, sizeof(float) * 3 * num_normals, normals, 0, NULL, NULL));
+            if (normal_count > 0){
+                erchk(clEnqueueWriteBuffer(queue, normals_memory_buffer, CL_TRUE, 0, sizeof(float) * 3 * normal_count, normals, 0, NULL, NULL));
                 erchk(clFinish(queue));
 
                 debug_tick_func(1, "Wrote Normals Buffer");
             }
 
-            if (num_uvs > 0){
-                erchk(clEnqueueWriteBuffer(queue, uvs_memory_buffer, CL_TRUE, 0, sizeof(float) * 3 * num_uvs, uvs, 0, NULL, NULL));
+            if (uv_count > 0){
+                erchk(clEnqueueWriteBuffer(queue, uvs_memory_buffer, CL_TRUE, 0, sizeof(float) * 3 * uv_count, uvs, 0, NULL, NULL));
                 erchk(clFinish(queue));
 
                 debug_tick_func(1, "Wrote UVS Buffer");
             }
 
-            if (num_faces > 0){
-                erchk(clEnqueueWriteBuffer(queue, triangles_memory_buffer, CL_TRUE, 0, sizeof(int) * 9 * num_faces, triangles, 0, NULL, NULL));
+            if (face_count > 0){
+                erchk(clEnqueueWriteBuffer(queue, triangles_memory_buffer, CL_TRUE, 0, sizeof(int) * 9 * face_count, triangles, 0, NULL, NULL));
                 erchk(clFinish(queue));
 
                 debug_tick_func(1, "Wrote Triangles Buffer");
@@ -818,7 +818,7 @@ RI_result RI_Tick(){
         if (show_info){
             char frame_string[256];
             
-            sprintf(frame_string, "%d objects, %d triangles, %d verticies, %d normals, %d UVS, %d pixels (%dx%d), FPS cap: %d", object_count, num_faces, num_verticies, num_normals, num_uvs, width * height, width, height, fps_cap);
+            sprintf(frame_string, "%d objects, %d triangles, %d verticies, %d normals, %d UVS, %d pixels (%dx%d), FPS cap: %d", object_count, face_count, vertex_count, normal_count, uv_count, width * height, width, height, fps_cap);
 
             text_surface = TTF_RenderText_Blended_Wrapped(font, frame_string, font_color, width);
             text_texture = SDL_CreateTextureFromSurface(renderer, text_surface);
