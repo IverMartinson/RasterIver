@@ -472,6 +472,9 @@ load_object_return load_object(char *object_path, int object_offset, int base){
     debug(1, "%d Normals", cn);
     debug(1, "%d UVS", cu);
 
+    debug(1, "Triangle Offset: %d", cur_faces);
+    debug(1, "Vertex Offset: %d", cur_verticies);
+
     objects[base + 9] = ct; // triangle count
 
     cur_faces += ct;
@@ -527,7 +530,7 @@ RI_objects RI_RequestObjects(RI_newObject *RI_ObjectBuffer, int RI_ObjectsToRequ
         int base = object * object_size;
         objects[base + 10] = cur_faces; // triangle offset
         objects[base + 11] = cur_verticies; // vertex offset
-        
+
         load_object((char *)cur_object.file_path, object, base);
         
         objects[base + 0] = cur_object.x; // x
