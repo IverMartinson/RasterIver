@@ -348,7 +348,7 @@ void malloc_objects(int objects, char **file_names){
     return;
 }
 
-load_object_return load_object(char *object_path, int object_offset){
+load_object_return load_object(char *object_path, int object_offset, int base){
     debug(1, "Loading Object #%d...", object_offset + 1);
 
     debug(1, "Opening File \"%s\"...", object_path);
@@ -447,6 +447,8 @@ load_object_return load_object(char *object_path, int object_offset){
     debug(1, "%d Normals", cn);
     debug(1, "%d UVS", cu);
 
+    objects[base + 9] = ct; // triangle count
+
     cur_faces += ct;
     cur_verticies += cv;
     cur_normals += cn;
@@ -501,9 +503,7 @@ RI_objects RI_RequestObjects(RI_newObject *RI_ObjectBuffer, int RI_ObjectsToRequ
         objects[base + 10] = cur_faces; // triangle offset
         objects[base + 11] = cur_verticies; // vertex offset
         
-        load_object((char *)cur_object.file_path, object);
-
-        objects[base + 9] = cur_faces; // triangle count
+        load_object((char *)cur_object.file_path, object, base);
         
         objects[base + 0] = cur_object.x; // x
         objects[base + 1] = cur_object.y; // y
@@ -676,7 +676,6 @@ RI_result RI_Tick(){
             // for (int i = 0; i < passes; i++)
             // {
             erchk(clEnqueueNDRangeKernel(queue, compiled_kernel_master, 2, NULL, size_2d, local_size_2d, 0, NULL, NULL));
-        
             erchk(clFinish(queue));
 
             erchk(clEnqueueReadBuffer(queue, output_memory_buffer, CL_TRUE, 0, sizeof(RI_uint) * width * height, frame_buffer, 0, NULL, NULL));

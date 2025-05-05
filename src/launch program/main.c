@@ -10,7 +10,7 @@ int main(){
     srand(time(NULL));                                                         
 
     RI_SetFlag(RI_FLAG_DEBUG, 1);
-    RI_SetFlag(RI_FLAG_DEBUG_VERBOSE, 1);
+    RI_SetFlag(RI_FLAG_DEBUG_VERBOSE, 0);
     RI_SetFlag(RI_FLAG_DEBUG_FPS, 0);
     RI_SetFlag(RI_FLAG_SHOW_FPS, 1);
     RI_SetFlag(RI_FLAG_SHOW_FRAME, 1);
@@ -27,7 +27,7 @@ int main(){
 
     RI_newObject object_buffer[5] = {
         {200, 400, 400, 0, 0, 0, 100, 100, 100, "gourd.obj", "texture.png"},
-        {600, 400, 400, 0, 0, 0, 100, 100, 100, "gourd.obj", "texture.png"},
+        {600, 400, 400, 0, 0, 0, 100, 100, 100, "obj_file.obj", "texture.png"},
         {400, 400, 400, 0, 0, 0, 100, 100, 100, "obj_file.obj", "texture.png"},
         {400, 400, 400, 0, 0, 0, 100, 100, 100, "obj_file.obj", "texture.png"},
         {400, 400, 400, 0, 0, 0, 100, 100, 100, "obj_file.obj", "texture.png"},
