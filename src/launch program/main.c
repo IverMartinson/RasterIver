@@ -15,7 +15,7 @@ int main(){
     RI_SetFlag(RI_FLAG_DEBUG_FPS, 0);
     RI_SetFlag(RI_FLAG_SHOW_FPS, 1);
     RI_SetFlag(RI_FLAG_SHOW_FRAME, 1);
-    RI_SetFlag(RI_FLAG_SHOW_Z_BUFFER, 0);
+    RI_SetFlag(RI_FLAG_SHOW_Z_BUFFER, 1);
     RI_SetFlag(RI_FLAG_CLEAN_POLYGONS, 1);
     RI_SetFlag(RI_FLAG_POPULATE_POLYGONS, 0);
     RI_SetFlag(RI_FLAG_BE_MASTER_RENDERER, 1);
@@ -27,9 +27,9 @@ int main(){
     }
 
     RI_newObject object_buffer[5] = {
-        {400, 400, 400, 0, 0, 0, 100, 100, 100, "objects/gourd.obj", "texture.png"},
-        {400, 400, 400, 0, 0, 0, 200, 200, 200, "objects/gordon_freeman.obj", "texture.png"},
-        {600, 400, 400, 0, 0, 0, 100, 100, 100, "objects/obj_file.obj", "texture.png"},
+        {200, 400, 400, 0, 0, 0, 100, 100, 100, "objects/gourd.obj", "texture.png"},
+        {400, 50, 400, 0, 0, 0, 400, 400, 400, "objects/gordon_freeman.obj", "texture.png"},
+        {600, 400, 300, 0, 0, 0, 100, 100, 100, "objects/rotated_cube.obj", "texture.png"},
         {400, 400, 400, 0, 0, 0, 100, 100, 100, "objects/obj_file.obj", "texture.png"},
         {400, 400, 400, 0, 0, 0, 100, 100, 100, "objects/obj_file.obj", "texture.png"},
     };

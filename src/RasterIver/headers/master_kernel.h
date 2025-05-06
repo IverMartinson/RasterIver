@@ -31,14 +31,15 @@ void norm(float dest[2], float a[2]){ \
     dest[1] = a[1] + b[1]; \
 } \
 \
-__kernel void raster_kernel(__global int* objects, __global float* verticies, __global float* normals, __global float* uvs, __global int* triangles, __global uint* frame_buffer, int object_count, int width, int height, int show_z_buffer, float highest_z){ \
+__kernel void raster_kernel(__global int* objects, __global float* verticies, __global float* normals, __global float* uvs, __global int* triangles, __global uint* frame_buffer, int object_count, int width, int height, int show_z_buffer){ \
     int id_x = get_global_id(0); \
     int id_y = get_global_id(1); \
     \
     float z_pixel = 0; \
     uint frame_pixel = 0x22222222; \
     \
-    float biggest_z = 0;\
+    float highest_z = 800;\
+    float lowest_z = 400;\
     \
     for (int object = 0; object < object_count; object++){ \
         int base = object * 15;\
@@ -56,6 +57,8 @@ __kernel void raster_kernel(__global int* objects, __global float* verticies, __
         int triangle_count = objects[base + 9];\
         int triangle_index = objects[base + 10];\
         int vertex_index = objects[base + 11];\
+        int normal_index = objects[base + 12];\
+        int uv_index = objects[base + 13];\
         int texture_index = objects[base + 14];\
         \
         for (int triangle = 0; triangle < triangle_count; triangle++){\
@@ -64,6 +67,14 @@ __kernel void raster_kernel(__global int* objects, __global float* verticies, __
             int i0 = (vertex_index + triangles[triangle_base + 0]) * 3;\
             int i1 = (vertex_index + triangles[triangle_base + 1]) * 3;\
             int i2 = (vertex_index + triangles[triangle_base + 2]) * 3;\
+\
+            int i3 = (normal_index + triangles[triangle_base + 3]) * 3;\
+            int i4 = (normal_index + triangles[triangle_base + 4]) * 3;\
+            int i5 = (normal_index + triangles[triangle_base + 5]) * 3;\
+\
+            int i6 = (uv_index + triangles[triangle_base + 6]) * 3;\
+            int i7 = (uv_index + triangles[triangle_base + 7]) * 3;\
+            int i8 = (uv_index + triangles[triangle_base + 8]) * 3;\
             \
             float x0 = verticies[i0 + 0] * object_s_x + object_x;\
             float y0 = verticies[i0 + 1] * object_s_y + object_y;\
@@ -76,6 +87,35 @@ __kernel void raster_kernel(__global int* objects, __global float* verticies, __
             float x2 = verticies[i2 + 0] * object_s_x + object_x;\
             float y2 = verticies[i2 + 1] * object_s_y + object_y;\
             float z2 = verticies[i2 + 2] * object_s_z + object_z;\
+            \
+            float n_x0 = normals[i3 + 0];\
+            float n_y0 = normals[i3 + 1];\
+            float n_z0 = normals[i3 + 2];\
+            \
+            float n_x1 = normals[i4 + 0];\
+            float n_y1 = normals[i4 + 1];\
+            float n_z1 = normals[i4 + 2];\
+            \
+            float n_x2 = normals[i5 + 0];\
+            float n_y2 = normals[i5 + 1];\
+            float n_z2 = normals[i5 + 2];\
+            \
+            float u_x0 = uvs[i6 + 0];\
+            float u_y0 = uvs[i6 + 1];\
+            float u_z0 = uvs[i6 + 2];\
+            \
+            float u_x1 = uvs[i7 + 0];\
+            float u_y1 = uvs[i7 + 1];\
+            float u_z1 = uvs[i7 + 2];\
+            \
+            float u_x2 = uvs[i8 + 0];\
+            float u_y2 = uvs[i8 + 1];\
+            float u_z2 = uvs[i8 + 2];\
+            \
+            int has_normals = 1;\
+            if (i3 < 0 || i4 < 0 || i5 < 0){\
+                has_normals = 0;\
+            }\
             \
             if (isinf(x0) || isinf(y0) || isinf(z0) || isinf(x1) || isinf(y1) || isinf(z1) || isinf(x2) || isinf(y2) || isinf(z2)){\
                 continue;\
@@ -119,40 +159,44 @@ __kernel void raster_kernel(__global int* objects, __global float* verticies, __
                 } \
                 \
                 float denominator = (y1 - y2) * (x0 - x2) + (x2 - x1) * (y0 - y2); \
+                \
+                if (denominator <= 0) { \
+                    continue; \
+                } \
                 float w0 = ((y1 - y2) * (id_x - x2) + (x2 - x1) * (id_y - y2)) / denominator; \
                 float w1 = ((y2 - y0) * (id_x - x0) + (x0 - x2) * (id_y - y2)) / denominator; \
                 float w2 = 1.0 - w0 - w1; \
                 \
-                if (denominator < 0) { \
-                    w0 = -w0; \
-                    w1 = -w1; \
-                    w2 = -w2; \
-                    denominator = -denominator; \
-                } \
-                \
                 float z = w0 * z0 + w1 * z1 + w2 * z2; \
-                \
-                if (z < 0){ \
-                    z *= -1; \
-                } \
                 \
                 if (z > z_pixel){ \
                     z_pixel = z; \
+                    \
+                    float nx = w0 * n_x0 + w1 * n_x1 + w2 * n_x2;\
+                    float ny = w0 * n_y0 + w1 * n_y1 + w2 * n_y2;\
+                    float nz = w0 * n_z0 + w1 * n_z1 + w2 * n_z2;\
+                    \
+                    uchar r = (uchar)((nx * 0.5f + 0.5f) * 255.0f);\
+                    uchar g = (uchar)((ny * 0.5f + 0.5f) * 255.0f);\
+                    uchar b = (uchar)((nz * 0.5f + 0.5f) * 255.0f);\
+                    \
+                    if (!has_normals){\
+                        r = 20;\
+                        g = 20;\
+                        b = 20;\
+                    }\
+                    \
+                    frame_pixel = 0xFF000000 | (r << 16) | (g << 8) | b;\
+                    \
                 } \
-                \
-                else { \
-                    continue; \
-                } \
-\
-                frame_pixel = 0xFFFFFFFF / triangle_count * (triangle + 1); \
-            } \
+            }\
         }\
     }\
     \
     if (id_y * width + id_x >= width * height){\
         return;\
     }\
-    frame_buffer[id_y * width + id_x] = frame_pixel; \
+    frame_buffer[(height - id_y) * width + id_x] = frame_pixel; \
     \
     if (!show_z_buffer){\
         return;\
@@ -164,5 +208,5 @@ __kernel void raster_kernel(__global int* objects, __global float* verticies, __
     \
     uchar intensity = (uchar)(norm_z * 255.0f);\
     \
-    frame_buffer[id_y * width + id_x] = 0xFF000000 | (intensity << 16) | (intensity << 8) | intensity;\
+    frame_buffer[(height - id_y) * width + id_x] = 0xFF000000 | (intensity << 16) | (intensity << 8) | intensity;\
 }\n";

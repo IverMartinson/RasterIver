@@ -404,17 +404,17 @@ load_object_return load_object(char *object_path, int object_offset, int base){
                 &triangles[(ct + loading_object_current_faces_count) * ts + 2], &triangles[(ct + loading_object_current_faces_count) * ts + 5], &triangles[(ct + loading_object_current_faces_count) * ts + 8]);
 
             if (matches != 9){
-                triangles[(ct + loading_object_current_faces_count) * ts + 0] = -1;
-                triangles[(ct + loading_object_current_faces_count) * ts + 1] = -1;
-                triangles[(ct + loading_object_current_faces_count) * ts + 2] = -1;
+                triangles[(ct + loading_object_current_faces_count) * ts + 0] = -100;
+                triangles[(ct + loading_object_current_faces_count) * ts + 1] = -100;
+                triangles[(ct + loading_object_current_faces_count) * ts + 2] = -100;
                 
-                triangles[(ct + loading_object_current_faces_count) * ts + 3] = -1;
-                triangles[(ct + loading_object_current_faces_count) * ts + 4] = -1;
-                triangles[(ct + loading_object_current_faces_count) * ts + 5] = -1;
+                triangles[(ct + loading_object_current_faces_count) * ts + 3] = -100;
+                triangles[(ct + loading_object_current_faces_count) * ts + 4] = -100;
+                triangles[(ct + loading_object_current_faces_count) * ts + 5] = -100;
                 
-                triangles[(ct + loading_object_current_faces_count) * ts + 6] = -1;
-                triangles[(ct + loading_object_current_faces_count) * ts + 7] = -1;
-                triangles[(ct + loading_object_current_faces_count) * ts + 8] = -1;
+                triangles[(ct + loading_object_current_faces_count) * ts + 6] = -100;
+                triangles[(ct + loading_object_current_faces_count) * ts + 7] = -100;
+                triangles[(ct + loading_object_current_faces_count) * ts + 8] = -100;
 
                 if (strchr(line, '/')){
                     obj_face_type = 1;
@@ -811,7 +811,6 @@ RI_result RI_Tick(){
             erchk(clSetKernelArg(compiled_kernel_master, 7, sizeof(int), (void*)&width));
             erchk(clSetKernelArg(compiled_kernel_master, 8, sizeof(int), (void*)&height));
             erchk(clSetKernelArg(compiled_kernel_master, 9, sizeof(int), (void*)&show_z_buffer)); 
-            erchk(clSetKernelArg(compiled_kernel_master, 10, sizeof(float), (void*)&highest_z));
 
             if (object_count > 0) {
                 erchk(clEnqueueWriteBuffer(queue, object_memory_buffer, CL_TRUE, 0, sizeof(int) * object_size * object_count, objects, 0, NULL, NULL));
@@ -1197,8 +1196,18 @@ RI_result OpenCL_init(){
     erchk(error);
 
     error = clBuildProgram(kernel_program_non_master, 1, &device, NULL, NULL, NULL);
-    erchk(error);
+    if (error == -11){
+        size_t log_size;
+        clGetProgramBuildInfo(kernel_program_non_master, device, CL_PROGRAM_BUILD_LOG, 0, NULL, &log_size);
+        
+        char *log = malloc(log_size);
+        clGetProgramBuildInfo(kernel_program_non_master, device, CL_PROGRAM_BUILD_LOG, log_size, log, NULL);
+        
+        fprintf(stderr, "Build log:\n%s\n", log);
+        free(log);            
 
+        RI_Stop(0);
+    }
     compiled_kernel_non_master = clCreateKernel(kernel_program_non_master, "raster_kernel", &error);
     erchk(error);
 
@@ -1207,7 +1216,18 @@ RI_result OpenCL_init(){
     erchk(error);
 
     error = clBuildProgram(kernel_program_master, 1, &device, NULL, NULL, NULL);
-    erchk(error);
+    if (error == -11){
+        size_t log_size;
+        clGetProgramBuildInfo(kernel_program_master, device, CL_PROGRAM_BUILD_LOG, 0, NULL, &log_size);
+        
+        char *log = malloc(log_size);
+        clGetProgramBuildInfo(kernel_program_master, device, CL_PROGRAM_BUILD_LOG, log_size, log, NULL);
+        
+        fprintf(stderr, "Build log:\n%s\n", log);
+        free(log);            
+
+        RI_Stop(0);
+    }
 
     compiled_kernel_master = clCreateKernel(kernel_program_master, "raster_kernel", &error);
     erchk(error);
