@@ -27,10 +27,10 @@ int main(){
     }
 
     RI_newObject object_buffer[5] = {
+        {400, 400, 400, 0, 0, 0, 100, 100, 100, "objects/teapot.obj", "texture.png"},
         {200, 400, 400, 0, 0, 0, 100, 100, 100, "objects/gourd.obj", "texture.png"},
-        {400, 50, 400, 0, 0, 0, 400, 400, 400, "objects/gordon_freeman.obj", "texture.png"},
+        {400, 20, 400, 0, 0, 0, 400, 400, 400, "objects/gordon_freeman.obj", "texture.png"},
         {600, 400, 300, 0, 0, 0, 100, 100, 100, "objects/rotated_cube.obj", "texture.png"},
-        {400, 400, 400, 0, 0, 0, 100, 100, 100, "objects/obj_file.obj", "texture.png"},
         {400, 400, 400, 0, 0, 0, 100, 100, 100, "objects/obj_file.obj", "texture.png"},
     };
 

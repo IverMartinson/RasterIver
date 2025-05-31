@@ -39,7 +39,7 @@ __kernel void raster_kernel(__global int* objects, __global float* verticies, __
     uint frame_pixel = 0x22222222; \
     \
     float highest_z = 800;\
-    float lowest_z = 400;\
+    float lowest_z = 0;\
     \
     for (int object = 0; object < object_count; object++){ \
         int base = object * 15;\
@@ -164,7 +164,7 @@ __kernel void raster_kernel(__global int* objects, __global float* verticies, __
                     continue; \
                 } \
                 float w0 = ((y1 - y2) * (id_x - x2) + (x2 - x1) * (id_y - y2)) / denominator; \
-                float w1 = ((y2 - y0) * (id_x - x0) + (x0 - x2) * (id_y - y2)) / denominator; \
+                float w1 = ((y2 - y0) * (id_x - x0) + (x0 - x2) * (id_y - y0)) / denominator; \
                 float w2 = 1.0 - w0 - w1; \
                 \
                 float z = w0 * z0 + w1 * z1 + w2 * z2; \
@@ -176,9 +176,14 @@ __kernel void raster_kernel(__global int* objects, __global float* verticies, __
                     float ny = w0 * n_y0 + w1 * n_y1 + w2 * n_y2;\
                     float nz = w0 * n_z0 + w1 * n_z1 + w2 * n_z2;\
                     \
-                    uchar r = (uchar)((nx * 0.5f + 0.5f) * 255.0f);\
-                    uchar g = (uchar)((ny * 0.5f + 0.5f) * 255.0f);\
-                    uchar b = (uchar)((nz * 0.5f + 0.5f) * 255.0f);\
+                    \
+                    nx = clamp((nx * 0.5f + 0.5f) * 255.0f, 0.0f, 255.0f);\
+                    ny = clamp((ny * 0.5f + 0.5f) * 255.0f, 0.0f, 255.0f);\
+                    nz = clamp((nz * 0.5f + 0.5f) * 255.0f, 0.0f, 255.0f);\
+                    \
+                    uchar r = (uchar)nx;\
+                    uchar g = (uchar)ny;\
+                    uchar b = (uchar)nz;\
                     \
                     if (!has_normals){\
                         r = 20;\

@@ -846,10 +846,9 @@ RI_result RI_Tick(){
 
                 debug_tick_func(1, "Wrote Triangles Buffer");
             }
-
+            
             erchk(clEnqueueFillBuffer(queue, output_memory_buffer, &pattern, sizeof(RI_uint), 0, sizeof(RI_uint) * width * height, 0, NULL, NULL));
             erchk(clFinish(queue));
-
             debug_tick_func(1, "Cleared Frame Buffer");
 
             size_t local_size_2d[2] = {sqrt(local_size), sqrt(local_size)};
