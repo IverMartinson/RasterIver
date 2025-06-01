@@ -50,7 +50,7 @@ typedef enum {
 typedef enum {
     RI_FLAG_DEBUG               = 0,
     RI_FLAG_DEBUG_VERBOSE       = 1,
-    RI_FLAG_SHOW_Z_BUFFER       = 2,
+    RI_FLAG_SHOW_BUFFER         = 2,
     RI_FLAG_SHOW_FPS            = 3,
     RI_FLAG_DEBUG_FPS           = 4,
     RI_FLAG_CLEAN_POLYGONS      = 5,
@@ -61,6 +61,15 @@ typedef enum {
     RI_FLAG_SHOW_INFO           = 10,
     RI_FLAG_DEBUG_TICK          = 11,
 } RI_flag_enum;
+
+// RI_buffer
+typedef enum {
+    RI_BUFFER_COMPLETE  = 0,
+    RI_BUFFER_Z         = 1,
+    RI_BUFFER_NORMAL    = 2,
+    RI_BUFFER_UV        = 3,
+    RI_BUFFER_UNLIT     = 4,
+} RI_buffer_enum;
 
 RI_result   RI_Init();
 RI_result   RI_Stop();

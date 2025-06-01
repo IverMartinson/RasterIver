@@ -12,7 +12,6 @@
 int width;
 int height;
 
-int show_z_buffer = 0;
 float highest_z = 0;
 
 int polygon_count;
@@ -29,6 +28,7 @@ RI_textures textures;
 int running = 1;
 int frame = 0;
 
+int show_buffer = 0;
 int show_debug = 0;
 int debug_verbose = 0;
 int show_fps = 0;
@@ -194,8 +194,8 @@ RI_result RI_SetFlag(RI_flag RI_FlagToSet, int RI_Value)
         debug_verbose = RI_Value;
         break;
 
-    case RI_FLAG_SHOW_Z_BUFFER:
-        show_z_buffer = RI_Value;
+    case RI_FLAG_SHOW_BUFFER:
+        show_buffer = RI_Value;
         break;
 
     case RI_FLAG_SHOW_FPS:
@@ -233,7 +233,7 @@ RI_result RI_SetFlag(RI_flag RI_FlagToSet, int RI_Value)
     case RI_FLAG_DEBUG_TICK:
         debug_tick = RI_Value;
         break;
-
+        
     default:
         return RI_INVALID_FLAG;
     }
@@ -810,7 +810,7 @@ RI_result RI_Tick(){
             erchk(clSetKernelArg(compiled_kernel_master, 6, sizeof(int), (void*)&object_count));
             erchk(clSetKernelArg(compiled_kernel_master, 7, sizeof(int), (void*)&width));
             erchk(clSetKernelArg(compiled_kernel_master, 8, sizeof(int), (void*)&height));
-            erchk(clSetKernelArg(compiled_kernel_master, 9, sizeof(int), (void*)&show_z_buffer)); 
+            erchk(clSetKernelArg(compiled_kernel_master, 9, sizeof(int), (void*)&show_buffer)); 
 
             if (object_count > 0) {
                 erchk(clEnqueueWriteBuffer(queue, object_memory_buffer, CL_TRUE, 0, sizeof(int) * object_size * object_count, objects, 0, NULL, NULL));
@@ -875,7 +875,7 @@ RI_result RI_Tick(){
                 return RI_ERROR;
             }
             
-            if (show_z_buffer){
+            if (show_buffer == RI_BUFFER_Z){
                 for (int p = 2; p < polygon_count * 9; p+=3){
                     if (polygons[p] > highest_z){
                         highest_z = polygons[p];
@@ -890,7 +890,7 @@ RI_result RI_Tick(){
             erchk(clSetKernelArg(compiled_kernel_non_master, 2, sizeof(int), (void*)&polygon_count));
             erchk(clSetKernelArg(compiled_kernel_non_master, 3, sizeof(int), (void*)&width));
             erchk(clSetKernelArg(compiled_kernel_non_master, 4, sizeof(int), (void*)&height));
-            erchk(clSetKernelArg(compiled_kernel_non_master, 5, sizeof(int), (void*)&show_z_buffer)); 
+            erchk(clSetKernelArg(compiled_kernel_non_master, 5, sizeof(int), (void*)&show_buffer)); 
             erchk(clSetKernelArg(compiled_kernel_non_master, 6, sizeof(float), (void*)&highest_z));
 
             erchk(clEnqueueWriteBuffer(queue, input_memory_buffer, CL_TRUE, 0, sizeof(float) * 3 * 3 * polygon_count, polygons, 0, NULL, NULL));

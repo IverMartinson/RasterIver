@@ -31,7 +31,7 @@ void norm(float dest[2], float a[2]){ \
     dest[1] = a[1] + b[1]; \
 } \
 \
-__kernel void raster_kernel(__global int* objects, __global float* verticies, __global float* normals, __global float* uvs, __global int* triangles, __global uint* frame_buffer, int object_count, int width, int height, int show_z_buffer){ \
+__kernel void raster_kernel(__global int* objects, __global float* verticies, __global float* normals, __global float* uvs, __global int* triangles, __global uint* frame_buffer, int object_count, int width, int height, int show_buffer){ \
     int id_x = get_global_id(0); \
     int id_y = get_global_id(1); \
     \
@@ -41,6 +41,44 @@ __kernel void raster_kernel(__global int* objects, __global float* verticies, __
     float highest_z = 800;\
     float lowest_z = 0;\
     \
+    int has_normals = 1;\
+    int has_uvs = 1;\
+    float nx;\
+    float ny;\
+    float nz;\
+    \
+    float ux;\
+    float uy;\
+    float uz;\
+    \
+    float w0;\
+float w1;\
+float w2;\
+    \
+    float n_x0;\
+float n_y0;\
+float n_z0;\
+            \
+float n_x1;\
+float n_y1;\
+float n_z1;\
+            \
+float n_x2;\
+float n_y2;\
+float n_z2;\
+            \
+float u_x0;\
+float u_y0;\
+float u_z0;\
+            \
+float u_x1;\
+float u_y1;\
+float u_z1;\
+            \
+float u_x2;\
+float u_y2;\
+float u_z2;\
+\
     for (int object = 0; object < object_count; object++){ \
         int base = object * 15;\
         \
@@ -88,33 +126,12 @@ __kernel void raster_kernel(__global int* objects, __global float* verticies, __
             float y2 = verticies[i2 + 1] * object_s_y + object_y;\
             float z2 = verticies[i2 + 2] * object_s_z + object_z;\
             \
-            float n_x0 = normals[i3 + 0];\
-            float n_y0 = normals[i3 + 1];\
-            float n_z0 = normals[i3 + 2];\
             \
-            float n_x1 = normals[i4 + 0];\
-            float n_y1 = normals[i4 + 1];\
-            float n_z1 = normals[i4 + 2];\
-            \
-            float n_x2 = normals[i5 + 0];\
-            float n_y2 = normals[i5 + 1];\
-            float n_z2 = normals[i5 + 2];\
-            \
-            float u_x0 = uvs[i6 + 0];\
-            float u_y0 = uvs[i6 + 1];\
-            float u_z0 = uvs[i6 + 2];\
-            \
-            float u_x1 = uvs[i7 + 0];\
-            float u_y1 = uvs[i7 + 1];\
-            float u_z1 = uvs[i7 + 2];\
-            \
-            float u_x2 = uvs[i8 + 0];\
-            float u_y2 = uvs[i8 + 1];\
-            float u_z2 = uvs[i8 + 2];\
-            \
-            int has_normals = 1;\
             if (i3 < 0 || i4 < 0 || i5 < 0){\
                 has_normals = 0;\
+            }\
+            if (i6 < 0 || i7 < 0 || i8 < 0){\
+                has_uvs = 0;\
             }\
             \
             if (isinf(x0) || isinf(y0) || isinf(z0) || isinf(x1) || isinf(y1) || isinf(z1) || isinf(x2) || isinf(y2) || isinf(z2)){\
@@ -163,36 +180,40 @@ __kernel void raster_kernel(__global int* objects, __global float* verticies, __
                 if (denominator <= 0) { \
                     continue; \
                 } \
-                float w0 = ((y1 - y2) * (id_x - x2) + (x2 - x1) * (id_y - y2)) / denominator; \
-                float w1 = ((y2 - y0) * (id_x - x0) + (x0 - x2) * (id_y - y0)) / denominator; \
-                float w2 = 1.0 - w0 - w1; \
+                w0 = ((y1 - y2) * (id_x - x2) + (x2 - x1) * (id_y - y2)) / denominator; \
+                w1 = ((y2 - y0) * (id_x - x0) + (x0 - x2) * (id_y - y0)) / denominator; \
+                w2 = 1.0 - w0 - w1; \
                 \
                 float z = w0 * z0 + w1 * z1 + w2 * z2; \
                 \
                 if (z > z_pixel){ \
                     z_pixel = z; \
                     \
-                    float nx = w0 * n_x0 + w1 * n_x1 + w2 * n_x2;\
-                    float ny = w0 * n_y0 + w1 * n_y1 + w2 * n_y2;\
-                    float nz = w0 * n_z0 + w1 * n_z1 + w2 * n_z2;\
+            n_x0 = normals[i3 + 0];\
+            n_y0 = normals[i3 + 1];\
+            n_z0 = normals[i3 + 2];\
+            \
+            n_x1 = normals[i4 + 0];\
+            n_y1 = normals[i4 + 1];\
+            n_z1 = normals[i4 + 2];\
+            \
+            n_x2 = normals[i5 + 0];\
+            n_y2 = normals[i5 + 1];\
+            n_z2 = normals[i5 + 2];\
+            \
+            u_x0 = uvs[i6 + 0];\
+            u_y0 = uvs[i6 + 1];\
+            u_z0 = uvs[i6 + 2];\
+            \
+            u_x1 = uvs[i7 + 0];\
+            u_y1 = uvs[i7 + 1];\
+            u_z1 = uvs[i7 + 2];\
+            \
+            u_x2 = uvs[i8 + 0];\
+            u_y2 = uvs[i8 + 1];\
+            u_z2 = uvs[i8 + 2];\
                     \
-                    \
-                    nx = clamp((nx * 0.5f + 0.5f) * 255.0f, 0.0f, 255.0f);\
-                    ny = clamp((ny * 0.5f + 0.5f) * 255.0f, 0.0f, 255.0f);\
-                    nz = clamp((nz * 0.5f + 0.5f) * 255.0f, 0.0f, 255.0f);\
-                    \
-                    uchar r = (uchar)nx;\
-                    uchar g = (uchar)ny;\
-                    uchar b = (uchar)nz;\
-                    \
-                    if (!has_normals){\
-                        r = 20;\
-                        g = 20;\
-                        b = 20;\
-                    }\
-                    \
-                    frame_pixel = 0xFF000000 | (r << 16) | (g << 8) | b;\
-                    \
+                    frame_pixel = 0xFFFFFFFF;\
                 } \
             }\
         }\
@@ -203,15 +224,56 @@ __kernel void raster_kernel(__global int* objects, __global float* verticies, __
     }\
     frame_buffer[(height - id_y) * width + id_x] = frame_pixel; \
     \
-    if (!show_z_buffer){\
-        return;\
+    switch (show_buffer){\
+        case 1:{\
+            float z = clamp(z_pixel, 0.0f, highest_z);\
+            \
+            float norm_z = z / highest_z;\
+            \
+            uchar intensity = (uchar)(norm_z * 255.0f);\
+            \
+            frame_buffer[(height - id_y) * width + id_x] = 0xFF000000 | (intensity << 16) | (intensity << 8) | intensity;\
+            \
+            break;}\
+        case 2:{\
+        nx = w0 * n_x0 + w1 * n_x1 + w2 * n_x2;\
+                    ny = w0 * n_y0 + w1 * n_y1 + w2 * n_y2;\
+                    nz = w0 * n_z0 + w1 * n_z1 + w2 * n_z2;\
+            nx = clamp((nx * 0.5f + 0.5f) * 255.0f, 0.0f, 255.0f);\
+            ny = clamp((ny * 0.5f + 0.5f) * 255.0f, 0.0f, 255.0f);\
+            nz = clamp((nz * 0.5f + 0.5f) * 255.0f, 0.0f, 255.0f);\
+            \
+            uchar r = (uchar)nx;\
+            uchar g = (uchar)ny;\
+            uchar b = (uchar)nz;\
+            \
+            if (!has_normals){\
+                r = 20;\
+                g = 20;\
+                b = 20;\
+            }\
+            \
+            frame_buffer[(height - id_y) * width + id_x] = 0xFF000000 | (r << 16) | (g << 8) | b;\
+            \
+            break;}\
+        case 3:{\
+        ux = w0 * u_x0 + w1 * u_x1 + w2 * u_x2;\
+                    uy = w0 * u_y0 + w1 * u_y1 + w2 * u_y2;\
+                    uz = w0 * u_z0 + w1 * u_z1 + w2 * u_z2;\
+            uchar r = (uchar)ux;\
+            uchar g = (uchar)uy;\
+            uchar b = (uchar)uz;\
+            \
+            if (!has_uvs){\
+                r = 20;\
+                g = 20;\
+                b = 20;\
+            }\
+            \
+            frame_buffer[(height - id_y) * width + id_x] = 0xFF000000 | (r << 16) | (g << 8) | b;\
+\
+            break;}\
+        default:{\
+            break;}\
     }\
-    \
-    float z = clamp(z_pixel, 0.0f, highest_z);\
-    \
-    float norm_z = z / highest_z;\
-    \
-    uchar intensity = (uchar)(norm_z * 255.0f);\
-    \
-    frame_buffer[(height - id_y) * width + id_x] = 0xFF000000 | (intensity << 16) | (intensity << 8) | intensity;\
 }\n";
