@@ -21,3 +21,5 @@ Rasterizer + Iver = RasterIver
 - [ ] fix horribly named variables in request object functions
 - [ ] include rasteriver.h in the kernels for better code updatability
 - [ ] make kernels not be in strings (read the file at compile time and put it inside rasteriver.c as a string? put it in a header like how it is now?)
+- [ ] change all iterator variables in for loops to have "iterator_" before it's variable name
+- [ ] add descriptions RI functions
