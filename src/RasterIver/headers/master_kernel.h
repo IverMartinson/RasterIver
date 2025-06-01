@@ -259,15 +259,13 @@ float u_z2;\
         case 3:{\
             ux = w0 * u_x0 + w1 * u_x1 + w2 * u_x2;\
             uy = w0 * u_y0 + w1 * u_y1 + w2 * u_y2;\
-            uz = w0 * u_z0 + w1 * u_z1 + w2 * u_z2;\
             \
-            ux = clamp((ux * 0.5f + 0.5f) * 255.0f, 0.0f, 255.0f);\
-            uy = clamp((uy * 0.5f + 0.5f) * 255.0f, 0.0f, 255.0f);\
-            uz = clamp((uz * 0.5f + 0.5f) * 255.0f, 0.0f, 255.0f);\
+            ux = clamp(ux * 255.0f, 0.0f, 255.0f);\
+            uy = clamp(uy * 255.0f, 0.0f, 255.0f);\
             \
             uchar r = (uchar)ux;\
             uchar g = (uchar)uy;\
-            uchar b = (uchar)uz;\
+            uchar b = 0;\
             \
             if (!has_uvs){\
                 r = 20;\
