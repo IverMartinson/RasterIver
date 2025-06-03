@@ -194,12 +194,12 @@ __kernel void raster_kernel(__global int* objects, __global float* verticies, __
                             int ix = clamp((int)ux * texture_width, 0, texture_width - 1);\
                             int iy = clamp((int)uy * texture_height, 0, texture_height - 1);\
                             \
-                            int pixel_offset = (iy * texture_width + ix) * 4;\
+                            int uv_pixel = (iy * texture_width + ix) * 4;\
                             \
-                            uchar r = textures[0 + 0];\
-                            uchar g = textures[0 + 1];\
-                            uchar b = textures[0 + 2];\
-                            uchar a = textures[0 + 3];\
+                            uchar r = textures[uv_pixel + 0];\
+                            uchar g = textures[uv_pixel + 1];\
+                            uchar b = textures[uv_pixel + 2];\
+                            uchar a = textures[uv_pixel + 3];\
                             \
                             frame_pixel = (a << 24) | (r << 16) | (g << 8) | b;\
                             \
