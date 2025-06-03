@@ -23,3 +23,4 @@ Rasterizer + Iver = RasterIver
 - [ ] make kernels not be in strings (read the file at compile time and put it inside rasteriver.c as a string? put it in a header like how it is now?)
 - [ ] change all iterator variables in for loops to have "i_" before it's variable name
 - [ ] add descriptions RI functions
+- [ ] add a function call stack to review where errors happen or just debug stuff
