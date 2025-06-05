@@ -17,7 +17,7 @@ Rasterizer + Iver = RasterIver
 # Todo
 - [x] add todo list
 - [ ] add function to request a mesh. I.E., request a number of polygons/verticies (maybe from presets? planes, cubes, idk) and be able to edit them on the fly. Useful for dynamic terrain or something like that
-- [ ] add texture support (in progress)
+- [x] add texture support
 - [ ] fix interpolation issue with UV maps (and probably normals and Z values too)
 - [ ] fix horribly named variables in request object functions
 - [ ] include rasteriver.h in the kernels for better code updatability
@@ -25,3 +25,4 @@ Rasterizer + Iver = RasterIver
 - [ ] change all iterator variables in for loops to have "i_" before it's variable name
 - [ ] add descriptions RI functions
 - [ ] add a function call stack to review where errors happen or just debug stuff
+- [ ] optimize object memory usage by not loading object data multiple times when the same object is requested
