@@ -29,3 +29,6 @@ Rasterizer + Iver = RasterIver
 - [ ] checks for invalid/nonexistant files
 - [ ] perspective
 - [ ] object transforms (rotation mainly. Might add fancy stuff like sheer)
+- [ ] simple lighting using normals
+- [ ] complex lighting using rays for shadows and stuff
+- [ ] polygon clipping by subdividing
