@@ -10,12 +10,12 @@ int main(){
     srand(time(NULL));                                                         
 
     RI_SetFlag(RI_FLAG_DEBUG, 1);
-    RI_SetFlag(RI_FLAG_DEBUG_VERBOSE, 1);
+    RI_SetFlag(RI_FLAG_DEBUG_LEVEL, RI_DEBUG_HIGH);
     RI_SetFlag(RI_FLAG_DEBUG_TICK, 0);
     RI_SetFlag(RI_FLAG_DEBUG_FPS, 0);
     RI_SetFlag(RI_FLAG_SHOW_FPS, 1);
     RI_SetFlag(RI_FLAG_SHOW_FRAME, 1);
-    RI_SetFlag(RI_FLAG_SHOW_BUFFER, RI_BUFFER_UV);
+    RI_SetFlag(RI_FLAG_SHOW_BUFFER, RI_BUFFER_COMPLETE);
     RI_SetFlag(RI_FLAG_CLEAN_POLYGONS, 1);
     RI_SetFlag(RI_FLAG_POPULATE_POLYGONS, 0);
     RI_SetFlag(RI_FLAG_BE_MASTER_RENDERER, 1);
@@ -26,15 +26,17 @@ int main(){
         return 1;
     }
 
-    RI_newObject object_buffer[5] = {
-        {600, 400, 300, 0, 0, 0, 100, 100, 100, "objects/rotated_cube.obj", "texture.png"},
-        {400, 20, 400, 0, 0, 0, 400, 400, 400, "objects/gordon_freeman.obj", "texture.png"},
+    RI_newObject object_buffer[7] = {
+        {-200, 0, 300, 0, 0, 0, 100, 100, 100, "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
+        {0, 0, 300, 0, 0, 0, 100, 100, 100, "objects/rotated_cube.obj", "textures/test_texture.png"},
+        {200, 0, 300, 0, 0, 0, 100, 100, 100, "objects/rotated_cube.obj", "textures/cube_texture.png"},
+        {0, -380, 200, 0, 0, 0, 400, 400, 400, "objects/gordon_freeman.obj", "texture.png"},
         {400, 400, 400, 0, 0, 0, 100, 100, 100, "objects/teapot.obj", "texture.png"},
         {200, 400, 400, 0, 0, 0, 100, 100, 100, "objects/gourd.obj", "texture.png"},
         {400, 400, 400, 0, 0, 0, 100, 100, 100, "objects/obj_file.obj", "texture.png"},
     };
 
-    RI_objects objects = RI_RequestObjects(object_buffer, 1);
+    RI_objects objects = RI_RequestObjects(object_buffer, 3);
 
     while (RI_IsRunning() == RI_RUNNING){
         RI_Tick();

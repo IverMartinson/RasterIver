@@ -31,7 +31,11 @@ void norm(float dest[2], float a[2]){ \
     dest[1] = a[1] + b[1]; \
 } \
 \
-__kernel void raster_kernel(__global int* objects, __global float* verticies, __global float* normals, __global float* uvs, __global int* triangles, __global uint* frame_buffer, __global uchar* textures, __global int* texture_info, int object_count, int width, int height, int show_buffer){ \
+inline int clamppp(int x, int lower, int upper) {\
+    return x < lower ? lower : (x > upper ? upper : x);\
+}\
+\
+__kernel void raster_kernel(__global int* objects, __global float* verticies, __global float* normals, __global float* uvs, __global int* triangles, __global uint* frame_buffer, __global uchar* textures, __global int* texture_info, int object_count, int width, int height, int show_buffer, int frame){ \
     int id_x = get_global_id(0) - width / 2; \
     int id_y = get_global_id(1) - height / 2; \
     \
@@ -185,16 +189,17 @@ __kernel void raster_kernel(__global int* objects, __global float* verticies, __
                     \
                     switch (show_buffer){\
                         case 0:{\
-                            float ux = w0 * u_x0 + w1 * u_x1 + w2 * u_x2;\
-                            float uy = w0 * u_y0 + w1 * u_y1 + w2 * u_y2;\
+                            double ux = w0 * u_x0 + w1 * u_x1 + w2 * u_x2;\
+                            double uy = w0 * u_y0 + w1 * u_y1 + w2 * u_y2;\
                             \
-                            int texture_width = texture_info[texture_index * 2];\
-                            int texture_height = texture_info[texture_index * 2 + 1];\
+                            int texture_width = texture_info[texture_index * 3];\
+                            int texture_height = texture_info[texture_index * 3 + 1];\
+                            int texture_value_offset = texture_info[texture_index * 3 + 2];\
                             \
-                            int ix = clamp((int)ux * texture_width, 0, texture_width - 1);\
-                            int iy = clamp((int)uy * texture_height, 0, texture_height - 1);\
+                            int ix = max((int)(ux * texture_width), 0);\
+                            int iy = max((int)(uy * texture_height), 0);\
                             \
-                            int uv_pixel = (iy * texture_width + ix) * 4;\
+                            int uv_pixel = (iy * texture_width + ix) * 4 + texture_value_offset;\
                             \
                             uchar r = textures[uv_pixel + 0];\
                             uchar g = textures[uv_pixel + 1];\
@@ -218,6 +223,7 @@ __kernel void raster_kernel(__global int* objects, __global float* verticies, __
                             float nx = w0 * n_x0 + w1 * n_x1 + w2 * n_x2;\
                             float ny = w0 * n_y0 + w1 * n_y1 + w2 * n_y2;\
                             float nz = w0 * n_z0 + w1 * n_z1 + w2 * n_z2;\
+                            \
                             nx = clamp((nx * 0.5f + 0.5f) * 255.0f, 0.0f, 255.0f);\
                             ny = clamp((ny * 0.5f + 0.5f) * 255.0f, 0.0f, 255.0f);\
                             nz = clamp((nz * 0.5f + 0.5f) * 255.0f, 0.0f, 255.0f);\
@@ -267,6 +273,7 @@ __kernel void raster_kernel(__global int* objects, __global float* verticies, __
     if (pixel_coord >= width * height || pixel_coord < 0){\
         return;\
     }\
+    \
     frame_buffer[pixel_coord] = frame_pixel; \
     \
 }\n";

@@ -1,9 +1,11 @@
 #ifndef RASTERIVER_H
 #define RASTERIVER_H
 
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
 #include <stdint.h>
-#include "master_kernel.h"
-#include "non_master_kernel.h"
+#include "../kernels/master_kernel.h"
+#include "../kernels/non_master_kernel.h"
 
 typedef int RI_result;
 typedef int RI_flag;
@@ -12,7 +14,7 @@ typedef float* RI_polygons;
 typedef float* RI_verticies;
 typedef int* RI_triangles;
 typedef int* RI_objects;
-typedef char* RI_textures;
+typedef unsigned char* RI_textures;
 
 // the size of each object instance in the objects array
 // xyz + rot(xyz) + scale(xyz) = 9
@@ -26,6 +28,10 @@ typedef char* RI_textures;
 // triangle size
 // 3 xyz 3 normals 3 uvs 
 #define ts 9
+
+// texture info size
+// width + height + value offset = 3
+#define tis 3
 
 typedef struct {
     float x, y, z, r_x, r_y, r_z, s_x, s_y, s_z;
@@ -49,7 +55,7 @@ typedef enum {
 // RI_flag
 typedef enum {
     RI_FLAG_DEBUG               = 0,
-    RI_FLAG_DEBUG_VERBOSE       = 1,
+    RI_FLAG_DEBUG_LEVEL         = 1,
     RI_FLAG_SHOW_BUFFER         = 2,
     RI_FLAG_SHOW_FPS            = 3,
     RI_FLAG_DEBUG_FPS           = 4,
@@ -62,14 +68,20 @@ typedef enum {
     RI_FLAG_DEBUG_TICK          = 11,
 } RI_flag_enum;
 
-// RI_buffer
+// RI_BUFFER
 typedef enum {
     RI_BUFFER_COMPLETE  = 0,
     RI_BUFFER_Z         = 1,
     RI_BUFFER_NORMAL    = 2,
     RI_BUFFER_UV        = 3,
-    RI_BUFFER_UNLIT     = 4,
 } RI_buffer_enum;
+
+// RI_DEBUG
+typedef enum {
+    RI_DEBUG_LOW      = 0,
+    RI_DEBUG_MEDIUM   = 1,
+    RI_DEBUG_HIGH     = 2,
+} RI_debug_enum;
 
 RI_result   RI_Init();
 RI_result   RI_Stop();
