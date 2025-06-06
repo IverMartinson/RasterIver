@@ -40,3 +40,4 @@ Rasterizer + Iver = RasterIver
 - [ ] polygon clipping by subdividing
 - [ ] flag for using CPU instead of GPU
 - [ ] actually acurate FPS cap
+- [ ] make a function to return a pointer to the last SDL_event (or copy it doesnt really matter)
