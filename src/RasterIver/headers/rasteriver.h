@@ -33,6 +33,9 @@ typedef unsigned char* RI_textures;
 // width + height + value offset = 3
 #define tis 3
 
+// PI
+#define RI_PI 3.14159265359
+
 typedef struct {
     float x, y, z, r_x, r_y, r_z, s_x, s_y, s_z;
     char file_path[40];
@@ -66,6 +69,7 @@ typedef enum {
     RI_FLAG_SHOW_FRAME          = 9,
     RI_FLAG_SHOW_INFO           = 10,
     RI_FLAG_DEBUG_TICK          = 11,
+    RI_FLAG_USE_CPU             = 12,
 } RI_flag_enum;
 
 // RI_BUFFER
@@ -82,6 +86,12 @@ typedef enum {
     RI_DEBUG_MEDIUM   = 1,
     RI_DEBUG_HIGH     = 2,
 } RI_debug_enum;
+
+// RI_VALUE
+typedef enum {
+    RI_TRUE      = 1,
+    RI_FALSE   = 0,
+} RI_value_enum;
 
 RI_result   RI_Init();
 RI_result   RI_Stop();
