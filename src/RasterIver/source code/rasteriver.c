@@ -42,6 +42,7 @@ int debug_frame = 0;
 int show_frame = 0;
 int show_info = 0;
 int debug_tick = 0;
+int use_cpu = 0;
 
 Uint64 start_time;
 double frame_time_ms;
@@ -240,6 +241,10 @@ RI_result RI_SetFlag(RI_flag RI_FlagToSet, int RI_Value){
         debug_tick = RI_Value;
         break;
         
+    case RI_FLAG_USE_CPU:
+        use_cpu = RI_Value;
+        break;
+
     default:
         return RI_INVALID_FLAG;
     }
@@ -533,7 +538,7 @@ RI_objects RI_RequestObjects(RI_newObject *RI_ObjectBuffer, int RI_ObjectsToRequ
         free(objects);
     }
 
-    int object_arary_size = sizeof(int) * object_size * RI_ObjectsToRequest;
+    int object_arary_size = sizeof(float) * object_size * RI_ObjectsToRequest;
 
     objects = malloc(object_arary_size);
     
@@ -603,6 +608,7 @@ RI_objects RI_RequestObjects(RI_newObject *RI_ObjectBuffer, int RI_ObjectsToRequ
         objects[base + 3] = loading_object_current_object->r_x; // rotation x
         objects[base + 4] = loading_object_current_object->r_y; // rotation y
         objects[base + 5] = loading_object_current_object->r_z; // rotation z
+        objects[base + 15] = loading_object_current_object->r_w; // rotation w
         objects[base + 6] = loading_object_current_object->s_x; // scale x
         objects[base + 7] = loading_object_current_object->s_y; // scale y
         objects[base + 8] = loading_object_current_object->s_z; // scale z
@@ -811,7 +817,7 @@ RI_result RI_Tick(){
             erchk(clSetKernelArg(compiled_kernel_master, 12, sizeof(int), (void*)&frame)); 
 
             if (object_count > 0) {
-                erchk(clEnqueueWriteBuffer(queue, object_memory_buffer, CL_TRUE, 0, sizeof(int) * object_size * object_count, objects, 0, NULL, NULL));
+                erchk(clEnqueueWriteBuffer(queue, object_memory_buffer, CL_TRUE, 0, sizeof(float) * object_size * object_count, objects, 0, NULL, NULL));
                 erchk(clFinish(queue));
 
                 debug_tick_func(1, "Wrote Objects Buffer");

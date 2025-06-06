@@ -35,7 +35,43 @@ inline int clamppp(int x, int lower, int upper) {\
     return x < lower ? lower : (x > upper ? upper : x);\
 }\
 \
-__kernel void raster_kernel(__global int* objects, __global float* verticies, __global float* normals, __global float* uvs, __global int* triangles, __global uint* frame_buffer, __global uchar* textures, __global int* texture_info, int object_count, int width, int height, int show_buffer, int frame){ \
+void rotate_quaternion(float *x, float *y, float *z, float r_x, float r_y, float r_z){\
+\
+};\
+\
+void rotate_euler(float *x, float *y, float *z, float r_x, float r_y, float r_z){\
+    float cx = cos(r_x), sx = sin(r_x);\
+    float cy = cos(r_y), sy = sin(r_y);\
+    float cz = cos(r_z), sz = sin(r_z);\
+\
+    float matrix[3][3] = {\
+        {\
+            cy * cz,\
+            -cy * sz,\
+            sy\
+        },\
+        {\
+            sx * sy * cz + cx * sz,\
+            -sx * sy * sz + cx * cz,\
+            -sx * cy\
+        },\
+        {\
+            -cx * sy * cz + sx * sz,\
+            cx * sy * sz + sx * cz,\
+            cx * cy\
+        }\
+    };\
+    \
+    float temp_x = matrix[0][0] * *x + matrix[0][1] * *y + matrix[0][2] * *z;\
+    float temp_y = matrix[1][0] * *x + matrix[1][1] * *y + matrix[1][2] * *z;\
+    float temp_z = matrix[2][0] * *x + matrix[2][1] * *y + matrix[2][2] * *z;\
+\
+    *x = temp_x;\
+    *y = temp_y;\
+    *z = temp_z;\
+};\
+\
+__kernel void raster_kernel(__global float* objects, __global float* verticies, __global float* normals, __global float* uvs, __global int* triangles, __global uint* frame_buffer, __global uchar* textures, __global int* texture_info, int object_count, int width, int height, int show_buffer, int frame){ \
     int id_x = get_global_id(0) - width / 2; \
     int id_y = get_global_id(1) - height / 2; \
     \
@@ -54,24 +90,25 @@ __kernel void raster_kernel(__global int* objects, __global float* verticies, __
     \
 \
     for (int object = 0; object < object_count; object++){ \
-        int base = object * 15;\
+        int base = object * 16;\
         \
-        int object_x =   objects[base + 0]; \
-        int object_y =   objects[base + 1]; \
-        int object_z =   objects[base + 2]; \
-        int object_r_x = objects[base + 3]; \
-        int object_r_y = objects[base + 4]; \
-        int object_r_z = objects[base + 5]; \
-        int object_s_x = objects[base + 6]; \
-        int object_s_y = objects[base + 7]; \
-        int object_s_z = objects[base + 8]; \
+        float object_x =   objects[base + 0]; \
+        float object_y =   objects[base + 1]; \
+        float object_z =   objects[base + 2]; \
+        float object_r_x = objects[base + 3]; \
+        float object_r_y = objects[base + 4]; \
+        float object_r_z = objects[base + 5]; \
+        float object_r_w = objects[base + 15]; \
+        float object_s_x = objects[base + 6]; \
+        float object_s_y = objects[base + 7]; \
+        float object_s_z = objects[base + 8]; \
         \
-        int triangle_count = objects[base + 9];\
-        int triangle_index = objects[base + 10];\
-        int vertex_index = objects[base + 11];\
-        int normal_index = objects[base + 12];\
-        int uv_index = objects[base + 13];\
-        int texture_index = objects[base + 14];\
+        int triangle_count = (int)objects[base + 9];\
+        int triangle_index = (int)objects[base + 10];\
+        int vertex_index =   (int)objects[base + 11];\
+        int normal_index =   (int)objects[base + 12];\
+        int uv_index =       (int)objects[base + 13];\
+        int texture_index =  (int)objects[base + 14];\
         \
         for (int triangle = 0; triangle < triangle_count; triangle++){\
             int triangle_base = (triangle + triangle_index) * 9; \
@@ -88,18 +125,38 @@ __kernel void raster_kernel(__global int* objects, __global float* verticies, __
             int i7 = (uv_index + triangles[triangle_base + 7]) * 3;\
             int i8 = (uv_index + triangles[triangle_base + 8]) * 3;\
             \
-            float z0 = verticies[i0 + 2] * object_s_z + object_z;\
-            float x0 = (verticies[i0 + 0] * object_s_x + object_x);\
-            float y0 = (verticies[i0 + 1] * object_s_y + object_y);\
+            float z0 = verticies[i0 + 2];\
+            float x0 = verticies[i0 + 0];\
+            float y0 = verticies[i0 + 1];\
             \
-            float z1 = verticies[i1 + 2] * object_s_z + object_z;\
-            float x1 = (verticies[i1 + 0] * object_s_x + object_x);\
-            float y1 = (verticies[i1 + 1] * object_s_y + object_y);\
+            float z1 = verticies[i1 + 2];\
+            float x1 = verticies[i1 + 0];\
+            float y1 = verticies[i1 + 1];\
             \
-            float z2 = verticies[i2 + 2] * object_s_z + object_z;\
-            float x2 = (verticies[i2 + 0] * object_s_x + object_x);\
-            float y2 = (verticies[i2 + 1] * object_s_y + object_y);\
+            float z2 = verticies[i2 + 2];\
+            float x2 = verticies[i2 + 0];\
+            float y2 = verticies[i2 + 1];\
             \
+            if (object_r_w <= -9999999){\
+                rotate_euler(&x0, &y0, &z0, object_r_x, object_r_y, object_r_z);\
+                rotate_euler(&x1, &y1, &z1, object_r_x, object_r_y, object_r_z);\
+                rotate_euler(&x2, &y2, &z2, object_r_x, object_r_y, object_r_z);\
+            }\
+            else{\
+                rotate_euler(&x0, &y0, &z0, object_r_x, object_r_y, object_r_z);\
+                rotate_euler(&x1, &y1, &z1, object_r_x, object_r_y, object_r_z);\
+                rotate_euler(&x2, &y2, &z2, object_r_x, object_r_y, object_r_z);\
+            }\
+            \
+            z0 = z0 * object_s_z + object_z;\
+            x0 = x0 * object_s_x + object_x;\
+            y0 = y0 * object_s_y + object_y;\
+            z1 = z1 * object_s_z + object_z;\
+            x1 = x1 * object_s_x + object_x;\
+            y1 = y1 * object_s_y + object_y;\
+            z2 = z2 * object_s_z + object_z;\
+            x2 = x2 * object_s_x + object_x;\
+            y2 = y2 * object_s_y + object_y;\
             \
             if (i3 < 0 || i4 < 0 || i5 < 0){\
                 has_normals = 0;\

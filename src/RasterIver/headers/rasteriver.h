@@ -13,13 +13,13 @@ typedef uint32_t RI_uint;
 typedef float* RI_polygons;
 typedef float* RI_verticies;
 typedef int* RI_triangles;
-typedef int* RI_objects;
+typedef float* RI_objects;
 typedef unsigned char* RI_textures;
 
 // the size of each object instance in the objects array
 // xyz + rot(xyz) + scale(xyz) = 9
-// 9 + polygon count + polygon index + vertex index + normal index + UV index + texture index = 15
-#define object_size 15
+// 9 + polygon count + polygon index + vertex index + normal index + UV index + texture index + rotation w = 16
+#define object_size 16
 
 // vertex size
 // the size of each instance of verticies
@@ -37,7 +37,7 @@ typedef unsigned char* RI_textures;
 #define RI_PI 3.14159265359
 
 typedef struct {
-    float x, y, z, r_x, r_y, r_z, s_x, s_y, s_z;
+    float x, y, z, r_x, r_y, r_z, r_w, s_x, s_y, s_z;
     char file_path[40];
     char texture[40];
 } RI_newObject;

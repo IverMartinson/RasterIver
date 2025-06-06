@@ -20,25 +20,27 @@ int main(){
     RI_SetFlag(RI_FLAG_POPULATE_POLYGONS, 0);
     RI_SetFlag(RI_FLAG_BE_MASTER_RENDERER, 1);
     RI_SetFlag(RI_FLAG_SHOW_INFO, 1);
+    RI_SetFlag(RI_FLAG_SHOW_INFO, 1);
     RI_SetFpsCap(120);
 
     if (RI_Init(width, height, "Rasteriver Test") == RI_ERROR){
         return 1;
     }
 
-    RI_newObject object_buffer[7] = {
-        {-200, 0, 300, 0, 0, 0, 100, 100, 100, "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
-        {0, 0, 300, 0, 0, 0, 100, 100, 100, "objects/rotated_cube.obj", "textures/test_texture.png"},
-        {200, 0, 300, 0, 0, 0, 100, 100, 100, "objects/rotated_cube.obj", "textures/cube_texture.png"},
-        {0, -380, 200, 0, 0, 0, 400, 400, 400, "objects/gordon_freeman.obj", "texture.png"},
-        {400, 400, 400, 0, 0, 0, 100, 100, 100, "objects/teapot.obj", "texture.png"},
-        {200, 400, 400, 0, 0, 0, 100, 100, 100, "objects/gourd.obj", "texture.png"},
-        {400, 400, 400, 0, 0, 0, 100, 100, 100, "objects/obj_file.obj", "texture.png"},
+    RI_newObject object_buffer[3] = {
+        {-200, 0, 300,      0, 0.0, 0, -9999999,          100, 100, 100,  "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
+        {0, 0, 300,         0, 0, 0, -9999999,  60, 60, 60,     "objects/test_guy_hd.obj", "textures/test_guy_texture.png"},
+        {200, 0, 300,       0, 0, 0, -9999999,          100, 100, 100,  "objects/rotated_cube.obj", "textures/cube_texture.png"},
     };
 
     RI_objects objects = RI_RequestObjects(object_buffer, 3);
 
     while (RI_IsRunning() == RI_RUNNING){
+        objects[4] +=      0.02;
+        objects[3] +=      0.01;
+        objects[16 + 4] += 0.01;
+        objects[32 + 5] += 0.01;
+
         RI_Tick();
     }
 
