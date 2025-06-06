@@ -244,6 +244,17 @@ __kernel void raster_kernel(__global float* objects, __global float* verticies, 
                     float u_y2 = uvs[i8 + 1];\
                     float u_z2 = uvs[i8 + 2];\
                     \
+                    if (object_r_w <= -9999999){\
+                        rotate_euler(&n_x0, &n_y0, &n_z0, object_r_x, object_r_y, object_r_z);\
+                        rotate_euler(&n_x1, &n_y1, &n_z1, object_r_x, object_r_y, object_r_z);\
+                        rotate_euler(&n_x2, &n_y2, &n_z2, object_r_x, object_r_y, object_r_z);\
+                    }\
+                    else{\
+                        rotate_euler(&n_x0, &n_y0, &n_z0, object_r_x, object_r_y, object_r_z);\
+                        rotate_euler(&n_x1, &n_y1, &n_z1, object_r_x, object_r_y, object_r_z);\
+                        rotate_euler(&n_x2, &n_y2, &n_z2, object_r_x, object_r_y, object_r_z);\
+                    }\
+                    \
                     switch (show_buffer){\
                         case 0:{\
                             double ux = w0 * u_x0 + w1 * u_x1 + w2 * u_x2;\
