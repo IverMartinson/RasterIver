@@ -38,6 +38,6 @@ Rasterizer + Iver = RasterIver
 - [ ] simple lighting using normals
 - [ ] complex lighting using rays for shadows and stuff
 - [ ] polygon clipping by subdividing
-- [ ] flag for using CPU instead of GPU
+- [x] flag for using CPU instead of GPU
 - [ ] actually acurate FPS cap
 - [ ] make a function to return a pointer to the last SDL_event (or copy it doesnt really matter)

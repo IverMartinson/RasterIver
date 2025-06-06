@@ -3,8 +3,8 @@
 #include <time.h>
 #include <stdlib.h>
 
-int width = 800;
-int height = 800;
+int width = 200;
+int height = 200;
 
 int main(){ 
     srand(time(NULL));                                                         
@@ -13,14 +13,13 @@ int main(){
     RI_SetFlag(RI_FLAG_DEBUG_LEVEL, RI_DEBUG_HIGH);
     RI_SetFlag(RI_FLAG_DEBUG_TICK, 0);
     RI_SetFlag(RI_FLAG_DEBUG_FPS, 0);
-    RI_SetFlag(RI_FLAG_SHOW_FPS, 1);
-    RI_SetFlag(RI_FLAG_SHOW_FRAME, 1);
-    RI_SetFlag(RI_FLAG_SHOW_BUFFER, RI_BUFFER_NORMAL);
+    RI_SetFlag(RI_FLAG_SHOW_FPS, 0);
+    RI_SetFlag(RI_FLAG_SHOW_FRAME, 0);
+    RI_SetFlag(RI_FLAG_SHOW_BUFFER, RI_BUFFER_COMPLETE);
     RI_SetFlag(RI_FLAG_CLEAN_POLYGONS, 1);
     RI_SetFlag(RI_FLAG_POPULATE_POLYGONS, 0);
     RI_SetFlag(RI_FLAG_BE_MASTER_RENDERER, 1);
-    RI_SetFlag(RI_FLAG_SHOW_INFO, 1);
-    RI_SetFlag(RI_FLAG_SHOW_INFO, 1);
+    RI_SetFlag(RI_FLAG_SHOW_INFO, 0);
 //    RI_SetFpsCap(120);
 
     if (RI_Init(width, height, "Rasteriver Test") == RI_ERROR){
@@ -28,19 +27,14 @@ int main(){
     }
 
     RI_newObject object_buffer[3] = {
-        {-200, 0, 300,      0, 0.0, 0, -9999999,          100, 100, 100,  "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
+        {0, 0, 300,      0, 0.0, 0, -9999999,          50, 50, 50,  "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
         {0, 0, 300,         0, 0, 0, -9999999,  60, 60, 60,     "objects/test_guy_hd.obj", "textures/test_guy_texture.png"},
         {200, 0, 300,       0, 0, 0, -9999999,          100, 100, 100,  "objects/rotated_cube.obj", "textures/cube_texture.png"},
     };
 
-    RI_objects objects = RI_RequestObjects(object_buffer, 3);
+    RI_objects objects = RI_RequestObjects(object_buffer, 1);
 
     while (RI_IsRunning() == RI_RUNNING){
-        objects[4] +=      0.02;
-        objects[3] +=      0.01;
-        objects[16 + 4] += 0.01;
-        objects[32 + 5] += 0.01;
-
         RI_Tick();
     }
 
