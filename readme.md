@@ -28,7 +28,9 @@ Rasterizer + Iver = RasterIver
 - [ ] optimize object memory usage by not loading object data multiple times when the same object is requested
 - [ ] checks for invalid/nonexistant files
 - [ ] perspective
-- [ ] object transforms (rotation mainly. Might add fancy stuff like sheer)
+- [x] rotation
+- [ ] sheer transform (and other fancy ones?)
 - [ ] simple lighting using normals
 - [ ] complex lighting using rays for shadows and stuff
 - [ ] polygon clipping by subdividing
+- [ ] flag for using CPU instead of GPU
