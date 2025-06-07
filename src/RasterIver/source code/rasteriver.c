@@ -282,16 +282,16 @@ RI_polygons RI_RequestPolygons(int RI_PolygonsToRequest){
         return (float*)RI_ERROR;
     }
     
-    for (int p = 0; p < polygon_count * 9; p += 3){     
+    for (int i_polygon = 0; i_polygon < polygon_count * 9; i_polygon += 3){     
         if (clean_polygons){
-            polygons[p] = INFINITY;
-            polygons[p + 1] = INFINITY;
-            polygons[p + 2] = INFINITY;
+            polygons[i_polygon] = INFINITY;
+            polygons[i_polygon + 1] = INFINITY;
+            polygons[i_polygon + 2] = INFINITY;
         }
         else if (populate_polygons){
-            polygons[p] = rand() % width;
-            polygons[p + 1] = rand() % height;
-            polygons[p + 2] = rand() % ((width + height) / 2);
+            polygons[i_polygon] = rand() % width;
+            polygons[i_polygon + 1] = rand() % height;
+            polygons[i_polygon + 2] = rand() % ((width + height) / 2);
         }
     }
     
@@ -549,10 +549,10 @@ RI_objects RI_RequestObjects(RI_newObject *RI_ObjectBuffer, int RI_ObjectsToRequ
     char **file_names = malloc(RI_ObjectsToRequest * sizeof(char *));
     char **texture_names = malloc(RI_ObjectsToRequest * sizeof(char *));
 
-    for (int object = 0; object < object_count; object++){
-        file_names[object] = RI_ObjectBuffer[object].file_path;
-        debug(RI_DEBUG_HIGH, "file_names[object] is %s", file_names[object]);
-        texture_names[object] = "blahblahblah placeholder (this is some salt)";
+    for (int i_object = 0; i_object < object_count; i_object++){
+        file_names[i_object] = RI_ObjectBuffer[i_object].file_path;
+        debug(RI_DEBUG_HIGH, "file_names[object] is %s", file_names[i_object]);
+        texture_names[i_object] = "blahblahblah placeholder (this is some salt)";
     }
 
     malloc_objects(RI_ObjectsToRequest, file_names);
@@ -569,10 +569,10 @@ RI_objects RI_RequestObjects(RI_newObject *RI_ObjectBuffer, int RI_ObjectsToRequ
 
     textures_size = 0;
 
-    for (int object = 0; object < object_count; object++){
-        RI_newObject *loading_object_current_object = &RI_ObjectBuffer[object];
+    for (int i_object = 0; i_object < object_count; i_object++){
+        RI_newObject *loading_object_current_object = &RI_ObjectBuffer[i_object];
         
-        int base = object * object_size;
+        int base = i_object * object_size;
         objects[base + 10] = loading_object_current_faces_count; // triangle offset
         objects[base + 11] = loading_object_current_verticies_count; // vertex offset
         objects[base + 12] = loading_object_current_normals_count; // normal offset
@@ -580,11 +580,11 @@ RI_objects RI_RequestObjects(RI_newObject *RI_ObjectBuffer, int RI_ObjectsToRequ
 
         is_this_texture_name_already_in_the_texture_names_array = 0;
 
-        for (int object_texture = 0; object_texture < object_count; object_texture++){
-            if (strcmp(texture_names[object_texture], loading_object_current_object->texture) == 0){
-                debug(RI_DEBUG_HIGH, "Not Reloading Texture \"%s\" (texture #%d) (compared %s to %s)", loading_object_current_object->texture, object_texture, texture_names[object_texture], loading_object_current_object->texture);
+        for (int i_object_texture = 0; i_object_texture < object_count; i_object_texture++){
+            if (strcmp(texture_names[i_object_texture], loading_object_current_object->texture) == 0){
+                debug(RI_DEBUG_HIGH, "Not Reloading Texture \"%s\" (texture #%d) (compared %s to %s)", loading_object_current_object->texture, i_object_texture, texture_names[i_object_texture], loading_object_current_object->texture);
 
-                objects[base + 14] = object_texture; // texture offset
+                objects[base + 14] = i_object_texture; // texture offset
                 is_this_texture_name_already_in_the_texture_names_array = 1;
                 break;
             }
@@ -600,7 +600,7 @@ RI_objects RI_RequestObjects(RI_newObject *RI_ObjectBuffer, int RI_ObjectsToRequ
             textures_size += texture_width * texture_height;
         }
 
-        load_object((char *)loading_object_current_object->file_path, object, base);
+        load_object((char *)loading_object_current_object->file_path, i_object, base);
         
         objects[base + 0] = loading_object_current_object->x; // x
         objects[base + 1] = loading_object_current_object->y; // y
@@ -884,8 +884,8 @@ for (int id_x = -width / 2; id_x < width / 2; id_x++){
     float w2;
     
 
-    for (int object = 0; object < object_count; object++){ 
-        int base = object * 16;
+    for (int i_object = 0; i_object < object_count; i_object++){ 
+        int base = i_object * 16;
         
         float object_x =   objects[base + 0]; 
         float object_y =   objects[base + 1]; 
@@ -905,8 +905,8 @@ for (int id_x = -width / 2; id_x < width / 2; id_x++){
         int uv_index =       (int)objects[base + 13];
         int texture_index =  (int)objects[base + 14];
         
-        for (int triangle = 0; triangle < triangle_count; triangle++){
-            int triangle_base = (triangle + triangle_index) * 9; 
+        for (int i_triangle = 0; i_triangle < triangle_count; i_triangle++){
+            int triangle_base = (i_triangle + triangle_index) * 9; 
 
             int i0 = (vertex_index + triangles[triangle_base + 0]) * 3;
             int i1 = (vertex_index + triangles[triangle_base + 1]) * 3;
@@ -1226,9 +1226,9 @@ for (int id_x = -width / 2; id_x < width / 2; id_x++){
             }
             
             if (show_buffer == RI_BUFFER_Z){
-                for (int p = 2; p < polygon_count * 9; p+=3){
-                    if (polygons[p] > highest_z){
-                        highest_z = polygons[p];
+                for (int i_polygon = 2; i_polygon < polygon_count * 9; i_polygon+=3){
+                    if (polygons[i_polygon] > highest_z){
+                        highest_z = polygons[i_polygon];
                     }
                 }
                 
