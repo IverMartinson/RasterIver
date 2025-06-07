@@ -1423,7 +1423,7 @@ for (int id_x = -width / 2; id_x < width / 2; id_x++){
             SDL_Delay((Uint32)((target_frame_time - delta_time) * 1000.0));
         }
         
-        if (show_fps || debug_fps){
+        if (show_fps || debug_fps || fps_cap > 0){
             elapsed_ticks = SDL_GetPerformanceCounter() - start_time;
             delta_time = elapsed_ticks / (double)SDL_GetPerformanceFrequency();
             fps = 1.0 / delta_time;
