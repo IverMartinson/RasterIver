@@ -42,3 +42,4 @@ Rasterizer + Iver = RasterIver
 - [ ] actually acurate FPS cap
 - [ ] make a function to return a pointer to the last SDL_event (or copy it doesnt really matter)
 - [ ] make an option for multiple cameras, or defining a camera. I want to be able to write it to a "texture" in menory and have objects use it as their texture
+- [ ] add materials/shaders that define unlit, lit, textures, and whatever else. Maybe have shader kernels? I have no idea how you would implement that but it sounds cool
