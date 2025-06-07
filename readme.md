@@ -66,3 +66,4 @@ Rasterizer + Iver = RasterIver
 - [ ] object higherarchies (maybe not. This is moving towards game engine territory. Once I get this into a working release, I'll start working on a game engine)
 - [ ] deltaTime variable or function. (function that returns pointer? function that returns the last deltatime value?)
 - [ ] add a function to set a custom debug prefix
+- [ ] add multiple texture support for objects
