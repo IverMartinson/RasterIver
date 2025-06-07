@@ -44,4 +44,4 @@ Rasterizer + Iver = RasterIver
 - [ ] make an option for multiple cameras, or defining a camera. I want to be able to write it to a "texture" in menory and have objects use it as their texture
 - [ ] add materials/shaders that define unlit, lit, textures, and whatever else. Maybe have shader kernels? I have no idea how you would implement that but it sounds cool
 - [ ] make the returned array from RI_RequestObjects easier to write to I.E., not a 1D array. Maybe have it so you could do objects[obj #].x_position or something like that. I wonder if I could implement functions with that, too, so you could do objects.get_first_element()
-- [ ] object higherarchies (aybe not. This is moving towards game engine territory. Once I get this into a working release, I'll start working on a game engine)
+- [ ] object higherarchies (maybe not. This is moving towards game engine territory. Once I get this into a working release, I'll start working on a game engine)
