@@ -1010,8 +1010,9 @@ for (int id_x = -width / 2; id_x < width / 2; id_x++){
                 w1 = ((y2 - y0) * (id_x - x0) + (x0 - x2) * (id_y - y0)) / denominator; 
                 w2 = 1.0 - w0 - w1; 
                 
-                float z = w0 * z0 + w1 * z1 + w2 * z2; 
-                
+                float w_over_z = (w0 / z0 + w1 / z1 + w2 / z2); 
+                float z = 1.0 / w_over_z;
+
                 if (z < z_pixel){ 
                     z_pixel = z; 
                     
@@ -1052,8 +1053,8 @@ for (int id_x = -width / 2; id_x < width / 2; id_x++){
                     
                     switch (show_buffer){
                         case 0:{
-                            double ux = w0 * u_x0 + w1 * u_x1 + w2 * u_x2;
-                            double uy = w0 * u_y0 + w1 * u_y1 + w2 * u_y2;
+                            double ux = (w0 * (u_x0 / z0) + w1 * (u_x1 / z1) + w2 * (u_x2 / z2)) / w_over_z;
+                            double uy = (w0 * (u_y0 / z0) + w1 * (u_y1 / z1) + w2 * (u_y2 / z2)) / w_over_z;
                             
                             int texture_width = texture_info[texture_index * 3];
                             int texture_height = texture_info[texture_index * 3 + 1];
