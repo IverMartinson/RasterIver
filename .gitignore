@@ -1,1 +1,10 @@
-push.sh
+push
+dbg
+run
+stat
+todo
+readme
+Makefile
+build
+.gitignore
+.gitattributes
