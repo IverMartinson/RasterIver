@@ -67,3 +67,4 @@ Rasterizer + Iver = RasterIver
 - [ ] deltaTime variable or function. (function that returns pointer? function that returns the last deltatime value?)
 - [ ] add a function to set a custom debug prefix
 - [ ] add multiple texture support for objects
+- [ ] fix bug where viewing FPS count dropps FPS by ~3
