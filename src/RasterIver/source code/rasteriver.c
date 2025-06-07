@@ -1419,8 +1419,15 @@ for (int id_x = -width / 2; id_x < width / 2; id_x++){
             delta_time = elapsed_ticks / (double)SDL_GetPerformanceFrequency();
             
             double target_frame_time = 1.0 / fps_cap;
-            
-            SDL_Delay((Uint32)((target_frame_time - delta_time) * 1000.0));
+
+            Uint32 delay_time = (Uint32)((target_frame_time - delta_time) * 1000.0);
+                
+            if (delay_time > 1000){
+                debug_tick_func(RI_DEBUG_MEDIUM, "SDL_Delay is over 1000ms");
+            }
+            else{
+                SDL_Delay(delay_time);
+            }
         }
         
         if (show_fps || debug_fps || fps_cap > 0){
