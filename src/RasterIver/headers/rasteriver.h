@@ -93,16 +93,43 @@ typedef enum {
     RI_FALSE   = 0,
 } RI_value_enum;
 
+// Initializes OpenCL, SDL2, and anything else Rasteriver needs to function
 RI_result   RI_Init();
+
+// Safely stops Rasteriver
 RI_result   RI_Stop();
+
+// Checks if Rasteriver is still running and returns if it is
 RI_result   RI_IsRunning();
+
+// Asks Rasteriver to allocate space for a number of polygons
+// Returns a pointer to the polygons array
 RI_polygons RI_RequestPolygons(int RI_PolygonsToRequest);
+
+// Asks Rasteriver to allocate and load objects
+// Returns a pointer to the objects array
 RI_objects  RI_RequestObjects(RI_newObject *RI_ObjectBuffer, int RI_ObjectsToRequest);
+
+// Ticks Rasteriver
 RI_result   RI_Tick();
+
+// Sets the background color
 RI_result   RI_SetBackground(RI_uint RI_BackgroundColor);
+
+// Depricated
+// Shows the Z buffer
 RI_result   RI_ShowZBuffer(int RI_ShowZBufferFlag);
+
+// Sets a flag
 RI_result   RI_SetFlag(RI_flag RI_FlagToSet, int RI_Value);
+
+// Sets the FPS limit
 RI_result   RI_SetFpsCap(int RI_FpsCap);
+
+// Depricated
+// Returns a list of Rasteriver flags
 RI_result   RI_ListFlags();
+
+
 
 #endif // RASTERIVER_H
