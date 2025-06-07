@@ -870,7 +870,7 @@ RI_result RI_Tick(){
         if (use_cpu){
 for (int id_y = -height / 2; id_y < height / 2; id_y++){
 for (int id_x = -width / 2; id_x < width / 2; id_x++){
-            float z_pixel = 0; 
+            float z_pixel = INFINITY; 
     unsigned int frame_pixel = 0x22222222; 
     
     float highest_z = 800;
@@ -943,15 +943,15 @@ for (int id_x = -width / 2; id_x < width / 2; id_x++){
                 rotate_euler(&x2, &y2, &z2, object_r_x, object_r_y, object_r_z);
             }
             
-            z0 = z0 * object_s_z + object_z;
-            x0 = x0 * object_s_x + object_x;
-            y0 = y0 * object_s_y + object_y;
-            z1 = z1 * object_s_z + object_z;
-            x1 = x1 * object_s_x + object_x;
-            y1 = y1 * object_s_y + object_y;
-            z2 = z2 * object_s_z + object_z;
-            x2 = x2 * object_s_x + object_x;
-            y2 = y2 * object_s_y + object_y;
+            z0 = (z0 * object_s_z + object_z);
+            x0 = (x0 * object_s_x + object_x) / z0 * width;
+            y0 = (y0 * object_s_y + object_y) / z0 * height;
+            z1 = (z1 * object_s_z + object_z);
+            x1 = (x1 * object_s_x + object_x) / z1 * width;
+            y1 = (y1 * object_s_y + object_y) / z1 * height;
+            z2 = (z2 * object_s_z + object_z);
+            x2 = (x2 * object_s_x + object_x) / z2 * width;
+            y2 = (y2 * object_s_y + object_y) / z2 * height;
             
             if (i3 < 0 || i4 < 0 || i5 < 0){
                 has_normals = 0;
@@ -1003,7 +1003,7 @@ for (int id_x = -width / 2; id_x < width / 2; id_x++){
                 
                 float denominator = (y1 - y2) * (x0 - x2) + (x2 - x1) * (y0 - y2); 
                 
-                if (denominator <= 0) { 
+                if (denominator >= 0) { 
                     continue; 
                 } 
                 w0 = ((y1 - y2) * (id_x - x2) + (x2 - x1) * (id_y - y2)) / denominator; 
@@ -1012,7 +1012,7 @@ for (int id_x = -width / 2; id_x < width / 2; id_x++){
                 
                 float z = w0 * z0 + w1 * z1 + w2 * z2; 
                 
-                if (z > z_pixel){ 
+                if (z < z_pixel){ 
                     z_pixel = z; 
                     
                     float n_x0 = normals[i3 + 0];
