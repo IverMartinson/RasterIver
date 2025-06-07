@@ -1084,9 +1084,9 @@ for (int id_x = -width / 2; id_x < width / 2; id_x++){
                             
                             break;}
                         case 2:{
-                            float nx = w0 * n_x0 + w1 * n_x1 + w2 * n_x2;
-                            float ny = w0 * n_y0 + w1 * n_y1 + w2 * n_y2;
-                            float nz = w0 * n_z0 + w1 * n_z1 + w2 * n_z2;
+                            float nx = (w0 * (n_x0 / z0) + w1 * (n_x1 / z1) + w2 * (n_x2 / z2)) / w_over_z;
+                            float ny = (w0 * (n_y0 / z0) + w1 * (n_y1 / z1) + w2 * (n_y2 / z2)) / w_over_z;
+                            float nz = (w0 * (n_z0 / z0) + w1 * (n_z1 / z1) + w2 * (n_z2 / z2)) / w_over_z;
                             
                             nx = clamppp_float((nx * 0.5f + 0.5f) * 255.0f, 0.0f, 255.0f);
                             ny = clamppp_float((ny * 0.5f + 0.5f) * 255.0f, 0.0f, 255.0f);
