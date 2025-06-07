@@ -1204,7 +1204,8 @@ for (int id_x = -width / 2; id_x < width / 2; id_x++){
             erchk(clFinish(queue));
             debug_tick_func(1, "Cleared Frame Buffer");
 
-            size_t local_size_2d[2] = {sqrt(local_size), sqrt(local_size)};
+            // size_t local_size_2d[2] = {sqrt(local_size), sqrt(local_size)};
+            size_t local_size_2d[2] = {16, 16};
 
             erchk(clEnqueueNDRangeKernel(queue, compiled_kernel_master, 2, NULL, size_2d, local_size_2d, 0, NULL, NULL));
             erchk(clFinish(queue));
