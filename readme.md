@@ -6,7 +6,7 @@
 #### RasterIver?
 Rasterizer + Iver = RasterIver
 
-### Features
+## Features
 (todo: write features)
 
 ## RI_FLAG List
