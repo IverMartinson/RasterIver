@@ -1430,7 +1430,7 @@ for (int id_x = -width / 2; id_x < width / 2; id_x++){
         }
         
         if (debug_fps){
-            debug_tick_func(0, "FPS: %lf (%d polygons, %d pixels)", fps, polygon_count, width * height);
+            debug(0, "FPS: %lf (%d polygons, %d pixels)", fps, polygon_count, width * height);
         }
 
         debug_tick_func(1, "Ticked");
