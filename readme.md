@@ -5,7 +5,26 @@
 
 #### RasterIver?
 Rasterizer + Iver = RasterIver
-### Requirements
+
+### Features
+(todo: write features)
+
+## RI_FLAG List
+- `RI_FLAG_DEBUG` Turns debugging on or off
+- `RI_FLAG_DEBUG_LEVEL` Indepth-ness of debugging 
+- `RI_FLAG_SHOW_BUFFER` The "buffer" to render
+- `RI_FLAG_SHOW_FPS` Shows the FPS
+- `RI_FLAG_DEBUG_FPS` Prints FPS in the console
+- `RI_FLAG_CLEAN_POLYGONS` Clear the polygon array after RI_RequestPolyons is called
+- `RI_FLAG_POPULATE_POLYGONS` Sets random values in the polygon array
+- `RI_FLAG_BE_MASTER_RENDERER` Whether you want to use objects or to have direct access to the polygon array
+- `RI_FLAG_SHOW_FRAME` Shows the current frame #
+- `RI_FLAG_DEBUG_FRAME` Prints the current frame # in the console
+- `RI_FLAG_SHOW_INFO` Shows object info
+- `RI_FLAG_DEBUG_TICK` Turns debugging on or off for anything that would fill up the console when constantly ticking
+- `RI_FLAG_USE_CPU` Use the CPU over the GPU
+
+## Requirements
 #### To Run
 - SDL2
 - SDL2 TTF
@@ -46,3 +65,4 @@ Rasterizer + Iver = RasterIver
 - [ ] make the returned array from RI_RequestObjects easier to write to I.E., not a 1D array. Maybe have it so you could do objects[obj #].x_position or something like that. I wonder if I could implement functions with that, too, so you could do objects.get_first_element()
 - [ ] object higherarchies (maybe not. This is moving towards game engine territory. Once I get this into a working release, I'll start working on a game engine)
 - [ ] deltaTime variable or function. (function that returns pointer? function that returns the last deltatime value?)
+- [ ] add a function to set a custom debug prefix
