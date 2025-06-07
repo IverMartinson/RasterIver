@@ -215,7 +215,8 @@ __kernel void raster_kernel(__global float* objects, __global float* verticies, 
                 w1 = ((y2 - y0) * (id_x - x0) + (x0 - x2) * (id_y - y0)) / denominator; \
                 w2 = 1.0 - w0 - w1; \
                 \
-                float z = w0 * z0 + w1 * z1 + w2 * z2; \
+                float w_over_z = (w0 / z0 + w1 / z1 + w2 / z2); \
+                float z = 1.0 / w_over_z; \
                 \
                 if (z < z_pixel){ \
                     z_pixel = z; \
@@ -257,8 +258,8 @@ __kernel void raster_kernel(__global float* objects, __global float* verticies, 
                     \
                     switch (show_buffer){\
                         case 0:{\
-                            double ux = w0 * u_x0 + w1 * u_x1 + w2 * u_x2;\
-                            double uy = w0 * u_y0 + w1 * u_y1 + w2 * u_y2;\
+                            double ux = (w0 * (u_x0 / z0) + w1 * (u_x1 / z1) + w2 * (u_x2 / z2)) / w_over_z;\
+                            double uy = (w0 * (u_y0 / z0) + w1 * (u_y1 / z1) + w2 * (u_y2 / z2)) / w_over_z;\
                             \
                             int texture_width = texture_info[texture_index * 3];\
                             int texture_height = texture_info[texture_index * 3 + 1];\
@@ -288,9 +289,9 @@ __kernel void raster_kernel(__global float* objects, __global float* verticies, 
                             \
                             break;}\
                         case 2:{\
-                            float nx = w0 * n_x0 + w1 * n_x1 + w2 * n_x2;\
-                            float ny = w0 * n_y0 + w1 * n_y1 + w2 * n_y2;\
-                            float nz = w0 * n_z0 + w1 * n_z1 + w2 * n_z2;\
+                            float nx = (w0 * (n_x0 / z0) + w1 * (n_x1 / z1) + w2 * (n_x2 / z2)) / w_over_z;\
+                            float ny = (w0 * (n_y0 / z0) + w1 * (n_y1 / z1) + w2 * (n_y2 / z2)) / w_over_z;\
+                            float nz = (w0 * (n_z0 / z0) + w1 * (n_z1 / z1) + w2 * (n_z2 / z2)) / w_over_z;\
                             \
                             nx = clamp((nx * 0.5f + 0.5f) * 255.0f, 0.0f, 255.0f);\
                             ny = clamp((ny * 0.5f + 0.5f) * 255.0f, 0.0f, 255.0f);\
