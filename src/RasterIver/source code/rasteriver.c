@@ -1207,7 +1207,7 @@ for (int id_x = -width / 2; id_x < width / 2; id_x++){
             // size_t local_size_2d[2] = {sqrt(local_size), sqrt(local_size)};
             size_t local_size_2d[2] = {16, 16};
 
-            erchk(clEnqueueNDRangeKernel(queue, compiled_kernel_master, 2, NULL, size_2d, local_size_2d, 0, NULL, NULL));
+            erchk(clEnqueueNDRangeKernel(queue, compiled_kernel_master, 2, NULL, size_2d, NULL, 0, NULL, NULL));
             erchk(clFinish(queue));
 
             erchk(clEnqueueReadBuffer(queue, output_memory_buffer, CL_TRUE, 0, sizeof(RI_uint) * width * height, frame_buffer, 0, NULL, NULL));
