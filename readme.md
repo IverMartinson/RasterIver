@@ -59,7 +59,6 @@ Rasterizer + Iver = RasterIver
 - [ ] polygon clipping by subdividing
 - [x] flag for using CPU instead of GPU
 - [ ] actually acurate FPS cap
-- [ ] make a function to return a pointer to the last SDL_event (or copy it doesnt really matter)
 - [ ] make an option for multiple cameras, or defining a camera. I want to be able to write it to a "texture" in menory and have objects use it as their texture
 - [ ] add shaders. Maybe have shader kernels? I have no idea how you would implement that but it sounds cool
 - [ ] make the returned array from RI_RequestObjects easier to write to I.E., not a 1D array. Maybe have it so you could do objects[obj #].x_position or something like that. I wonder if I could implement functions with that, too, so you could do objects.get_first_element()
@@ -67,7 +66,8 @@ Rasterizer + Iver = RasterIver
 - [ ] deltaTime variable or function. (function that returns pointer? function that returns the last deltatime value?)
 - [ ] make a function to set a custom debug prefix
 - [ ] add multiple texture support for objects
-- [ ] add support for normal/bump/height/displacement maps
+- [ ] add support for normal maps
+- [ ] add support for bump/height/displacement maps
 - [ ] add support for transparent textures
 - [ ] allow objects to have no texture
 - [ ] make checks for objects trying to have a texture, but no UV coords (generate them?)
