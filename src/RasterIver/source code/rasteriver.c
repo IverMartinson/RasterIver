@@ -1,5 +1,4 @@
 #include <stdlib.h>
-#include <SDL2/SDL.h>
 #include <math.h>
 #include <time.h>
 #include <CL/cl.h>
@@ -43,6 +42,7 @@ int show_frame = 0;
 int show_info = 0;
 int debug_tick = 0;
 int use_cpu = 0;
+int handle_events = 1;
 
 Uint64 start_time;
 double frame_time_ms;
@@ -53,6 +53,8 @@ int fps_cap = -1;
 // ----- Internal Variables
 
 // ----- Rendering Vars
+SDL_Event event;
+
 SDL_Window *window;
 SDL_Renderer *renderer;
 SDL_Texture *texture;
@@ -237,6 +239,10 @@ RI_result RI_IsRunning()
     }
 }
 
+SDL_Event RI_GetLastSDLEvent(){
+    return event;
+}
+
 RI_result RI_ListFlags(){
     printf("RI_FLAG_DEBUG: Turns debugging on or off\n");
     printf("RI_FLAG_DEBUG_VERBOSE: If debugging and verbose is on, print extra data\n");
@@ -307,6 +313,10 @@ RI_result RI_SetFlag(RI_flag RI_FlagToSet, int RI_Value){
         
     case RI_FLAG_USE_CPU:
         use_cpu = RI_Value;
+        break;
+
+    case RI_FLAG_HANDLE_SDL_EVENTS:
+        handle_events = RI_Value;
         break;
 
     default:
@@ -1357,13 +1367,14 @@ for (int id_x = -width / 2; id_x < width / 2; id_x++){
             debug_tick_func(1, "Read Frame Buffer");
         }
 
-        SDL_Event event;
-        while (SDL_PollEvent(&event))
-        {
-            switch (event.type)
+        if (handle_events){
+            while (SDL_PollEvent(&event))
             {
-            case SDL_QUIT:
-                running = 0;
+                switch (event.type)
+                {
+                case SDL_QUIT:
+                    running = 0;
+                }
             }
         }
 
