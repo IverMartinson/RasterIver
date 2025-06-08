@@ -132,7 +132,8 @@ RI_result   RI_SetFpsCap(int RI_FpsCap);
 // Returns a list of Rasteriver flags
 RI_result   RI_ListFlags();
 
-// Returns the last SDL_Event
-SDL_Event RI_GetLastSDLEvent();
+// Sets the prefix when debugging
+// Default is [RASTERIVER] 
+RI_result RI_SetDebugPrefix(char *RI_Prefix);
 
 #endif // RASTERIVER_H
