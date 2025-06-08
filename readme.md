@@ -49,7 +49,7 @@ Rasterizer + Iver = RasterIver
 - [x] add descriptions to RI functions
 - [ ] make a function call stack to review where errors happen or just debug stuff
 - [ ] optimize object memory usage by not loading object data multiple times when the same object is requested
-- [ ] add checks for invalid/nonexistant files (files like object files & texture files)
+- [x] add checks for invalid/nonexistant files (files like object files & texture files)
 - [x] perspective
 - [x] euler rotation
 - [ ] quaternion rotation
