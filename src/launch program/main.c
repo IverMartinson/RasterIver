@@ -29,14 +29,14 @@ int main(){
 
     RI_newObject object_buffer[6] = {
         {-300, 0, 1000,       0, 0, 0, -9999999,          100, 100, 100,  "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
+        {0, 0, 1000,         0, 0, 0, -9999999,  100, 100, 100,     "objects/test_guy_hd.obj", "textures/test_guy_texture.png"},
+        {100, 0, 1000,       0, 0, 0, -9999999,          100, 100, 100,  "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
+        {300, 0, 1000,       0, 0, 0, -9999999,          100, 100, 100,  "objects/test_guy_hd.obj", "textures/test_guy_texture.png"},
         {300, 0, 1000,       0, 0, 0, -9999999,          100, 100, 100,  "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
-        {300, 0, 1000,       0, 0, 0, -9999999,          100, 100, 100,  "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
-        {300, 0, 1000,       0, 0, 0, -9999999,          100, 100, 100,  "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
-        {0, 0, 15,         0, 0, 0, -9999999,  1, 1, 1,     "objects/test_guy_hd.obj", "textures/test_guy_texture.png"},
         {0, 0, 300,      0, 0.0, 0, -9999999,          50, 50, 50,  "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
     };
 
-    RI_objects objects = RI_RequestObjects(object_buffer, 1);
+    RI_objects objects = RI_RequestObjects(object_buffer, 4);
 
     while (RI_IsRunning() == RI_RUNNING){
         RI_Tick();
