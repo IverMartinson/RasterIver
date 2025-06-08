@@ -65,6 +65,9 @@ Rasterizer + Iver = RasterIver
 - [ ] make the returned array from RI_RequestObjects easier to write to I.E., not a 1D array. Maybe have it so you could do objects[obj #].x_position or something like that. I wonder if I could implement functions with that, too, so you could do objects.get_first_element()
 - [ ] object higherarchies (maybe not. This is moving towards game engine territory. Once I get this into a working release, I'll start working on a game engine)
 - [ ] deltaTime variable or function. (function that returns pointer? function that returns the last deltatime value?)
-- [ ] add a function to set a custom debug prefix
+- [ ] make a function to set a custom debug prefix
 - [ ] add multiple texture support for objects
 - [ ] add support for normal/bump/height/displacement maps
+- [ ] add support for transparent textures
+- [ ] allow objects to have no texture
+- [ ] make checks for objects trying to have a texture, but no UV coords (generate them?)
