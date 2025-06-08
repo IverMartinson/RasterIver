@@ -114,7 +114,7 @@ RI_result debug(int verbose, char *string, ...){
     va_list args;
     va_start(args, string);
 
-    char prefix[100] = "[RasterIver] ";
+    char prefix[500] = "[RasterIver] ";
 
     strcat(prefix, string);
 
@@ -399,39 +399,91 @@ void slice(char *string, char *result, int start, int end){
     strncpy(result, string + start, end - start);
 }
 
-void malloc_objects(int objects, char **file_names){
+int malloc_objects(int objects, char **file_names, char **allocated_file_names, int *object_file_offsets){
     debug(RI_DEBUG_HIGH, "Called malloc_objects");
 
+    int loaded_object_count = 0; 
+
+    int malloc_face_count = 0;
+    int malloc_vertex_count = 0;
+    int malloc_normal_count = 0;
+    int malloc_uv_count = 0;    
+
+    int is_this_object_file_already_in_the_object_files_array = 0;
+
     for (int i = 0; i < objects; i++){
-        debug(RI_DEBUG_HIGH, "file_names[i] is %s", file_names[i]);
+        is_this_object_file_already_in_the_object_files_array = 0;
 
-        FILE *file = fopen(file_names[i], "r");
+        for (int i_object_file = 0; i_object_file < object_count; i_object_file++){
+            if (strcmp(allocated_file_names[i_object_file], file_names[i]) == 0){
+                debug(RI_DEBUG_HIGH, "Not Reloading Object \"%s\" (object #%d) (compared %s to %s)", file_names[i], i_object_file, allocated_file_names[i_object_file], file_names[i]);
 
-        if(file == NULL){
-            debug(RI_DEBUG_LOW, "Error Opening Object File \"%s\"", file_names[i]);
+                is_this_object_file_already_in_the_object_files_array = 1;
+
+                object_file_offsets[i * 5 + 0] = object_file_offsets[i_object_file * 5 + 0];
+                object_file_offsets[i * 5 + 1] = object_file_offsets[i_object_file * 5 + 1];
+                object_file_offsets[i * 5 + 2] = object_file_offsets[i_object_file * 5 + 2];
+                object_file_offsets[i * 5 + 3] = object_file_offsets[i_object_file * 5 + 3];
+                object_file_offsets[i * 5 + 4] = -object_file_offsets[i_object_file * 5 + 4];
+
+                break;
+            }
+        }    
+
+        if (!is_this_object_file_already_in_the_object_files_array){
+            object_file_offsets[i * 5 + 0] = malloc_face_count;
+            object_file_offsets[i * 5 + 1] = malloc_vertex_count;
+            object_file_offsets[i * 5 + 2] = malloc_normal_count;
+            object_file_offsets[i * 5 + 3] = malloc_uv_count;
             
-            file = fopen("objects/error_object.obj", "r");
+            allocated_file_names[loaded_object_count] = file_names[i];
+            loaded_object_count++;
+
+            debug(RI_DEBUG_HIGH, "file_names[i] is %s", file_names[i]);
+
+            FILE *file = fopen(file_names[i], "r");
+
+            if(file == NULL){
+                debug(RI_DEBUG_LOW, "Error Opening Object File \"%s\"", file_names[i]);
+                
+                file = fopen("objects/error_object.obj", "r");
+            }
+
+            char line[256];
+
+            int tri_count = 0;
+
+            while (fgets(line, sizeof(line), file)) {
+                if (line[0] == 'f' && line[1] == ' ') {
+                    malloc_face_count++;
+                    tri_count++;
+                } 
+                else if (line[0] == 'v' && line[1] == ' ') {
+                    malloc_vertex_count++;
+                } 
+                else if (line[0] == 'v' && line[1] == 'n') {
+                    malloc_normal_count++;
+                } 
+                else if (line[0] == 'v' && line[1] == 't') {
+                    malloc_uv_count++;
+                } 
+            }
+
+            object_file_offsets[i * 5 + 4] = tri_count;
+            
+            fclose(file);
         }
 
-        char line[256];
-
-        while (fgets(line, sizeof(line), file)) {
-            if (line[0] == 'f' && line[1] == ' ') {
-                face_count++;
-            } 
-            else if (line[0] == 'v' && line[1] == ' ') {
-                vertex_count++;
-            } 
-            else if (line[0] == 'v' && line[1] == 'n') {
-                normal_count++;
-            } 
-            else if (line[0] == 'v' && line[1] == 't') {
-                uv_count++;
-            } 
-        }
-
-        fclose(file);
+            object_file_offsets[i * 5 + 0] = 0;
+            object_file_offsets[i * 5 + 1] = 0;
+            object_file_offsets[i * 5 + 2] = 0;
+            object_file_offsets[i * 5 + 3] = 0;
     }
+
+    face_count = malloc_face_count;
+    vertex_count = malloc_vertex_count;
+    normal_count = malloc_normal_count;
+    uv_count = malloc_uv_count;
 
     if(verticies != NULL){
         free(verticies);
@@ -448,6 +500,11 @@ void malloc_objects(int objects, char **file_names){
     if(triangles != NULL){
         free(triangles);
     } 
+
+    debug(RI_DEBUG_MEDIUM, "Allocated Vertecies: %d", vertex_count);
+    debug(RI_DEBUG_MEDIUM, "Allocated Normals: %d", normal_count);
+    debug(RI_DEBUG_MEDIUM, "Allocated UVs: %d", uv_count);
+    debug(RI_DEBUG_MEDIUM, "Allocated Triangles: %d", face_count);
 
     if (vertex_count > 0){
         verticies = malloc(sizeof(RI_verticies) * vertex_count * vs);
@@ -467,7 +524,7 @@ void malloc_objects(int objects, char **file_names){
 
     debug(RI_DEBUG_HIGH, "Left malloc_objects");
 
-    return;
+    return loaded_object_count;
 }
 
 load_object_return load_object(char *object_path, int object_offset, int base){
@@ -584,11 +641,6 @@ load_object_return load_object(char *object_path, int object_offset, int base){
 
     objects[base + 9] = ct; // triangle count
 
-    loading_object_current_faces_count += ct;
-    loading_object_current_verticies_count += cv;
-    loading_object_current_normals_count += cn;
-    loading_object_current_uvs_count += cu;
-
     fclose(file);
 
     load_object_return return_values = {
@@ -621,22 +673,21 @@ RI_objects RI_RequestObjects(RI_newObject *RI_ObjectBuffer, int RI_ObjectsToRequ
     }
 
     char **file_names = malloc(RI_ObjectsToRequest * sizeof(char *));
+    char **allocated_file_names = malloc(RI_ObjectsToRequest * sizeof(char *));
     char **texture_names = malloc(RI_ObjectsToRequest * sizeof(char *));
+    int *object_file_offsets = malloc(RI_ObjectsToRequest * sizeof(int) * 5);
 
     for (int i_object = 0; i_object < object_count; i_object++){
         file_names[i_object] = RI_ObjectBuffer[i_object].file_path;
+        texture_names[i_object] = "blahblahblah placeholder (this is some salt)";
         debug(RI_DEBUG_HIGH, "file_names[object] is %s", file_names[i_object]);
         texture_names[i_object] = "blahblahblah placeholder (this is some salt)";
     }
 
-    malloc_objects(RI_ObjectsToRequest, file_names);
+    int loaded_object_files = malloc_objects(RI_ObjectsToRequest, file_names, allocated_file_names, object_file_offsets);
     
     free(file_names);
-
-    loading_object_current_verticies_count = 0;
-    loading_object_current_normals_count = 0;
-    loading_object_current_uvs_count = 0;
-    loading_object_current_faces_count = 0;
+    free(allocated_file_names);
 
     texture_count = 0;
     int is_this_texture_name_already_in_the_texture_names_array = 0;
@@ -647,10 +698,10 @@ RI_objects RI_RequestObjects(RI_newObject *RI_ObjectBuffer, int RI_ObjectsToRequ
         RI_newObject *loading_object_current_object = &RI_ObjectBuffer[i_object];
         
         int base = i_object * object_size;
-        objects[base + 10] = loading_object_current_faces_count; // triangle offset
-        objects[base + 11] = loading_object_current_verticies_count; // vertex offset
-        objects[base + 12] = loading_object_current_normals_count; // normal offset
-        objects[base + 13] = loading_object_current_uvs_count; // uvs offset
+        objects[base + 10] = (float)object_file_offsets[i_object * 5 + 0]; // triangle offset
+        objects[base + 11] = (float)object_file_offsets[i_object * 5 + 1]; // vertex offset
+        objects[base + 12] = (float)object_file_offsets[i_object * 5 + 2]; // normal offset
+        objects[base + 13] = (float)object_file_offsets[i_object * 5 + 3]; // uvs offset
 
         is_this_texture_name_already_in_the_texture_names_array = 0;
 
@@ -685,8 +736,25 @@ RI_objects RI_RequestObjects(RI_newObject *RI_ObjectBuffer, int RI_ObjectsToRequ
             textures_size += texture_width * texture_height;
         }
 
-        load_object((char *)loading_object_current_object->file_path, i_object, base);
+        if (object_file_offsets[i_object * 5 + 4] > 0){
+            debug(RI_DEBUG_HIGH, "Loading Object at Triangle Index: %f", objects[base + 10]);
+            debug(RI_DEBUG_HIGH, "Loading Object at Vertex Index: %f", objects[base + 11]);
+            debug(RI_DEBUG_HIGH, "Loading Object at Normal Index: %f", objects[base + 12]);
+            debug(RI_DEBUG_HIGH, "Loading Object at UV Index: %f", objects[base + 13]);
+
+            load_object((char *)loading_object_current_object->file_path, i_object, base);
+        }
+        else{
+            debug(RI_DEBUG_HIGH, "Object Already Loaded at Triangle Index: %f", objects[base + 10]);
+            debug(RI_DEBUG_HIGH, "Object Already Loaded at Vertex Index: %f", objects[base + 11]);
+            debug(RI_DEBUG_HIGH, "Object Already Loaded at Normal Index: %f", objects[base + 12]);
+            debug(RI_DEBUG_HIGH, "Object Already Loaded at UV Index: %f", objects[base + 13]);
         
+            objects[base + 9] = -object_file_offsets[i_object * 5 + 4];
+
+            debug(RI_DEBUG_HIGH, "Object Already Loaded Has %f Triangles", objects[base + 9]);
+        }
+
         objects[base + 0] = loading_object_current_object->x; // x
         objects[base + 1] = loading_object_current_object->y; // y
         objects[base + 2] = loading_object_current_object->z; // z
@@ -697,13 +765,10 @@ RI_objects RI_RequestObjects(RI_newObject *RI_ObjectBuffer, int RI_ObjectsToRequ
         objects[base + 6] = loading_object_current_object->s_x; // scale x
         objects[base + 7] = loading_object_current_object->s_y; // scale y
         objects[base + 8] = loading_object_current_object->s_z; // scale z
-
-        debug(RI_DEBUG_MEDIUM, "Triangle Index: %d", objects[base + 10]);
-        debug(RI_DEBUG_MEDIUM, "Vertex Index: %d", objects[base + 11]);
-        debug(RI_DEBUG_MEDIUM, "Normal Index: %d", objects[base + 12]);
-        debug(RI_DEBUG_MEDIUM, "UV Index: %d", objects[base + 13]);
     }
     
+    free(object_file_offsets);
+
     debug(RI_DEBUG_MEDIUM, "Allocating Texture Buffers");
 
     textures = malloc(sizeof(unsigned char) * textures_size * 4);
@@ -764,13 +829,29 @@ RI_objects RI_RequestObjects(RI_newObject *RI_ObjectBuffer, int RI_ObjectsToRequ
         value_offset += temp_width * temp_height * 4;
     }
 
-    debug(RI_DEBUG_MEDIUM, "%d Textures Totalling %d Bytes", texture_count, sizeof(unsigned char) * textures_size * 4);
-    
     for (int i = 0; i < face_count * 9; i++){
         triangles[i]--;
     }
+    
+    size_t texture_bytes   = sizeof(unsigned char) * textures_size * 4;
+    size_t triangle_bytes  = sizeof(RI_triangles) * face_count * vs;
+    size_t vertex_bytes    = sizeof(RI_verticies) * vertex_count * vs;
+    size_t normal_bytes    = sizeof(RI_verticies) * normal_count * vs;
+    size_t uv_bytes        = sizeof(RI_verticies) * uv_count * vs;
+    size_t total_bytes     = texture_bytes + triangle_bytes + vertex_bytes + normal_bytes + uv_bytes + object_arary_size;
 
-    debug(RI_DEBUG_MEDIUM, "Allocated %d Bytes for Objects", sizeof(unsigned char) * textures_size * 4 + sizeof(RI_verticies) * uv_count * vs + sizeof(RI_triangles) * face_count * vs + sizeof(RI_verticies) * vertex_count * vs + sizeof(RI_verticies) * normal_count * vs + object_arary_size);
+    debug(RI_DEBUG_MEDIUM,
+        "Allocated %zu Bytes for Objects (%d Textures (%zu Bytes), "
+        "%d Triangles (%zu Bytes), %d Vertices (%zu Bytes), "
+        "%d Normals (%zu Bytes), %d UVs (%zu Bytes), "
+        "%d Objects (%zu Bytes))",
+        total_bytes,
+        texture_count, texture_bytes,
+        face_count, triangle_bytes,
+        vertex_count, vertex_bytes,
+        normal_count, normal_bytes,
+        uv_count, uv_bytes,
+        object_count, object_arary_size);
 
     debug(RI_DEBUG_HIGH, "clCreateBuffer object_arary_size: %d", object_arary_size);
 
