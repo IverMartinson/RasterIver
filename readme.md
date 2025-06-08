@@ -48,7 +48,6 @@ Rasterizer + Iver = RasterIver
 - [ ] make kernels not be in strings (read the file at compile time and put it inside rasteriver.c as a string? put it in a header like how it is now?)
 - [x] change all iterator variables in for loops to have "i_" before it's variable name
 - [x] add descriptions to RI functions
-- [ ] make a function call stack to review where errors happen or just debug stuff
 - [ ] optimize object memory usage by not loading object data multiple times when the same object is requested
 - [x] add checks for invalid/nonexistant files (files like object files & texture files)
 - [x] perspective
@@ -73,3 +72,4 @@ Rasterizer + Iver = RasterIver
 - [ ] allow objects to have no texture
 - [ ] make checks for objects trying to have a texture, but no UV coords (generate them?)
 - [ ] FOV
+- [ ] add materials
