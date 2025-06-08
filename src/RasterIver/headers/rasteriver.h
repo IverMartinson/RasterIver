@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include "../kernels/master_kernel.h"
 #include "../kernels/non_master_kernel.h"
+#include <SDL2/SDL.h>
 
 typedef int RI_result;
 typedef int RI_flag;
@@ -70,6 +71,7 @@ typedef enum {
     RI_FLAG_SHOW_INFO           = 10,
     RI_FLAG_DEBUG_TICK          = 11,
     RI_FLAG_USE_CPU             = 12,
+    RI_FLAG_HANDLE_SDL_EVENTS   = 13,
 } RI_flag_enum;
 
 // RI_BUFFER
@@ -130,6 +132,7 @@ RI_result   RI_SetFpsCap(int RI_FpsCap);
 // Returns a list of Rasteriver flags
 RI_result   RI_ListFlags();
 
-
+// Returns the last SDL_Event
+SDL_Event RI_GetLastSDLEvent();
 
 #endif // RASTERIVER_H

@@ -19,6 +19,7 @@ int main(){
     RI_SetFlag(RI_FLAG_CLEAN_POLYGONS, 1);
     RI_SetFlag(RI_FLAG_POPULATE_POLYGONS, 0);
     RI_SetFlag(RI_FLAG_BE_MASTER_RENDERER, 1);
+    RI_SetFlag(RI_FLAG_HANDLE_SDL_EVENTS, 0);
     RI_SetFlag(RI_FLAG_SHOW_INFO, 0);
     RI_SetFpsCap(120);
 
@@ -34,12 +35,19 @@ int main(){
 
     RI_objects objects = RI_RequestObjects(object_buffer, 1);
 
+    SDL_Event event;
+
     while (RI_IsRunning() == RI_RUNNING){
-        objects[3] += 0.3;
-        objects[4] -= 0.4;
-        objects[5] += 0.3;
-        
         RI_Tick();
+
+        while (SDL_PollEvent(&event))
+        {
+            switch (event.type)
+            {
+            case SDL_QUIT:
+                RI_Stop(0);
+            }
+        }
     }
 
     RI_Stop();
