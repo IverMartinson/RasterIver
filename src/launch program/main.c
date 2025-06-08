@@ -27,17 +27,17 @@ int main(){
     }
 
     RI_newObject object_buffer[3] = {
-        {0, 0, 1000,       0, 0, 0, -9999999,          100, 100, 100,  "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
+        {0, 0, 300,       0, 0, 0, -9999999,          100, 100, 100,  "objects/rsotated_cube.obj", "textures/thistexturedoesntexist.png"},
         {0, 0, 15,         0, 0, 0, -9999999,  1, 1, 1,     "objects/test_guy_hd.obj", "textures/test_guy_texture.png"},
         {0, 0, 300,      0, 0.0, 0, -9999999,          50, 50, 50,  "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
     };
 
-    //RI_objects objects = RI_RequestObjects(object_buffer, 1);
+    RI_objects objects = RI_RequestObjects(object_buffer, 1);
 
     while (RI_IsRunning() == RI_RUNNING){
-        // objects[3] += 0.3;
-        // objects[4] -= 0.4;
-        // objects[5] += 0.3;
+        objects[3] += 0.3;
+        objects[4] -= 0.4;
+        objects[5] += 0.3;
         
         RI_Tick();
     }
