@@ -13,36 +13,43 @@ struct Vec2 {
 
 struct Vec2 vec2_add(struct Vec2 a, struct Vec2 b){
     struct Vec2 result = {a.x + b.x, a.y + b.y};
+    
     return result;
 }
 
 struct Vec2 vec2_sub(struct Vec2 a, struct Vec2 b){
     struct Vec2 result = {a.x - b.x, a.y - b.y};
+    
     return result;
 }
 
-struct Vec2 vec2_mul(struct Vec2 a, struct Vec2 b){
+struct Vec2 vec2_ham(struct Vec2 a, struct Vec2 b){
     struct Vec2 result = {a.x * b.x, a.y * b.y};
+    
     return result;
 }
 
 struct Vec2 vec2_div(struct Vec2 a, struct Vec2 b){
     struct Vec2 result = {a.x / b.x, a.y / b.y};
+    
     return result;
 }
 
 struct Vec2 vec2_scale_m(struct Vec2 v, float scalar){
     struct Vec2 result = {v.x*scalar, v.y*scalar};
+    
     return result;
 }
 
 struct Vec2 vec2_scale_d(struct Vec2 v, float scalar){
     struct Vec2 result = {v.x/scalar, v.y/scalar};
+    
     return result;
 }
 
 struct Vec2 vec2_perp(struct Vec2 v){
     struct Vec2 result = {-v.y, v.x};
+    
     return result;
 }
 
@@ -73,21 +80,25 @@ struct Vec3 {
 
 struct Vec3 vec3_add(struct Vec3 a, struct Vec3 b){
     struct Vec3 result = {a.x + b.x, a.y + b.y, a.z + b.z};
+    
     return result;
 }
 
 struct Vec3 vec3_sub(struct Vec3 a, struct Vec3 b){
     struct Vec3 result = {a.x - b.x, a.y - b.y, a.z - b.z};
+    
     return result;
 }
 
-struct Vec3 vec3_mul(struct Vec3 a, struct Vec3 b){
+struct Vec3 vec3_ham(struct Vec3 a, struct Vec3 b){
     struct Vec3 result = {a.x * b.x, a.y * b.y, a.z * b.z};
+    
     return result;
 }
 
 struct Vec3 vec3_div(struct Vec3 a, struct Vec3 b){
     struct Vec3 result = {a.x / b.x, a.y / b.y, a.z / b.z};
+ 
     return result;
 }
 
@@ -97,16 +108,19 @@ float vec3_dot(struct Vec3 a, struct Vec3 b){
 
 struct Vec3 vec3_cross(struct Vec3 a, struct Vec3 b){
     struct Vec3 result = {a.y*b.z - b.y*a.z, a.z*b.x - b.z*a.x, a.x*b.y - b.x*a.y};;
+ 
     return result;
 }
 
 struct Vec3 vec3_scale_m(struct Vec3 v, float scalar){
     struct Vec3 result = {v.x*scalar, v.y*scalar, v.z*scalar};
+ 
     return result;
 }
 
 struct Vec3 vec3_scale_d(struct Vec3 v, float scalar){
     struct Vec3 result = {v.x/scalar, v.y/scalar, v.z/scalar};
+ 
     return result;
 }
 
@@ -126,49 +140,63 @@ struct Vec3 vec3_norm(struct Vec3 v){
 
 
 
-struct Quaternion {
+struct Vec4 {
     float w;
     float x;
     float y;
     float z;
 };
 
-struct Quaternion quat_add(struct Quaternion a, struct Quaternion b){
-    struct Quaternion result = {a.w + b.w, a.x + b.x, a.y + b.y, a.z + b.z};
-    return result;
-}
-
-struct Quaternion quat_sub(struct Quaternion a, struct Quaternion b){
-    struct Quaternion result = {a.w - b.w, a.x - b.x, a.y - b.y, a.z - b.z};
-    return result;
-}
-
-struct Quaternion quat_mul(struct Quaternion a, struct Quaternion b){
-    struct Quaternion result;
-
-    result.w = (w*other.w - x*other.x - y*other.y - z*other.z);
-    result.x = (w*other.x + x*other.w + y*other.z - z*other.y);
-    result.y = (w*other.y - x*other.z + y*other.w + z*other.x);
-    result.z = (w*other.z + x*other.y - y*other.x + z*other.w);
+struct Vec4 vec4_add(struct Vec4 a, struct Vec4 b){
+    struct Vec4 result = {a.w + b.w, a.x + b.x, a.y + b.y, a.z + b.z};
     
     return result;
 }
 
-float quat_dot(struct Quaternion a, struct Quaternion b){
+struct Vec4 vec4_sub(struct Vec4 a, struct Vec4 b){
+    struct Vec4 result = {a.w - b.w, a.x - b.x, a.y - b.y, a.z - b.z};
+    
+    return result;
+}
+
+struct Vec4 vec4_ham(struct Vec4 a, struct Vec4 b){
+    struct Vec4 result = {a.w * b.w, a.x * b.x, a.y * b.y, a.z * b.z};
+
+    return result;
+}
+
+struct Vec4 vec4_div(struct Vec4 a, struct Vec4 b){
+    struct Vec4 result = {a.w / b.w, a.x / b.x, a.y / b.y, a.z / b.z};
+    
+    return result;
+}
+
+struct Vec4 quat_mul(struct Vec4 a, struct Vec4 b){
+    struct Vec4 result;
+
+    result.w = (a.w*b.w - a.x*b.x - a.y*b.y - a.z*b.z);
+    result.x = (a.w*b.x + a.x*b.w + a.y*b.z - a.z*b.y);
+    result.y = (a.w*b.y - a.x*b.z + a.y*b.w + a.z*b.x);
+    result.z = (a.w*b.z + a.x*b.y - a.y*b.x + a.z*b.w);
+    
+    return result;
+}
+
+float vec4_dot(struct Vec4 a, struct Vec4 b){
     return a.w*b.w + a.x*b.x + a.y*b.y + a.z*b.z;
 }
 
-struct Quaternion quat_scale_m(struct Quaternion q, float scalar){
-    struct Quaternion result = {q.w*scalar, q.x*scalar, q.y*scalar, q.z*scalar};
+struct Vec4 vec4_scale_m(struct Vec4 q, float scalar){
+    struct Vec4 result = {q.w*scalar, q.x*scalar, q.y*scalar, q.z*scalar};
     return result;
 }
 
-struct Quaternion quat_scale_d(struct Quaternion q, float scalar){
-    struct Quaternion result = {q.w/scalar, q.x/scalar, q.y/scalar, q.z/scalar};
+struct Vec4 vec4_scale_d(struct Vec4 q, float scalar){
+    struct Vec4 result = {q.w/scalar, q.x/scalar, q.y/scalar, q.z/scalar};
     return result;
 }
 
-float quat_mag(struct Quaternion q){
+float vec4_mag(struct Vec4 q){
     float mag = q.w*q.w + q.x*q.x + q.y*q.y + q.z*q.z;
     if(mag == 1.0f){
         return mag;
@@ -176,8 +204,8 @@ float quat_mag(struct Quaternion q){
     return sqrtf(mag);
 }
 
-struct Quaternion quat_norm(struct Quaternion q){
-    return quat_scale_d(q, quat_mag(q));
+struct Vec4 vec4_norm(struct Vec4 q){
+    return vec4_scale_d(q, vec4_mag(q));
 }
 
 
