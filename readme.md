@@ -73,3 +73,6 @@ Rasterizer + Iver = RasterIver
 - [ ] make checks for objects trying to have a texture, but no UV coords (generate them?)
 - [x] FOV
 - [ ] add materials
+- [ ] make another kernel that calculated transforms & perspective before rasterizing
+- [ ] add ability to request objects multiple times 
+- [ ] give objects IDs or some way to track them so that you can remove them dynamically
