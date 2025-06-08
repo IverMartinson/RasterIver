@@ -71,3 +71,4 @@ Rasterizer + Iver = RasterIver
 - [ ] add support for transparent textures
 - [ ] allow objects to have no texture
 - [ ] make checks for objects trying to have a texture, but no UV coords (generate them?)
+- [ ] FOV
