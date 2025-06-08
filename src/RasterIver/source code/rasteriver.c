@@ -473,11 +473,6 @@ int malloc_objects(int objects, char **file_names, char **allocated_file_names, 
             
             fclose(file);
         }
-
-            object_file_offsets[i * 5 + 0] = 0;
-            object_file_offsets[i * 5 + 1] = 0;
-            object_file_offsets[i * 5 + 2] = 0;
-            object_file_offsets[i * 5 + 3] = 0;
     }
 
     face_count = malloc_face_count;
@@ -735,6 +730,11 @@ RI_objects RI_RequestObjects(RI_newObject *RI_ObjectBuffer, int RI_ObjectsToRequ
 
             textures_size += texture_width * texture_height;
         }
+
+        loading_object_current_faces_count = object_file_offsets[i_object * 5 + 0];
+        loading_object_current_verticies_count = object_file_offsets[i_object * 5 + 1];
+        loading_object_current_normals_count = object_file_offsets[i_object * 5 + 2];
+        loading_object_current_uvs_count = object_file_offsets[i_object * 5 + 3];
 
         if (object_file_offsets[i_object * 5 + 4] > 0){
             debug(RI_DEBUG_HIGH, "Loading Object at Triangle Index: %f", objects[base + 10]);
