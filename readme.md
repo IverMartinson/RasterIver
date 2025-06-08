@@ -23,6 +23,7 @@ Rasterizer + Iver = RasterIver
 - `RI_FLAG_SHOW_INFO` Shows object info
 - `RI_FLAG_DEBUG_TICK` Turns debugging on or off for anything that would fill up the console when constantly ticking
 - `RI_FLAG_USE_CPU` Use the CPU over the GPU
+- `RI_FLAG_HANDLE_SDL_EVENTS` Whether RasterIver should handle SDL events
 
 ## Requirements
 #### To Run
