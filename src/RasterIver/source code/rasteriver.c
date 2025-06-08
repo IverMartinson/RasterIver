@@ -1051,277 +1051,279 @@ RI_result RI_Tick(){
             float horizontal_fov_factor = width / tanf(0.5 * fov);
 
             for (int id_y = -height / 2; id_y < height / 2; id_y++){
-for (int id_x = -width / 2; id_x < width / 2; id_x++){
-            float z_pixel = INFINITY; 
-    unsigned int frame_pixel = 0x22222222; 
-    
-    float highest_z = 800;
-    float lowest_z = 0;
-    
-    int has_normals = 1;
-    int has_uvs = 1;
-    
-    float w0;
-    float w1;
-    float w2;
-    
+                for (int id_x = -width / 2; id_x < width / 2; id_x++){
+                    float z_pixel = INFINITY; 
+                    unsigned int frame_pixel = 0x22222222; 
+                    
+                    float highest_z = 800;
+                    float lowest_z = 0;
+                    
+                    int has_normals = 1;
+                    int has_uvs = 1;
+                    
+                    float w0;
+                    float w1;
+                    float w2;
+                    
 
-    for (int i_object = 0; i_object < object_count; i_object++){ 
-        int base = i_object * 16;
-        
-        float object_x =   objects[base + 0]; 
-        float object_y =   objects[base + 1]; 
-        float object_z =   objects[base + 2]; 
-        float object_r_x = objects[base + 3]; 
-        float object_r_y = objects[base + 4]; 
-        float object_r_z = objects[base + 5]; 
-        float object_r_w = objects[base + 15]; 
-        float object_s_x = objects[base + 6]; 
-        float object_s_y = objects[base + 7]; 
-        float object_s_z = objects[base + 8]; 
-        
-        int triangle_count = (int)objects[base + 9];
-        int triangle_index = (int)objects[base + 10];
-        int vertex_index =   (int)objects[base + 11];
-        int normal_index =   (int)objects[base + 12];
-        int uv_index =       (int)objects[base + 13];
-        int texture_index =  (int)objects[base + 14];
-        
-        for (int i_triangle = 0; i_triangle < triangle_count; i_triangle++){
-            int triangle_base = (i_triangle + triangle_index) * 9; 
+                    for (int i_object = 0; i_object < object_count; i_object++){ 
+                        int base = i_object * 16;
+                        
+                        float object_x =   objects[base + 0]; 
+                        float object_y =   objects[base + 1]; 
+                        float object_z =   objects[base + 2]; 
+                        float object_r_x = objects[base + 3]; 
+                        float object_r_y = objects[base + 4]; 
+                        float object_r_z = objects[base + 5]; 
+                        float object_r_w = objects[base + 15]; 
+                        float object_s_x = objects[base + 6]; 
+                        float object_s_y = objects[base + 7]; 
+                        float object_s_z = objects[base + 8]; 
+                        
+                        int triangle_count = (int)objects[base + 9];
+                        int triangle_index = (int)objects[base + 10];
+                        int vertex_index =   (int)objects[base + 11];
+                        int normal_index =   (int)objects[base + 12];
+                        int uv_index =       (int)objects[base + 13];
+                        int texture_index =  (int)objects[base + 14];
+                        
+                        for (int i_triangle = 0; i_triangle < triangle_count; i_triangle++){
+                            int triangle_base = (i_triangle + triangle_index) * 9; 
 
-            int i0 = (vertex_index + triangles[triangle_base + 0]) * 3;
-            int i1 = (vertex_index + triangles[triangle_base + 1]) * 3;
-            int i2 = (vertex_index + triangles[triangle_base + 2]) * 3;
+                            int i0 = (vertex_index + triangles[triangle_base + 0]) * 3;
+                            int i1 = (vertex_index + triangles[triangle_base + 1]) * 3;
+                            int i2 = (vertex_index + triangles[triangle_base + 2]) * 3;
 
-            int i3 = (normal_index + triangles[triangle_base + 3]) * 3;
-            int i4 = (normal_index + triangles[triangle_base + 4]) * 3;
-            int i5 = (normal_index + triangles[triangle_base + 5]) * 3;
+                            int i3 = (normal_index + triangles[triangle_base + 3]) * 3;
+                            int i4 = (normal_index + triangles[triangle_base + 4]) * 3;
+                            int i5 = (normal_index + triangles[triangle_base + 5]) * 3;
 
-            int i6 = (uv_index + triangles[triangle_base + 6]) * 3;
-            int i7 = (uv_index + triangles[triangle_base + 7]) * 3;
-            int i8 = (uv_index + triangles[triangle_base + 8]) * 3;
-            
-            float z0 = verticies[i0 + 2];
-            float x0 = verticies[i0 + 0];
-            float y0 = verticies[i0 + 1];
-            
-            float z1 = verticies[i1 + 2];
-            float x1 = verticies[i1 + 0];
-            float y1 = verticies[i1 + 1];
-            
-            float z2 = verticies[i2 + 2];
-            float x2 = verticies[i2 + 0];
-            float y2 = verticies[i2 + 1];
-            
-            if (object_r_w <= -9999999){
-                rotate_euler(&x0, &y0, &z0, object_r_x, object_r_y, object_r_z);
-                rotate_euler(&x1, &y1, &z1, object_r_x, object_r_y, object_r_z);
-                rotate_euler(&x2, &y2, &z2, object_r_x, object_r_y, object_r_z);
-            }
-            else{
-                rotate_euler(&x0, &y0, &z0, object_r_x, object_r_y, object_r_z);
-                rotate_euler(&x1, &y1, &z1, object_r_x, object_r_y, object_r_z);
-                rotate_euler(&x2, &y2, &z2, object_r_x, object_r_y, object_r_z);
-            }
+                            int i6 = (uv_index + triangles[triangle_base + 6]) * 3;
+                            int i7 = (uv_index + triangles[triangle_base + 7]) * 3;
+                            int i8 = (uv_index + triangles[triangle_base + 8]) * 3;
+                            
+                            float z0 = verticies[i0 + 2];
+                            float x0 = verticies[i0 + 0];
+                            float y0 = verticies[i0 + 1];
+                            
+                            float z1 = verticies[i1 + 2];
+                            float x1 = verticies[i1 + 0];
+                            float y1 = verticies[i1 + 1];
+                            
+                            float z2 = verticies[i2 + 2];
+                            float x2 = verticies[i2 + 0];
+                            float y2 = verticies[i2 + 1];
+                            
+                            if (object_r_w <= -9999999){
+                                rotate_euler(&x0, &y0, &z0, object_r_x, object_r_y, object_r_z);
+                                rotate_euler(&x1, &y1, &z1, object_r_x, object_r_y, object_r_z);
+                                rotate_euler(&x2, &y2, &z2, object_r_x, object_r_y, object_r_z);
+                            }
+                            else{
+                                rotate_euler(&x0, &y0, &z0, object_r_x, object_r_y, object_r_z);
+                                rotate_euler(&x1, &y1, &z1, object_r_x, object_r_y, object_r_z);
+                                rotate_euler(&x2, &y2, &z2, object_r_x, object_r_y, object_r_z);
+                            }
 
-            z0 = (z0 * object_s_z + object_z);
-            x0 = (x0 * object_s_x + object_x) / z0 * horizontal_fov_factor;
-            y0 = (y0 * object_s_y + object_y) / z0 * vertical_fov_factor;
-            z1 = (z1 * object_s_z + object_z);
-            x1 = (x1 * object_s_x + object_x) / z1 * horizontal_fov_factor;
-            y1 = (y1 * object_s_y + object_y) / z1 * vertical_fov_factor;
-            z2 = (z2 * object_s_z + object_z);
-            x2 = (x2 * object_s_x + object_x) / z2 * horizontal_fov_factor;
-            y2 = (y2 * object_s_y + object_y) / z2 * vertical_fov_factor;
-            
-            if (i3 < 0 || i4 < 0 || i5 < 0){
-                has_normals = 0;
-            }
-            if (i6 < 0 || i7 < 0 || i8 < 0){
-                has_uvs = 0;
-            }
-            
-            if (isinf(x0) || isinf(y0) || isinf(z0) || isinf(x1) || isinf(y1) || isinf(z1) || isinf(x2) || isinf(y2) || isinf(z2)){
-                continue;
-            }
-            
-            float smallest_x = x0; 
-            float largest_x = x0; 
-            float smallest_y = y0; 
-            float largest_y = y0; 
-            
-            if (x0 > largest_x) largest_x = x0;
-            if (x1 > largest_x) largest_x = x1;
-            if (x2 > largest_x) largest_x = x2;
-            
-            if (x0 < smallest_x) smallest_x = x0;
-            if (x1 < smallest_x) smallest_x = x1;
-            if (x2 < smallest_x) smallest_x = x2;
-            
-            if (y0 > largest_y) largest_y = y0;
-            if (y1 > largest_y) largest_y = y1;
-            if (y2 > largest_y) largest_y = y2;
-            
-            if (y0 < smallest_y) smallest_y = y0;
-            if (y1 < smallest_y) smallest_y = y1;
-            if (y2 < smallest_y) smallest_y = y2;
-            
-            smallest_x = fmin(smallest_x, 0); 
-            largest_x = fmax(largest_x, width); 
-            smallest_y = fmin(smallest_y, 0); 
-            largest_y = fmax(largest_y, height); 
-            
-            if (id_x >= smallest_x && id_x <= largest_x && id_y >= smallest_y && id_y <= largest_y){ 
-                int intersections = 0; 
-                
-                intersections += is_intersecting(id_x, id_y, 10000, 100000, x0, y0, x1, y1); 
-                intersections += is_intersecting(id_x, id_y, 10000, 100000, x1, y1, x2, y2); 
-                intersections += is_intersecting(id_x, id_y, 10000, 100000, x2, y2, x0, y0); 
-                
-                if (intersections % 2 == 0){ 
-                    continue; 
-                } 
-                
-                float denominator = (y1 - y2) * (x0 - x2) + (x2 - x1) * (y0 - y2); 
-                
-                if (denominator >= 0) { 
-                    continue; 
-                } 
-                w0 = ((y1 - y2) * (id_x - x2) + (x2 - x1) * (id_y - y2)) / denominator; 
-                w1 = ((y2 - y0) * (id_x - x0) + (x0 - x2) * (id_y - y0)) / denominator; 
-                w2 = 1.0 - w0 - w1; 
-                
-                float w_over_z = (w0 / z0 + w1 / z1 + w2 / z2); 
-                float z = 1.0 / w_over_z;
-
-                if (z < z_pixel){ 
-                    z_pixel = z; 
-                    
-                    float n_x0 = normals[i3 + 0];
-                    float n_y0 = normals[i3 + 1];
-                    float n_z0 = normals[i3 + 2];
-                    
-                    float n_x1 = normals[i4 + 0];
-                    float n_y1 = normals[i4 + 1];
-                    float n_z1 = normals[i4 + 2];
-                    
-                    float n_x2 = normals[i5 + 0];
-                    float n_y2 = normals[i5 + 1];
-                    float n_z2 = normals[i5 + 2];
-                    
-                    float u_x0 = uvs[i6 + 0];
-                    float u_y0 = uvs[i6 + 1];
-                    float u_z0 = uvs[i6 + 2];
-                    
-                    float u_x1 = uvs[i7 + 0];
-                    float u_y1 = uvs[i7 + 1];
-                    float u_z1 = uvs[i7 + 2];
-                    
-                    float u_x2 = uvs[i8 + 0];
-                    float u_y2 = uvs[i8 + 1];
-                    float u_z2 = uvs[i8 + 2];
-                    
-                    if (object_r_w <= -9999999){
-                        rotate_euler(&n_x0, &n_y0, &n_z0, object_r_x, object_r_y, object_r_z);
-                        rotate_euler(&n_x1, &n_y1, &n_z1, object_r_x, object_r_y, object_r_z);
-                        rotate_euler(&n_x2, &n_y2, &n_z2, object_r_x, object_r_y, object_r_z);
-                    }
-                    else{
-                        rotate_euler(&n_x0, &n_y0, &n_z0, object_r_x, object_r_y, object_r_z);
-                        rotate_euler(&n_x1, &n_y1, &n_z1, object_r_x, object_r_y, object_r_z);
-                        rotate_euler(&n_x2, &n_y2, &n_z2, object_r_x, object_r_y, object_r_z);
-                    }
-                    
-                    switch (show_buffer){
-                        case 0:{
-                            double ux = (w0 * (u_x0 / z0) + w1 * (u_x1 / z1) + w2 * (u_x2 / z2)) / w_over_z;
-                            double uy = (w0 * (u_y0 / z0) + w1 * (u_y1 / z1) + w2 * (u_y2 / z2)) / w_over_z;
+                            z0 = (z0 * object_s_z + object_z);
+                            x0 = (x0 * object_s_x + object_x) / z0 * horizontal_fov_factor;
+                            y0 = (y0 * object_s_y + object_y) / z0 * vertical_fov_factor;
+                            z1 = (z1 * object_s_z + object_z);
+                            x1 = (x1 * object_s_x + object_x) / z1 * horizontal_fov_factor;
+                            y1 = (y1 * object_s_y + object_y) / z1 * vertical_fov_factor;
+                            z2 = (z2 * object_s_z + object_z);
+                            x2 = (x2 * object_s_x + object_x) / z2 * horizontal_fov_factor;
+                            y2 = (y2 * object_s_y + object_y) / z2 * vertical_fov_factor;
                             
-                            int texture_width = texture_info[texture_index * 3];
-                            int texture_height = texture_info[texture_index * 3 + 1];
-                            int texture_value_offset = texture_info[texture_index * 3 + 2];
-                            
-                            int ix = fmax((int)(ux * texture_width), 0);
-                            int iy = fmax((int)(uy * texture_height), 0);
-                            
-                            int uv_pixel = (iy * texture_width + ix) * 4 + texture_value_offset;
-                            
-                            unsigned char r = textures[uv_pixel + 0];
-                            unsigned char g = textures[uv_pixel + 1];
-                            unsigned char b = textures[uv_pixel + 2];
-                            unsigned char a = textures[uv_pixel + 3];
-                            
-                            frame_pixel = (a << 24) | (r << 16) | (g << 8) | b;
-                            
-                            break;}
-                        case 1:{
-                            float z = clamppp_float(z_pixel, 0.0f, highest_z);
-                            
-                            float norm_z = z / highest_z;
-                            
-                            unsigned char intensity = (unsigned char)(norm_z * 255.0f);
-                            
-                            frame_pixel = 0xFF000000 | (intensity << 16) | (intensity << 8) | intensity;
-                            
-                            break;}
-                        case 2:{
-                            float nx = (w0 * (n_x0 / z0) + w1 * (n_x1 / z1) + w2 * (n_x2 / z2)) / w_over_z;
-                            float ny = (w0 * (n_y0 / z0) + w1 * (n_y1 / z1) + w2 * (n_y2 / z2)) / w_over_z;
-                            float nz = (w0 * (n_z0 / z0) + w1 * (n_z1 / z1) + w2 * (n_z2 / z2)) / w_over_z;
-                            
-                            nx = clamppp_float((nx * 0.5f + 0.5f) * 255.0f, 0.0f, 255.0f);
-                            ny = clamppp_float((ny * 0.5f + 0.5f) * 255.0f, 0.0f, 255.0f);
-                            nz = clamppp_float((nz * 0.5f + 0.5f) * 255.0f, 0.0f, 255.0f);
-                            
-                            unsigned char r = (unsigned char)nx;
-                            unsigned char g = (unsigned char)ny;
-                            unsigned char b = (unsigned char)nz;
-                            
-                            if (!has_normals){
-                                r = 20;
-                                g = 20;
-                                b = 20;
+                            if (i3 < 0 || i4 < 0 || i5 < 0){
+                                has_normals = 0;
+                            }
+                            if (i6 < 0 || i7 < 0 || i8 < 0){
+                                has_uvs = 0;
                             }
                             
-                            frame_pixel = 0xFF000000 | (r << 16) | (g << 8) | b;
-                            
-                            break;}
-                        case 3:{
-                            float ux = w0 * u_x0 + w1 * u_x1 + w2 * u_x2;
-                            float uy = w0 * u_y0 + w1 * u_y1 + w2 * u_y2;
-                            
-                            unsigned char r = (unsigned char)clamppp_float(ux * 255.0f, 0.0f, 255.0f);
-                            unsigned char g = (unsigned char)clamppp_float(uy * 255.0f, 0.0f, 255.0f);
-                            unsigned char b = 0;
-                            
-                            if (!has_uvs){
-                                r = 20;
-                                g = 20;
-                                b = 20;
+                            if (isinf(x0) || isinf(y0) || isinf(z0) || isinf(x1) || isinf(y1) || isinf(z1) || isinf(x2) || isinf(y2) || isinf(z2)){
+                                continue;
                             }
                             
-                            frame_pixel = 0xFF000000 | (r << 16) | (g << 8) | b;
+                            float smallest_x = x0; 
+                            float largest_x = x0; 
+                            float smallest_y = y0; 
+                            float largest_y = y0; 
                             
-                            break;}
-                        default:{
-                            frame_pixel = 0xFF00FFFF;
+                            if (x0 > largest_x) largest_x = x0;
+                            if (x1 > largest_x) largest_x = x1;
+                            if (x2 > largest_x) largest_x = x2;
                             
-                            break;}
+                            if (x0 < smallest_x) smallest_x = x0;
+                            if (x1 < smallest_x) smallest_x = x1;
+                            if (x2 < smallest_x) smallest_x = x2;
+                            
+                            if (y0 > largest_y) largest_y = y0;
+                            if (y1 > largest_y) largest_y = y1;
+                            if (y2 > largest_y) largest_y = y2;
+                            
+                            if (y0 < smallest_y) smallest_y = y0;
+                            if (y1 < smallest_y) smallest_y = y1;
+                            if (y2 < smallest_y) smallest_y = y2;
+                            
+                            smallest_x = fmin(smallest_x, 0); 
+                            largest_x = fmax(largest_x, width); 
+                            smallest_y = fmin(smallest_y, 0); 
+                            largest_y = fmax(largest_y, height); 
+                            
+                            if (id_x >= smallest_x && id_x <= largest_x && id_y >= smallest_y && id_y <= largest_y){ 
+                                int intersections = 0; 
+                                
+                                intersections += is_intersecting(id_x, id_y, 10000, 100000, x0, y0, x1, y1); 
+                                intersections += is_intersecting(id_x, id_y, 10000, 100000, x1, y1, x2, y2); 
+                                intersections += is_intersecting(id_x, id_y, 10000, 100000, x2, y2, x0, y0); 
+                                
+                                if (intersections % 2 == 0){ 
+                                    continue; 
+                                } 
+                                
+                                float denominator = (y1 - y2) * (x0 - x2) + (x2 - x1) * (y0 - y2); 
+                                
+                                if (denominator >= 0) { 
+                                    continue; 
+                                } 
+                                w0 = ((y1 - y2) * (id_x - x2) + (x2 - x1) * (id_y - y2)) / denominator; 
+                                w1 = ((y2 - y0) * (id_x - x0) + (x0 - x2) * (id_y - y0)) / denominator; 
+                                w2 = 1.0 - w0 - w1; 
+                                
+                                float w_over_z = (w0 / z0 + w1 / z1 + w2 / z2); 
+                                float z = 1.0 / w_over_z;
+
+                                if (z < z_pixel){ 
+                                    z_pixel = z; 
+                                    
+                                    float n_x0 = normals[i3 + 0];
+                                    float n_y0 = normals[i3 + 1];
+                                    float n_z0 = normals[i3 + 2];
+                                    
+                                    float n_x1 = normals[i4 + 0];
+                                    float n_y1 = normals[i4 + 1];
+                                    float n_z1 = normals[i4 + 2];
+                                    
+                                    float n_x2 = normals[i5 + 0];
+                                    float n_y2 = normals[i5 + 1];
+                                    float n_z2 = normals[i5 + 2];
+                                    
+                                    float u_x0 = uvs[i6 + 0];
+                                    float u_y0 = uvs[i6 + 1];
+                                    float u_z0 = uvs[i6 + 2];
+                                    
+                                    float u_x1 = uvs[i7 + 0];
+                                    float u_y1 = uvs[i7 + 1];
+                                    float u_z1 = uvs[i7 + 2];
+                                    
+                                    float u_x2 = uvs[i8 + 0];
+                                    float u_y2 = uvs[i8 + 1];
+                                    float u_z2 = uvs[i8 + 2];
+                                    
+                                    if (object_r_w <= -9999999){
+                                        rotate_euler(&n_x0, &n_y0, &n_z0, object_r_x, object_r_y, object_r_z);
+                                        rotate_euler(&n_x1, &n_y1, &n_z1, object_r_x, object_r_y, object_r_z);
+                                        rotate_euler(&n_x2, &n_y2, &n_z2, object_r_x, object_r_y, object_r_z);
+                                    }
+                                    else{
+                                        rotate_euler(&n_x0, &n_y0, &n_z0, object_r_x, object_r_y, object_r_z);
+                                        rotate_euler(&n_x1, &n_y1, &n_z1, object_r_x, object_r_y, object_r_z);
+                                        rotate_euler(&n_x2, &n_y2, &n_z2, object_r_x, object_r_y, object_r_z);
+                                    }
+                                    
+                                    switch (show_buffer){
+                                        case 0:{
+                                            double ux = (w0 * (u_x0 / z0) + w1 * (u_x1 / z1) + w2 * (u_x2 / z2)) / w_over_z;
+                                            double uy = (w0 * (u_y0 / z0) + w1 * (u_y1 / z1) + w2 * (u_y2 / z2)) / w_over_z;
+                                            
+                                            int texture_width = texture_info[texture_index * 3];
+                                            int texture_height = texture_info[texture_index * 3 + 1];
+                                            int texture_value_offset = texture_info[texture_index * 3 + 2];
+                                            
+                                            int ix = fmax((int)(ux * texture_width), 0);
+                                            int iy = fmax((int)(uy * texture_height), 0);
+                                            
+                                            int uv_pixel = (iy * texture_width + ix) * 4 + texture_value_offset;
+                                            
+                                            unsigned char r = textures[uv_pixel + 0];
+                                            unsigned char g = textures[uv_pixel + 1];
+                                            unsigned char b = textures[uv_pixel + 2];
+                                            unsigned char a = textures[uv_pixel + 3];
+                                            
+                                            frame_pixel = (a << 24) | (r << 16) | (g << 8) | b;
+                                            
+                                            break;}
+                                        case 1:{
+                                            float z = clamppp_float(z_pixel, 0.0f, highest_z);
+                                            
+                                            float norm_z = z / highest_z;
+                                            
+                                            unsigned char intensity = (unsigned char)(norm_z * 255.0f);
+                                            
+                                            frame_pixel = 0xFF000000 | (intensity << 16) | (intensity << 8) | intensity;
+                                            
+                                            break;}
+                                        case 2:{
+                                            float nx = (w0 * (n_x0 / z0) + w1 * (n_x1 / z1) + w2 * (n_x2 / z2)) / w_over_z;
+                                            float ny = (w0 * (n_y0 / z0) + w1 * (n_y1 / z1) + w2 * (n_y2 / z2)) / w_over_z;
+                                            float nz = (w0 * (n_z0 / z0) + w1 * (n_z1 / z1) + w2 * (n_z2 / z2)) / w_over_z;
+                                            
+                                            nx = clamppp_float((nx * 0.5f + 0.5f) * 255.0f, 0.0f, 255.0f);
+                                            ny = clamppp_float((ny * 0.5f + 0.5f) * 255.0f, 0.0f, 255.0f);
+                                            nz = clamppp_float((nz * 0.5f + 0.5f) * 255.0f, 0.0f, 255.0f);
+                                            
+                                            unsigned char r = (unsigned char)nx;
+                                            unsigned char g = (unsigned char)ny;
+                                            unsigned char b = (unsigned char)nz;
+                                            
+                                            if (!has_normals){
+                                                r = 20;
+                                                g = 20;
+                                                b = 20;
+                                            }
+                                            
+                                            frame_pixel = 0xFF000000 | (r << 16) | (g << 8) | b;
+                                            
+                                            break;}
+                                        case 3:{
+                                            float ux = w0 * u_x0 + w1 * u_x1 + w2 * u_x2;
+                                            float uy = w0 * u_y0 + w1 * u_y1 + w2 * u_y2;
+                                            
+                                            unsigned char r = (unsigned char)clamppp_float(ux * 255.0f, 0.0f, 255.0f);
+                                            unsigned char g = (unsigned char)clamppp_float(uy * 255.0f, 0.0f, 255.0f);
+                                            unsigned char b = 0;
+                                            
+                                            if (!has_uvs){
+                                                r = 20;
+                                                g = 20;
+                                                b = 20;
+                                            }
+                                            
+                                            frame_pixel = 0xFF000000 | (r << 16) | (g << 8) | b;
+                                            
+                                            break;}
+                                        default:{
+                                            frame_pixel = 0xFF00FFFF;
+                                            
+                                            break;}
+                                    }
+                                } 
+                            }
+                        }
                     }
-                } 
+                    
+                    int pixel_coord = (height * 0.5 - id_y) * width + id_x + width * 0.5;
+                    
+                    if (pixel_coord >= width * height || pixel_coord < 0){
+                        continue;
+                    }
+                    
+                    frame_buffer[pixel_coord] = frame_pixel; 
+                    }
+                }
             }
-        }
-    }
-    
-    int pixel_coord = (height * 0.5 - id_y) * width + id_x + width * 0.5;
-    
-    if (pixel_coord >= width * height || pixel_coord < 0){
-        continue;
-    }
-    
-    frame_buffer[pixel_coord] = frame_pixel; 
-    }}}
         else if (be_master_renderer){
             erchk(clSetKernelArg(compiled_kernel_master, 0, sizeof(cl_mem), &object_memory_buffer));
             erchk(clSetKernelArg(compiled_kernel_master, 1, sizeof(cl_mem), &verticies_memory_buffer));
@@ -1336,6 +1338,7 @@ for (int id_x = -width / 2; id_x < width / 2; id_x++){
             erchk(clSetKernelArg(compiled_kernel_master, 10, sizeof(int), (void*)&height));
             erchk(clSetKernelArg(compiled_kernel_master, 11, sizeof(int), (void*)&show_buffer)); 
             erchk(clSetKernelArg(compiled_kernel_master, 12, sizeof(int), (void*)&frame)); 
+            erchk(clSetKernelArg(compiled_kernel_master, 13, sizeof(float), (void*)&fov)); 
 
             if (object_count > 0) {
                 erchk(clEnqueueWriteBuffer(queue, object_memory_buffer, CL_TRUE, 0, sizeof(float) * object_size * object_count, objects, 0, NULL, NULL));
