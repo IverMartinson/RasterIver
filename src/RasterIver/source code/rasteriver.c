@@ -398,8 +398,9 @@ void malloc_objects(int objects, char **file_names){
         FILE *file = fopen(file_names[i], "r");
 
         if(file == NULL){
-            debug(RI_DEBUG_LOW, "Error Opening Object File");
-            RI_Stop(0);
+            debug(RI_DEBUG_LOW, "Error Opening Object File \"%s\"", file_names[i]);
+            
+            file = fopen("objects/error_object.obj", "r");
         }
 
         char line[256];
@@ -469,8 +470,7 @@ load_object_return load_object(char *object_path, int object_offset, int base){
     FILE *file = fopen(object_path, "r");
 
     if(file == NULL){
-        debug(RI_DEBUG_LOW, "Error Opening Object File");
-        RI_Stop(0);
+        file = fopen("objects/error_object.obj", "r");
     }
 
     char line[256];
@@ -658,9 +658,20 @@ RI_objects RI_RequestObjects(RI_newObject *RI_ObjectBuffer, int RI_ObjectsToRequ
             texture_names[texture_count] = loading_object_current_object->texture;
             objects[base + 14] = texture_count; // texture offset
             texture_count++;
+
             int texture_width, texture_height, channels;
+
             stbi_load(loading_object_current_object->texture, &texture_width, &texture_height, &channels, 4);
-            debug(RI_DEBUG_MEDIUM, "Texture (%s) Loaded With Size %dx%d (%d channels)", loading_object_current_object->texture, texture_width, texture_height, channels);
+            if(stbi_failure_reason()){
+                texture_width = 1;
+                texture_height = 1;
+
+                debug(RI_DEBUG_LOW, "Error Loading Texture \"%s\"", loading_object_current_object->texture);
+            }
+            else{
+                debug(RI_DEBUG_MEDIUM, "Texture (%s) Loaded With Size %dx%d (%d channels)", loading_object_current_object->texture, texture_width, texture_height, channels);
+            }
+
             textures_size += texture_width * texture_height;
         }
 
@@ -719,15 +730,26 @@ RI_objects RI_RequestObjects(RI_newObject *RI_ObjectBuffer, int RI_ObjectsToRequ
         int temp_width, temp_height;
         RI_textures temp_texture = stbi_load(current_texture_name, &temp_width, &temp_height, NULL, 4);
 
+        if(stbi_failure_reason()){
+            temp_width = 1;
+            temp_height = 1;
+            
+            textures[0 + value_offset] = 255;
+            textures[1 + value_offset] = 0;
+            textures[2 + value_offset] = 255;
+            textures[3 + value_offset] = 128;
+        }
+        else {
+            debug(RI_DEBUG_HIGH, "Texture Info for Texture #%d: width: %d, height: %d, offset: %d", i_current_texture, texture_info[i_current_texture * tis], texture_info[i_current_texture * tis + 1], texture_info[i_current_texture * tis + 2]);
+
+            for (int i_current_value = 0; i_current_value < temp_width * temp_height * 4; i_current_value++){
+                textures[i_current_value + value_offset] = temp_texture[i_current_value];
+            }
+        }
+
         texture_info[i_current_texture * tis] = temp_width;
         texture_info[i_current_texture * tis + 1] = temp_height;
         texture_info[i_current_texture * tis + 2] = value_offset;
-
-        debug(RI_DEBUG_HIGH, "Texture Info for Texture #%d: width: %d, height: %d, offset: %d", i_current_texture, texture_info[i_current_texture * tis], texture_info[i_current_texture * tis + 1], texture_info[i_current_texture * tis + 2]);
-
-        for (int i_current_value = 0; i_current_value < temp_width * temp_height * 4; i_current_value++){
-            textures[i_current_value + value_offset] = temp_texture[i_current_value];
-        }
 
         value_offset += temp_width * temp_height * 4;
     }
