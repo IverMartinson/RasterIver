@@ -71,9 +71,12 @@ void rotate_euler(float *x, float *y, float *z, float r_x, float r_y, float r_z)
     *z = temp_z;\
 };\
 \
-__kernel void raster_kernel(__global float* objects, __global float* verticies, __global float* normals, __global float* uvs, __global int* triangles, __global uint* frame_buffer, __global uchar* textures, __global int* texture_info, int object_count, int width, int height, int show_buffer, int frame){ \
+__kernel void raster_kernel(__global float* objects, __global float* verticies, __global float* normals, __global float* uvs, __global int* triangles, __global uint* frame_buffer, __global uchar* textures, __global int* texture_info, int object_count, int width, int height, int show_buffer, int frame, float fov){ \
     int id_x = get_global_id(0) - width / 2; \
     int id_y = get_global_id(1) - height / 2; \
+    \
+    float vertical_fov_factor = height / tanf(0.5 * fov);\
+    float horizontal_fov_factor = width / tanf(0.5 * fov);\
     \
     float z_pixel = INFINITY; \
     uint frame_pixel = 0x22222222; \
@@ -149,14 +152,14 @@ __kernel void raster_kernel(__global float* objects, __global float* verticies, 
             }\
             \
             z0 = (z0 * object_s_z + object_z);\
-            x0 = (x0 * object_s_x + object_x) / z0 * height;\
-            y0 = (y0 * object_s_y + object_y) / z0 * width;\
+            x0 = (x0 * object_s_x + object_x) / z0 * horizontal_fov_factor;\
+            y0 = (y0 * object_s_y + object_y) / z0 * vartical_fov_factor;\
             z1 = (z1 * object_s_z + object_z);\
-            x1 = (x1 * object_s_x + object_x) / z1 * height;\
-            y1 = (y1 * object_s_y + object_y) / z1 * width;\
+            x1 = (x1 * object_s_x + object_x) / z1 * horizontal_fov_factor;\
+            y1 = (y1 * object_s_y + object_y) / z1 * vertical_fov_factor;\
             z2 = (z2 * object_s_z + object_z);\
-            y2 = (y2 * object_s_y + object_y) / z2 * height;\
-            x2 = (x2 * object_s_x + object_x) / z2 * width;\
+            y2 = (y2 * object_s_y + object_y) / z2 * horizontal_fov_factor;\
+            x2 = (x2 * object_s_x + object_x) / z2 * vertican_fov_factor;\
             \
             if (i3 < 0 || i4 < 0 || i5 < 0){\
                 has_normals = 0;\
