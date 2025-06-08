@@ -802,6 +802,14 @@ RI_objects RI_RequestObjects(RI_newObject *RI_ObjectBuffer, int RI_ObjectsToRequ
         if (texture_info_memory_buffer == NULL){
             debug(RI_DEBUG_LOW, "clCreateBuffer Failed for Texture Info cl_mem Buffer");
         }
+
+        erchk(clEnqueueWriteBuffer(queue, textures_memory_buffer, CL_TRUE, 0, sizeof(unsigned char) * 4 * textures_size, textures, 0, NULL, NULL));
+        erchk(clFinish(queue));
+
+        erchk(clEnqueueWriteBuffer(queue, texture_info_memory_buffer, CL_TRUE, 0, sizeof(int) * tis * texture_count, texture_info, 0, NULL, NULL));
+        erchk(clFinish(queue));
+
+        debug(1, "Wrote Textures Buffer and Texture Info Buffer");
     }
 
     int value_offset = 0;
@@ -877,6 +885,11 @@ RI_objects RI_RequestObjects(RI_newObject *RI_ObjectBuffer, int RI_ObjectsToRequ
         if (triangles_memory_buffer == NULL){
             debug(RI_DEBUG_LOW, "clCreateBuffer Failed for Triangles cl_mem Buffer");
         }
+
+        erchk(clEnqueueWriteBuffer(queue, triangles_memory_buffer, CL_TRUE, 0, sizeof(int) * ts * face_count, triangles, 0, NULL, NULL));
+        erchk(clFinish(queue));
+
+        debug(1, "Wrote Triangles Buffer");
     }
 
     if (!use_cpu && vertex_count > 0){
@@ -886,6 +899,11 @@ RI_objects RI_RequestObjects(RI_newObject *RI_ObjectBuffer, int RI_ObjectsToRequ
         if (verticies_memory_buffer == NULL){
             debug(RI_DEBUG_LOW, "clCreateBuffer Failed for Verticies cl_mem Buffer");
         }
+
+        erchk(clEnqueueWriteBuffer(queue, verticies_memory_buffer, CL_TRUE, 0, sizeof(float) * vs * vertex_count, verticies, 0, NULL, NULL));
+        erchk(clFinish(queue));
+
+        debug(1, "Wrote Verticies Buffer");
     }
 
     if (!use_cpu && normal_count > 0){
@@ -895,6 +913,11 @@ RI_objects RI_RequestObjects(RI_newObject *RI_ObjectBuffer, int RI_ObjectsToRequ
         if (normals_memory_buffer == NULL){
             debug(RI_DEBUG_LOW, "clCreateBuffer Failed for Normals cl_mem Buffer");
         }
+
+        erchk(clEnqueueWriteBuffer(queue, normals_memory_buffer, CL_TRUE, 0, sizeof(float) * vs * normal_count, normals, 0, NULL, NULL));
+        erchk(clFinish(queue));
+
+        debug(1, "Wrote Normals Buffer");
     }
 
     if (!use_cpu && uv_count > 0){
@@ -904,6 +927,11 @@ RI_objects RI_RequestObjects(RI_newObject *RI_ObjectBuffer, int RI_ObjectsToRequ
         if (uvs_memory_buffer == NULL){
             debug(RI_DEBUG_LOW, "clCreateBuffer Failed for UVS cl_mem Buffer");
         }
+
+        erchk(clEnqueueWriteBuffer(queue, uvs_memory_buffer, CL_TRUE, 0, sizeof(float) * vs * uv_count, uvs, 0, NULL, NULL));
+        erchk(clFinish(queue));
+
+        debug(1, "Wrote UVS Buffer");
     }
 
     debug(RI_DEBUG_MEDIUM, "Request for %d Objects Granted", object_count);
@@ -1335,6 +1363,13 @@ RI_result RI_Tick(){
                 }
             }
         else if (be_master_renderer){
+            if (object_count > 0) {
+                erchk(clEnqueueWriteBuffer(queue, object_memory_buffer, CL_TRUE, 0, sizeof(float) * object_size * object_count, objects, 0, NULL, NULL));
+                erchk(clFinish(queue));
+
+                debug_tick_func(1, "Wrote Objects Buffer");
+            }
+
             erchk(clSetKernelArg(compiled_kernel_master, 0, sizeof(cl_mem), &object_memory_buffer));
             erchk(clSetKernelArg(compiled_kernel_master, 1, sizeof(cl_mem), &verticies_memory_buffer));
             erchk(clSetKernelArg(compiled_kernel_master, 2, sizeof(cl_mem), &normals_memory_buffer));
@@ -1350,51 +1385,6 @@ RI_result RI_Tick(){
             erchk(clSetKernelArg(compiled_kernel_master, 12, sizeof(int), (void*)&frame)); 
             erchk(clSetKernelArg(compiled_kernel_master, 13, sizeof(float), (void*)&fov)); 
 
-            if (object_count > 0) {
-                erchk(clEnqueueWriteBuffer(queue, object_memory_buffer, CL_TRUE, 0, sizeof(float) * object_size * object_count, objects, 0, NULL, NULL));
-                erchk(clFinish(queue));
-
-                debug_tick_func(1, "Wrote Objects Buffer");
-            }
-
-            if (vertex_count > 0){
-                erchk(clEnqueueWriteBuffer(queue, verticies_memory_buffer, CL_TRUE, 0, sizeof(float) * vs * vertex_count, verticies, 0, NULL, NULL));
-                erchk(clFinish(queue));
-
-                debug_tick_func(1, "Wrote Verticies Buffer");
-            }
-
-            if (normal_count > 0){
-                erchk(clEnqueueWriteBuffer(queue, normals_memory_buffer, CL_TRUE, 0, sizeof(float) * vs * normal_count, normals, 0, NULL, NULL));
-                erchk(clFinish(queue));
-
-                debug_tick_func(1, "Wrote Normals Buffer");
-            }
-
-            if (uv_count > 0){
-                erchk(clEnqueueWriteBuffer(queue, uvs_memory_buffer, CL_TRUE, 0, sizeof(float) * vs * uv_count, uvs, 0, NULL, NULL));
-                erchk(clFinish(queue));
-
-                debug_tick_func(1, "Wrote UVS Buffer");
-            }
-
-            if (face_count > 0){
-                erchk(clEnqueueWriteBuffer(queue, triangles_memory_buffer, CL_TRUE, 0, sizeof(int) * ts * face_count, triangles, 0, NULL, NULL));
-                erchk(clFinish(queue));
-
-                debug_tick_func(1, "Wrote Triangles Buffer");
-            }
-
-            if (texture_count > 0){
-                erchk(clEnqueueWriteBuffer(queue, textures_memory_buffer, CL_TRUE, 0, sizeof(unsigned char) * 4 * textures_size, textures, 0, NULL, NULL));
-                erchk(clFinish(queue));
-
-                erchk(clEnqueueWriteBuffer(queue, texture_info_memory_buffer, CL_TRUE, 0, sizeof(int) * tis * texture_count, texture_info, 0, NULL, NULL));
-                erchk(clFinish(queue));
-
-                debug_tick_func(1, "Wrote Textures Buffer and Texture Info Buffer");
-            }
-            
             erchk(clEnqueueFillBuffer(queue, output_memory_buffer, &pattern, sizeof(RI_uint), 0, sizeof(RI_uint) * width * height, 0, NULL, NULL));
             erchk(clFinish(queue));
             debug_tick_func(1, "Cleared Frame Buffer");
