@@ -50,6 +50,8 @@ double fps;
 double elapsed_ticks;
 double delta_time;
 int fps_cap = -1;
+
+char prefix[500] = "[RasterIver] ";
 // ----- Internal Variables
 
 // ----- Rendering Vars
@@ -116,11 +118,13 @@ RI_result debug(int verbose, char *string, ...){
     va_list args;
     va_start(args, string);
 
-    char prefix[500] = "[RasterIver] ";
+    char message[500];
 
-    strcat(prefix, string);
+    strcpy(message, prefix);
 
-    vprintf(prefix, args);
+    strcat(message, string);
+
+    vprintf(message, args);
     printf("\n");
 
     va_end(args);
@@ -948,6 +952,12 @@ RI_result RI_SetFontFile(char *RI_PathToFontFile){
     font_file = RI_PathToFontFile;
 
     font = TTF_OpenFont(font_file, font_size);
+
+    return RI_SUCCESS;
+}
+
+RI_result RI_SetDebugPrefix(char RI_Prefix[500]){
+    strcpy(prefix, RI_Prefix);
 
     return RI_SUCCESS;
 }

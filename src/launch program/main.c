@@ -21,6 +21,7 @@ int main(){
     RI_SetFlag(RI_FLAG_BE_MASTER_RENDERER, 1);
     RI_SetFlag(RI_FLAG_HANDLE_SDL_EVENTS, 1);
     RI_SetFlag(RI_FLAG_SHOW_INFO, 0);
+    RI_SetDebugPrefix("[RASTERIVER IS AMAZING] ");
     RI_SetFpsCap(120);
 
     if (RI_Init(width, height, "Rasteriver Test") == RI_ERROR){
