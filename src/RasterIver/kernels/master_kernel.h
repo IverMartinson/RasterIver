@@ -153,13 +153,13 @@ __kernel void raster_kernel(__global float* objects, __global float* verticies, 
             \
             z0 = (z0 * object_s_z + object_z);\
             x0 = (x0 * object_s_x + object_x) / z0 * horizontal_fov_factor;\
-            y0 = (y0 * object_s_y + object_y) / z0 * vartical_fov_factor;\
+            y0 = (y0 * object_s_y + object_y) / z0 * vertical_fov_factor;\
             z1 = (z1 * object_s_z + object_z);\
             x1 = (x1 * object_s_x + object_x) / z1 * horizontal_fov_factor;\
             y1 = (y1 * object_s_y + object_y) / z1 * vertical_fov_factor;\
             z2 = (z2 * object_s_z + object_z);\
             y2 = (y2 * object_s_y + object_y) / z2 * horizontal_fov_factor;\
-            x2 = (x2 * object_s_x + object_x) / z2 * vertican_fov_factor;\
+            x2 = (x2 * object_s_x + object_x) / z2 * vertical_fov_factor;\
             \
             if (i3 < 0 || i4 < 0 || i5 < 0){\
                 has_normals = 0;\
