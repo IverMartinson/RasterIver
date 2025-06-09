@@ -5,6 +5,7 @@
 #include "stb_image.h"
 #include <stdint.h>
 #include "../kernels/master_kernel.h"
+#include "../kernels/transformer.h"
 #include "../kernels/non_master_kernel.h"
 #include <SDL2/SDL.h>
 

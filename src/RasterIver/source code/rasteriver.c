@@ -92,7 +92,9 @@ cl_mem output_memory_buffer;
 cl_mem object_memory_buffer;
 cl_mem triangles_memory_buffer;
 cl_mem verticies_memory_buffer;
+cl_mem transformed_verticies_memory_buffer;
 cl_mem normals_memory_buffer;
+cl_mem transformed_normals_memory_buffer;
 cl_mem uvs_memory_buffer;
 cl_mem textures_memory_buffer;
 cl_mem texture_info_memory_buffer;
@@ -102,6 +104,9 @@ cl_kernel compiled_kernel_non_master;
 
 cl_program kernel_program_master;
 cl_kernel compiled_kernel_master;
+
+cl_program kernel_program_transformer;
+cl_kernel compiled_kernel_transformer;
 
 size_t size_2d[2];
 size_t local_size;
@@ -761,16 +766,16 @@ RI_objects RI_RequestObjects(RI_newObject *RI_ObjectBuffer, int RI_ObjectsToRequ
             debug(RI_DEBUG_HIGH, "Object Already Loaded Has %f Triangles", objects[base + 9]);
         }
 
-        objects[base + 0] = loading_object_current_object->x; // x
-        objects[base + 1] = loading_object_current_object->y; // y
-        objects[base + 2] = loading_object_current_object->z; // z
-        objects[base + 3] = loading_object_current_object->r_x; // rotation x
-        objects[base + 4] = loading_object_current_object->r_y; // rotation y
-        objects[base + 5] = loading_object_current_object->r_z; // rotation z
+        objects[base + 0] =  loading_object_current_object->x; // x
+        objects[base + 1] =  loading_object_current_object->y; // y
+        objects[base + 2] =  loading_object_current_object->z; // z
+        objects[base + 3] =  loading_object_current_object->r_x; // rotation x
+        objects[base + 4] =  loading_object_current_object->r_y; // rotation y
+        objects[base + 5] =  loading_object_current_object->r_z; // rotation z
         objects[base + 15] = loading_object_current_object->r_w; // rotation w
-        objects[base + 6] = loading_object_current_object->s_x; // scale x
-        objects[base + 7] = loading_object_current_object->s_y; // scale y
-        objects[base + 8] = loading_object_current_object->s_z; // scale z
+        objects[base + 6] =  loading_object_current_object->s_x; // scale x
+        objects[base + 7] =  loading_object_current_object->s_y; // scale y
+        objects[base + 8] =  loading_object_current_object->s_z; // scale z
     }
     
     free(object_file_offsets);
@@ -895,6 +900,8 @@ RI_objects RI_RequestObjects(RI_newObject *RI_ObjectBuffer, int RI_ObjectsToRequ
     if (!use_cpu && vertex_count > 0){
         verticies_memory_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(RI_verticies) * vertex_count * vs, verticies, &error);
         erchk(error);
+        transformed_verticies_memory_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(RI_verticies) * vertex_count * vs, verticies, &error);
+        erchk(error);
     
         if (verticies_memory_buffer == NULL){
             debug(RI_DEBUG_LOW, "clCreateBuffer Failed for Verticies cl_mem Buffer");
@@ -908,6 +915,8 @@ RI_objects RI_RequestObjects(RI_newObject *RI_ObjectBuffer, int RI_ObjectsToRequ
 
     if (!use_cpu && normal_count > 0){
         normals_memory_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(RI_verticies) * normal_count * vs, normals, &error);
+        erchk(error);
+        transformed_normals_memory_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(RI_verticies) * normal_count * vs, normals, &error);
         erchk(error);
     
         if (normals_memory_buffer == NULL){
@@ -1370,9 +1379,20 @@ RI_result RI_Tick(){
                 debug_tick_func(1, "Wrote Objects Buffer");
             }
 
+            erchk(clSetKernelArg(compiled_kernel_transformer, 0, sizeof(cl_mem), &object_memory_buffer));
+            erchk(clSetKernelArg(compiled_kernel_transformer, 1, sizeof(cl_mem), &verticies_memory_buffer));
+            erchk(clSetKernelArg(compiled_kernel_transformer, 2, sizeof(cl_mem), &normals_memory_buffer));
+            erchk(clSetKernelArg(compiled_kernel_transformer, 3, sizeof(cl_mem), &transformed_verticies_memory_buffer));
+            erchk(clSetKernelArg(compiled_kernel_transformer, 4, sizeof(cl_mem), &transformed_normals_memory_buffer));
+
+            size_t size_1d = object_count;            
+
+            erchk(clEnqueueNDRangeKernel(queue, compiled_kernel_transformer, 1, NULL, size_1d, NULL, 0, NULL, NULL));
+            erchk(clFinish(queue));
+
             erchk(clSetKernelArg(compiled_kernel_master, 0, sizeof(cl_mem), &object_memory_buffer));
-            erchk(clSetKernelArg(compiled_kernel_master, 1, sizeof(cl_mem), &verticies_memory_buffer));
-            erchk(clSetKernelArg(compiled_kernel_master, 2, sizeof(cl_mem), &normals_memory_buffer));
+            erchk(clSetKernelArg(compiled_kernel_master, 1, sizeof(cl_mem), &transformed_verticies_memory_buffer));
+            erchk(clSetKernelArg(compiled_kernel_master, 2, sizeof(cl_mem), &transformed_normals_memory_buffer));
             erchk(clSetKernelArg(compiled_kernel_master, 3, sizeof(cl_mem), &uvs_memory_buffer));
             erchk(clSetKernelArg(compiled_kernel_master, 4, sizeof(cl_mem), &triangles_memory_buffer));
             erchk(clSetKernelArg(compiled_kernel_master, 5, sizeof(cl_mem), &output_memory_buffer));
@@ -1584,7 +1604,9 @@ RI_result RI_Stop(int quit){
         clReleaseMemObject(output_memory_buffer);
         clReleaseMemObject(object_memory_buffer);
         clReleaseMemObject(verticies_memory_buffer);
+        clReleaseMemObject(transformed_verticies_memory_buffer);
         clReleaseMemObject(normals_memory_buffer);
+        clReleaseMemObject(transformed_normals_memory_buffer);
         clReleaseMemObject(uvs_memory_buffer);
         clReleaseMemObject(triangles_memory_buffer);
         clReleaseMemObject(textures_memory_buffer);
@@ -1807,6 +1829,28 @@ RI_result OpenCL_init(){
     erchk(clGetKernelWorkGroupInfo(compiled_kernel_master, device, CL_KERNEL_WORK_GROUP_SIZE, sizeof(local_size), &local_size, NULL));
 
     debug(RI_DEBUG_MEDIUM, "Local Size: %d", local_size);
+
+
+
+    kernel_program_transformer = clCreateProgramWithSource(context, 1, &kernel_source_transformer, NULL, &error);
+    erchk(error);
+
+    error = clBuildProgram(kernel_program_transformer, 1, &device, NULL, NULL, NULL);
+    if (error == -11){
+        size_t log_size;
+        clGetProgramBuildInfo(kernel_program_transformer, device, CL_PROGRAM_BUILD_LOG, 0, NULL, &log_size);
+        
+        char *log = malloc(log_size);
+        clGetProgramBuildInfo(kernel_program_transformer, device, CL_PROGRAM_BUILD_LOG, log_size, log, NULL);
+        
+        fprintf(stderr, "Build log:\n%s\n", log);
+        free(log);            
+
+        RI_Stop(0);
+    }
+
+    compiled_kernel_transformer = clCreateKernel(kernel_program_transformer, "transformer_kernel", &error);
+    erchk(error);
 
     size_2d[0] = width;
     size_2d[1] = height;
