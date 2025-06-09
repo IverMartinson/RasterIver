@@ -1390,7 +1390,7 @@ RI_result RI_Tick(){
             erchk(clSetKernelArg(compiled_kernel_transformer, 8, sizeof(int), (void*)&height));
 
 
-            size_t size_1d = object_count;            
+            size_t size_1d[1] = {object_count};            
 
             erchk(clEnqueueNDRangeKernel(queue, compiled_kernel_transformer, 1, NULL, size_1d, NULL, 0, NULL, NULL));
             erchk(clFinish(queue));
