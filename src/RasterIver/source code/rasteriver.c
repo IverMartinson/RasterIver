@@ -6,6 +6,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <SDL2/SDL_ttf.h>
+#include "../headers/object.h"
 
 // ----- Internal Variables
 int width;
@@ -17,7 +18,7 @@ int polygon_count;
 RI_polygons polygons = NULL;
 
 int object_count;
-RI_objects objects;
+struct Object** objects;
 RI_verticies verticies;
 RI_verticies normals;
 RI_verticies uvs;
@@ -340,53 +341,11 @@ RI_result RI_SetBackground(RI_uint RI_BackgroundColor){
     return RI_SUCCESS;
 }
 
-RI_polygons RI_RequestPolygons(int RI_PolygonsToRequest){
-    debug(RI_DEBUG_HIGH, "Called RI_RequestPolygons");
+int* RI_RequestMesh(int RI_PolygonsToRequest){
+    debug(RI_DEBUG_HIGH, "Called RI_RequestMesh");
 
     polygon_count = RI_PolygonsToRequest;
     
-    int size = sizeof(float) * 3 * 3 * polygon_count;
-    
-    debug(RI_DEBUG_MEDIUM, "Requesting %d Polygons... (%d bytes)", polygon_count, size);
-    
-    if (polygons != NULL)
-    {
-        free(polygons);
-    }
-    
-    polygons = malloc(size);
-    
-    if (polygons == NULL)
-    {
-        debug(RI_DEBUG_LOW, "Malloc Error");
-        return (float*)RI_ERROR;
-    }
-    
-    for (int i_polygon = 0; i_polygon < polygon_count * 9; i_polygon += 3){     
-        if (clean_polygons){
-            polygons[i_polygon] = INFINITY;
-            polygons[i_polygon + 1] = INFINITY;
-            polygons[i_polygon + 2] = INFINITY;
-        }
-        else if (populate_polygons){
-            polygons[i_polygon] = rand() % width;
-            polygons[i_polygon + 1] = rand() % height;
-            polygons[i_polygon + 2] = rand() % ((width + height) / 2);
-        }
-    }
-    
-    input_memory_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, size, polygons, &error);
-    
-    if (input_memory_buffer == NULL)
-    {
-        debug(RI_DEBUG_LOW, "clCreateBuffer Failed for Requested Polygons");
-    }
-
-    erchk(error);
-    
-    debug(RI_DEBUG_MEDIUM, "Request for %d Polygons Granted", polygon_count);
-    
-    return polygons;
 }
 
 int vertex_count = 0;
@@ -665,12 +624,15 @@ RI_objects RI_RequestObjects(RI_newObject *RI_ObjectBuffer, int RI_ObjectsToRequ
         free(objects);
     }
 
-    int object_arary_size = sizeof(float) * object_size * RI_ObjectsToRequest;
+    int object_arary_size = sizeof(struct Object*) * (object_count + RI_ObjectsToRequest);
 
-    objects = malloc(object_arary_size);
+    struct Object** temp = realloc(objects, object_arary_size);
     
-    if (objects == NULL){
-        debug(RI_DEBUG_LOW, "Malloc Error");
+    if (temp == NULL){
+        debug(RI_DEBUG_LOW, "Realloc Error for Objects Array");
+    }
+    else{
+        objects = temp;
     }
 
     char **file_names = malloc(RI_ObjectsToRequest * sizeof(char *));
@@ -698,11 +660,14 @@ RI_objects RI_RequestObjects(RI_newObject *RI_ObjectBuffer, int RI_ObjectsToRequ
     for (int i_object = 0; i_object < object_count; i_object++){
         RI_newObject *loading_object_current_object = &RI_ObjectBuffer[i_object];
         
-        int base = i_object * object_size;
-        objects[base + 10] = (float)object_file_offsets[i_object * 5 + 0]; // triangle offset
-        objects[base + 11] = (float)object_file_offsets[i_object * 5 + 1]; // vertex offset
-        objects[base + 12] = (float)object_file_offsets[i_object * 5 + 2]; // normal offset
-        objects[base + 13] = (float)object_file_offsets[i_object * 5 + 3]; // uvs offset
+        int base = object_count + i_object;
+        
+        objects[base] = malloc(sizeof(struct Object));
+
+        objects[base]->modelInfo->triangleOffset = (float)object_file_offsets[i_object * 5 + 0]; // triangle offset
+        objects[base]->modelInfo->vertexOffset = (float)object_file_offsets[i_object * 5 + 1]; // vertex offset
+        objects[base]->modelInfo->normalOffset = (float)object_file_offsets[i_object * 5 + 2]; // normal offset
+        objects[base]->modelInfo->uvOffset = (float)object_file_offsets[i_object * 5 + 3]; // uvs offset
 
         is_this_texture_name_already_in_the_texture_names_array = 0;
 
@@ -710,7 +675,7 @@ RI_objects RI_RequestObjects(RI_newObject *RI_ObjectBuffer, int RI_ObjectsToRequ
             if (strcmp(texture_names[i_object_texture], loading_object_current_object->texture) == 0){
                 debug(RI_DEBUG_HIGH, "Not Reloading Texture \"%s\" (texture #%d) (compared %s to %s)", loading_object_current_object->texture, i_object_texture, texture_names[i_object_texture], loading_object_current_object->texture);
 
-                objects[base + 14] = i_object_texture; // texture offset
+                objects[base]->material->textureOffset = i_object_texture; // texture offset
                 is_this_texture_name_already_in_the_texture_names_array = 1;
                 break;
             }
@@ -718,7 +683,7 @@ RI_objects RI_RequestObjects(RI_newObject *RI_ObjectBuffer, int RI_ObjectsToRequ
 
         if (!is_this_texture_name_already_in_the_texture_names_array){
             texture_names[texture_count] = loading_object_current_object->texture;
-            objects[base + 14] = texture_count; // texture offset
+            objects[base]->material->textureOffset = texture_count; // texture offset
             texture_count++;
 
             int texture_width, texture_height, channels;
@@ -743,34 +708,34 @@ RI_objects RI_RequestObjects(RI_newObject *RI_ObjectBuffer, int RI_ObjectsToRequ
         loading_object_current_uvs_count = object_file_offsets[i_object * 5 + 3];
 
         if (object_file_offsets[i_object * 5 + 4] > 0){
-            debug(RI_DEBUG_HIGH, "Loading Object at Triangle Index: %f", objects[base + 10]);
-            debug(RI_DEBUG_HIGH, "Loading Object at Vertex Index: %f", objects[base + 11]);
-            debug(RI_DEBUG_HIGH, "Loading Object at Normal Index: %f", objects[base + 12]);
-            debug(RI_DEBUG_HIGH, "Loading Object at UV Index: %f", objects[base + 13]);
+            debug(RI_DEBUG_HIGH, "Loading Object at Triangle Index: %f", objects[base]->modelInfo->triangleOffset);
+            debug(RI_DEBUG_HIGH, "Loading Object at Vertex Index: %f", objects[base]->modelInfo->vertexOffset);
+            debug(RI_DEBUG_HIGH, "Loading Object at Normal Index: %f", objects[base]->modelInfo->normalOffset);
+            debug(RI_DEBUG_HIGH, "Loading Object at UV Index: %f", objects[base]->modelInfo->uvOffset);
 
             load_object((char *)loading_object_current_object->file_path, i_object, base);
         }
         else{
-            debug(RI_DEBUG_HIGH, "Object Already Loaded at Triangle Index: %f", objects[base + 10]);
-            debug(RI_DEBUG_HIGH, "Object Already Loaded at Vertex Index: %f", objects[base + 11]);
-            debug(RI_DEBUG_HIGH, "Object Already Loaded at Normal Index: %f", objects[base + 12]);
-            debug(RI_DEBUG_HIGH, "Object Already Loaded at UV Index: %f", objects[base + 13]);
+            debug(RI_DEBUG_HIGH, "Object Already Loaded at Triangle Index: %f", objects[base]->modelInfo->triangleOffset);
+            debug(RI_DEBUG_HIGH, "Object Already Loaded at Vertex Index: %f", objects[base]->modelInfo->vertexOffset);
+            debug(RI_DEBUG_HIGH, "Object Already Loaded at Normal Index: %f", objects[base]->modelInfo->normalOffset);
+            debug(RI_DEBUG_HIGH, "Object Already Loaded at UV Index: %f", objects[base]->modelInfo->uvOffset);
         
-            objects[base + 9] = -object_file_offsets[i_object * 5 + 4];
+            objects[base]->modelInfo->triangleCount = -object_file_offsets[i_object * 5 + 4];
 
-            debug(RI_DEBUG_HIGH, "Object Already Loaded Has %f Triangles", objects[base + 9]);
+            debug(RI_DEBUG_HIGH, "Object Already Loaded Has %f Triangles", objects[base]->modelInfo->triangleCount);
         }
 
-        objects[base + 0] = loading_object_current_object->x; // x
-        objects[base + 1] = loading_object_current_object->y; // y
-        objects[base + 2] = loading_object_current_object->z; // z
-        objects[base + 3] = loading_object_current_object->r_x; // rotation x
-        objects[base + 4] = loading_object_current_object->r_y; // rotation y
-        objects[base + 5] = loading_object_current_object->r_z; // rotation z
-        objects[base + 15] = loading_object_current_object->r_w; // rotation w
-        objects[base + 6] = loading_object_current_object->s_x; // scale x
-        objects[base + 7] = loading_object_current_object->s_y; // scale y
-        objects[base + 8] = loading_object_current_object->s_z; // scale z
+        objects[base]->transform->position.x = loading_object_current_object->x; // x
+        objects[base]->transform->position.y = loading_object_current_object->y; // y
+        objects[base]->transform->position.z = loading_object_current_object->z; // z
+        objects[base]->transform->rotation.w = loading_object_current_object->r_w; // rotation x
+        objects[base]->transform->rotation.x = loading_object_current_object->r_x; // rotation y
+        objects[base]->transform->rotation.y = loading_object_current_object->r_y; // rotation z
+        objects[base]->transform->rotation.z = loading_object_current_object->r_z; // rotation w
+        objects[base]->transform->scale.x = loading_object_current_object->s_x; // scale x
+        objects[base]->transform->scale.y = loading_object_current_object->s_y; // scale y
+        objects[base]->transform->scale.z = loading_object_current_object->s_z; // scale z
     }
     
     free(object_file_offsets);
@@ -1077,25 +1042,25 @@ RI_result RI_Tick(){
                     
 
                     for (int i_object = 0; i_object < object_count; i_object++){ 
-                        int base = i_object * 16;
+                        int base = i_object;
                         
-                        float object_x =   objects[base + 0]; 
-                        float object_y =   objects[base + 1]; 
-                        float object_z =   objects[base + 2]; 
-                        float object_r_x = objects[base + 3]; 
-                        float object_r_y = objects[base + 4]; 
-                        float object_r_z = objects[base + 5]; 
-                        float object_r_w = objects[base + 15]; 
-                        float object_s_x = objects[base + 6]; 
-                        float object_s_y = objects[base + 7]; 
-                        float object_s_z = objects[base + 8]; 
+                        float object_x =   objects[base]->transform->position.x; 
+                        float object_y =   objects[base]->transform->position.y; 
+                        float object_z =   objects[base]->transform->position.z; 
+                        float object_r_x = objects[base]->transform->rotation.w; 
+                        float object_r_y = objects[base]->transform->rotation.x; 
+                        float object_r_z = objects[base]->transform->rotation.y; 
+                        float object_r_w = objects[base]->transform->rotation.z; 
+                        float object_s_x = objects[base]->transform->scale.x; 
+                        float object_s_y = objects[base]->transform->scale.y; 
+                        float object_s_z = objects[base]->transform->scale.z; 
                         
-                        int triangle_count = (int)objects[base + 9];
-                        int triangle_index = (int)objects[base + 10];
-                        int vertex_index =   (int)objects[base + 11];
-                        int normal_index =   (int)objects[base + 12];
-                        int uv_index =       (int)objects[base + 13];
-                        int texture_index =  (int)objects[base + 14];
+                        int triangle_count = objects[base]->modelInfo->triangleCount;
+                        int triangle_index = objects[base]->modelInfo->triangleOffset;
+                        int vertex_index =   objects[base]->modelInfo->vertexOffset;
+                        int normal_index =   objects[base]->modelInfo->normalOffset;
+                        int uv_index =       objects[base]->modelInfo->uvOffset;
+                        int texture_index =  objects[base]->material->textureOffset;
                         
                         for (int i_triangle = 0; i_triangle < triangle_count; i_triangle++){
                             int triangle_base = (i_triangle + triangle_index) * 9; 

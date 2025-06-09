@@ -7,6 +7,7 @@
 #include "../kernels/master_kernel.h"
 #include "../kernels/non_master_kernel.h"
 #include <SDL2/SDL.h>
+#include "object.h"
 
 typedef int RI_result;
 typedef int RI_flag;
@@ -105,8 +106,8 @@ RI_result   RI_Stop();
 RI_result   RI_IsRunning();
 
 // Asks Rasteriver to allocate space for a number of polygons
-// Returns a pointer to the polygons array
-RI_polygons RI_RequestPolygons(int RI_PolygonsToRequest);
+// Returns a pointer to the new object
+int* RI_RequestMesh(int RI_PolygonsToRequest);
 
 // Asks Rasteriver to allocate and load objects
 // Returns a pointer to the objects array
