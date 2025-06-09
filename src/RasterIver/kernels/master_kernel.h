@@ -75,8 +75,8 @@ __kernel void raster_kernel(__global float* objects, __global float* verticies, 
     int id_x = get_global_id(0) - width / 2; \
     int id_y = get_global_id(1) - height / 2; \
     \
-    float vertical_fov_factor = height / tanf(0.5 * fov);\
-    float horizontal_fov_factor = width / tanf(0.5 * fov);\
+    float vertical_fov_factor = height / tan(0.5 * fov);\
+    float horizontal_fov_factor = width / tan(0.5 * fov);\
     \
     float z_pixel = INFINITY; \
     uint frame_pixel = 0x22222222; \
