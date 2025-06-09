@@ -1395,6 +1395,8 @@ RI_result RI_Tick(){
             erchk(clEnqueueNDRangeKernel(queue, compiled_kernel_transformer, 1, NULL, size_1d, NULL, 0, NULL, NULL));
             erchk(clFinish(queue));
 
+            debug_tick_func(RI_DEBUG_HIGH, "Ran Transformation Kernel");
+
             erchk(clSetKernelArg(compiled_kernel_master, 0, sizeof(cl_mem), &object_memory_buffer));
             erchk(clSetKernelArg(compiled_kernel_master, 1, sizeof(cl_mem), &transformed_verticies_memory_buffer));
             erchk(clSetKernelArg(compiled_kernel_master, 2, sizeof(cl_mem), &transformed_normals_memory_buffer));
@@ -1424,6 +1426,8 @@ RI_result RI_Tick(){
 
             erchk(clEnqueueNDRangeKernel(queue, compiled_kernel_master, 2, NULL, size_2d, NULL, 0, NULL, NULL));
             erchk(clFinish(queue));
+
+            debug_tick_func(RI_DEBUG_HIGH, "Ran Rasterization Kernel");
 
             erchk(clEnqueueReadBuffer(queue, output_memory_buffer, CL_TRUE, 0, sizeof(RI_uint) * width * height, frame_buffer, 0, NULL, NULL));
             erchk(clFinish(queue));
