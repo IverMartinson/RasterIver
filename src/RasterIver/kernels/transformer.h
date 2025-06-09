@@ -40,7 +40,7 @@ void rotate_euler(float *x, float *y, float *z, float r_x, float r_y, float r_z)
     *z = temp_z;\
 };\
 \
-__kernel void transformer_kernel(__global float* objects, __global float* verticies, __global float* normals, __global float* triangles, __global float* transformed_verticies, __global float* transformed_normals, float fov){ \
+__kernel void transformer_kernel(__global float* objects, __global float* verticies, __global float* normals, __global float* triangles, __global float* transformed_verticies, __global float* transformed_normals, float fov, int width, int height){ \
     int id_x = get_global_id(0);\
     \
     float vertical_fov_factor = height / tan(0.5 * fov);\

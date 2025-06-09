@@ -1386,6 +1386,9 @@ RI_result RI_Tick(){
             erchk(clSetKernelArg(compiled_kernel_transformer, 4, sizeof(cl_mem), &transformed_verticies_memory_buffer));
             erchk(clSetKernelArg(compiled_kernel_transformer, 5, sizeof(cl_mem), &transformed_normals_memory_buffer));
             erchk(clSetKernelArg(compiled_kernel_transformer, 6, sizeof(float), (void*)&fov)); 
+            erchk(clSetKernelArg(compiled_kernel_transformer, 7, sizeof(int), (void*)&width));
+            erchk(clSetKernelArg(compiled_kernel_transformer, 8, sizeof(int), (void*)&height));
+
 
             size_t size_1d = object_count;            
 
