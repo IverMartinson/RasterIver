@@ -40,8 +40,11 @@ void rotate_euler(float *x, float *y, float *z, float r_x, float r_y, float r_z)
     *z = temp_z;\
 };\
 \
-__kernel void transformer_kernel(__global float* objects, __global float* verticies, __global float* normals, __global float* transformed_verticies, __global float* transformed_normals){ \
+__kernel void transformer_kernel(__global float* objects, __global float* verticies, __global float* normals, __global float* triangles, __global float* transformed_verticies, __global float* transformed_normals, float fov){ \
     int id_x = get_global_id(0);\
+    \
+    float vertical_fov_factor = height / tan(0.5 * fov);\
+    float horizontal_fov_factor = width / tan(0.5 * fov);\
     \
     int has_normals = 1;\
     int has_uvs = 1;\
@@ -114,13 +117,13 @@ __kernel void transformer_kernel(__global float* objects, __global float* vertic
         \
         transformed_verticies[i0 + 2] = (z0 * object_s_z + object_z);\
         transformed_verticies[i0 + 0] = (x0 * object_s_x + object_x) / z0 * horizontal_fov_factor;\
-        transformed_verticies[i0 + 1] = (y0 * object_s_y + object_y) / z0 * vartical_fov_factor;\
+        transformed_verticies[i0 + 1] = (y0 * object_s_y + object_y) / z0 * vertical_fov_factor;\
         transformed_verticies[i1 + 2] = (z1 * object_s_z + object_z);\
         transformed_verticies[i1 + 0] = (x1 * object_s_x + object_x) / z1 * horizontal_fov_factor;\
         transformed_verticies[i1 + 1] = (y1 * object_s_y + object_y) / z1 * vertical_fov_factor;\
         transformed_verticies[i2 + 2] = (z2 * object_s_z + object_z);\
         transformed_verticies[i2 + 0] = (y2 * object_s_y + object_y) / z2 * horizontal_fov_factor;\
-        transformed_verticies[i2 + 1] = (x2 * object_s_x + object_x) / z2 * vertican_fov_factor;\
+        transformed_verticies[i2 + 1] = (x2 * object_s_x + object_x) / z2 * vertical_fov_factor;\
         \
         transformed_normals[i3 + 0] = n_x0;\
         transformed_normals[i3 + 1] = n_y0;\

@@ -1382,8 +1382,10 @@ RI_result RI_Tick(){
             erchk(clSetKernelArg(compiled_kernel_transformer, 0, sizeof(cl_mem), &object_memory_buffer));
             erchk(clSetKernelArg(compiled_kernel_transformer, 1, sizeof(cl_mem), &verticies_memory_buffer));
             erchk(clSetKernelArg(compiled_kernel_transformer, 2, sizeof(cl_mem), &normals_memory_buffer));
-            erchk(clSetKernelArg(compiled_kernel_transformer, 3, sizeof(cl_mem), &transformed_verticies_memory_buffer));
-            erchk(clSetKernelArg(compiled_kernel_transformer, 4, sizeof(cl_mem), &transformed_normals_memory_buffer));
+            erchk(clSetKernelArg(compiled_kernel_transformer, 3, sizeof(cl_mem), &triangles_memory_buffer));
+            erchk(clSetKernelArg(compiled_kernel_transformer, 4, sizeof(cl_mem), &transformed_verticies_memory_buffer));
+            erchk(clSetKernelArg(compiled_kernel_transformer, 5, sizeof(cl_mem), &transformed_normals_memory_buffer));
+            erchk(clSetKernelArg(compiled_kernel_transformer, 6, sizeof(float), (void*)&fov)); 
 
             size_t size_1d = object_count;            
 
