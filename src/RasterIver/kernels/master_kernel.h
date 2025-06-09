@@ -75,9 +75,6 @@ __kernel void raster_kernel(__global float* objects, __global float* verticies, 
     int id_x = get_global_id(0) - width / 2; \
     int id_y = get_global_id(1) - height / 2; \
     \
-    float vertical_fov_factor = height / tan(0.5 * fov);\
-    float horizontal_fov_factor = width / tan(0.5 * fov);\
-    \
     float z_pixel = INFINITY; \
     uint frame_pixel = 0x22222222; \
     \
@@ -140,26 +137,6 @@ __kernel void raster_kernel(__global float* objects, __global float* verticies, 
             float x2 = verticies[i2 + 0];\
             float y2 = verticies[i2 + 1];\
             \
-            if (object_r_w <= -9999999){\
-                rotate_euler(&x0, &y0, &z0, object_r_x, object_r_y, object_r_z);\
-                rotate_euler(&x1, &y1, &z1, object_r_x, object_r_y, object_r_z);\
-                rotate_euler(&x2, &y2, &z2, object_r_x, object_r_y, object_r_z);\
-            }\
-            else{\
-                rotate_euler(&x0, &y0, &z0, object_r_x, object_r_y, object_r_z);\
-                rotate_euler(&x1, &y1, &z1, object_r_x, object_r_y, object_r_z);\
-                rotate_euler(&x2, &y2, &z2, object_r_x, object_r_y, object_r_z);\
-            }\
-            \
-            z0 = (z0 * object_s_z + object_z);\
-            x0 = (x0 * object_s_x + object_x) / z0 * horizontal_fov_factor;\
-            y0 = (y0 * object_s_y + object_y) / z0 * vertical_fov_factor;\
-            z1 = (z1 * object_s_z + object_z);\
-            x1 = (x1 * object_s_x + object_x) / z1 * horizontal_fov_factor;\
-            y1 = (y1 * object_s_y + object_y) / z1 * vertical_fov_factor;\
-            z2 = (z2 * object_s_z + object_z);\
-            y2 = (y2 * object_s_y + object_y) / z2 * horizontal_fov_factor;\
-            x2 = (x2 * object_s_x + object_x) / z2 * vertical_fov_factor;\
             \
             if (i3 < 0 || i4 < 0 || i5 < 0){\
                 has_normals = 0;\
@@ -248,16 +225,6 @@ __kernel void raster_kernel(__global float* objects, __global float* verticies, 
                     float u_y2 = uvs[i8 + 1];\
                     float u_z2 = uvs[i8 + 2];\
                     \
-                    if (object_r_w <= -9999999){\
-                        rotate_euler(&n_x0, &n_y0, &n_z0, object_r_x, object_r_y, object_r_z);\
-                        rotate_euler(&n_x1, &n_y1, &n_z1, object_r_x, object_r_y, object_r_z);\
-                        rotate_euler(&n_x2, &n_y2, &n_z2, object_r_x, object_r_y, object_r_z);\
-                    }\
-                    else{\
-                        rotate_euler(&n_x0, &n_y0, &n_z0, object_r_x, object_r_y, object_r_z);\
-                        rotate_euler(&n_x1, &n_y1, &n_z1, object_r_x, object_r_y, object_r_z);\
-                        rotate_euler(&n_x2, &n_y2, &n_z2, object_r_x, object_r_y, object_r_z);\
-                    }\
                     \
                     switch (show_buffer){\
                         case 0:{\
