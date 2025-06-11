@@ -1,4 +1,62 @@
+#ifndef MASTER_H
+#define MASTER_H
+
 const char *kernel_source_master = " \
+typedef struct {\
+    float x;\
+    float y;\
+    float z;\
+    float _pad0;\
+} Vec3;\
+\
+typedef struct {\
+    float w;\
+    float x;\
+    float y;\
+    float z;\
+} Vec4;\
+\
+typedef struct {\
+    uchar a;\
+    uchar r;\
+    uchar g;\
+    uchar b;\
+} ColorARGB;\
+\
+typedef struct {\
+    ColorARGB albedo;\
+    int textureOffset;\
+} Material;\
+\
+typedef struct {\
+    Vec3 position;\
+    Vec3 scale;\
+    Vec4 rotation;\
+} Transform;\
+\
+typedef struct {\
+    int transformedVertexOffset;\
+    int transformedNormalOffset;\
+    int triangleCount;\
+    int vertexCount;\
+    int normalCount;\
+    int uvCount;\
+    int triangleOffset;\
+    int vertexOffset;\
+    int normalOffset;\
+    int uvOffset;\
+} ModelInfo;\
+\
+typedef struct {\
+    Transform transform;\
+    ModelInfo modelInfo;\
+    int id;\
+    int _pad1;\
+    Material material;\
+    int _pad2;\
+    int _pad3;\
+} Object;\
+\
 int is_intersecting(float a, float b, float c, float d, float p, float q, float r, float s) { \
     float det, gamma, lambda; \
     \
@@ -71,7 +129,7 @@ void rotate_euler(float *x, float *y, float *z, float r_x, float r_y, float r_z)
     *z = temp_z;\
 };\
 \
-__kernel void raster_kernel(__global float* objects, __global float* verticies, __global float* normals, __global float* uvs, __global int* triangles, __global uint* frame_buffer, __global uchar* textures, __global int* texture_info, int object_count, int width, int height, int show_buffer, int frame, float fov){ \
+__kernel void raster_kernel(__global Object* objects, __global float* verticies, __global float* normals, __global float* uvs, __global int* triangles, __global uint* frame_buffer, __global uchar* textures, __global int* texture_info, int object_count, int width, int height, int show_buffer, int frame, float fov, int total_triangle_count, int total_vertex_count){ \
     int id_x = get_global_id(0) - width / 2; \
     int id_y = get_global_id(1) - height / 2; \
     \
@@ -93,37 +151,32 @@ __kernel void raster_kernel(__global float* objects, __global float* verticies, 
     \
 \
     for (int object = 0; object < object_count; object++){ \
-        int base = object * 16;\
+        int base = object;\
         \
-        float object_x =   objects[base + 0]; \
-        float object_y =   objects[base + 1]; \
-        float object_z =   objects[base + 2]; \
-        float object_r_x = objects[base + 3]; \
-        float object_r_y = objects[base + 4]; \
-        float object_r_z = objects[base + 5]; \
-        float object_r_w = objects[base + 15]; \
-        float object_s_x = objects[base + 6]; \
-        float object_s_y = objects[base + 7]; \
-        float object_s_z = objects[base + 8]; \
+        int triangle_count = objects[base].modelInfo.triangleCount;\
+        int vertex_count =  objects[base].modelInfo.vertexCount;\
+        int normal_count =  objects[base].modelInfo.normalCount;\
+        int uv_count =          objects[base].modelInfo.uvCount;\
+        int triangle_index = objects[base].modelInfo.triangleOffset;\
+        int vertex_index =   objects[base].modelInfo.vertexOffset;\
+        int normal_index =   objects[base].modelInfo.normalOffset;\
+        int uv_index =       objects[base].modelInfo.uvOffset;\
+        int texture_index =  objects[base].material.textureOffset;\
+        int transformed_vertex_index = objects[base].modelInfo.transformedVertexOffset;\
+        int transformed_normal_index =   objects[base].modelInfo.transformedNormalOffset;\
         \
-        int triangle_count = (int)objects[base + 9];\
-        int triangle_index = (int)objects[base + 10];\
-        int vertex_index =   (int)objects[base + 11];\
-        int normal_index =   (int)objects[base + 12];\
-        int uv_index =       (int)objects[base + 13];\
-        int texture_index =  (int)objects[base + 14];\
         \
         for (int triangle = 0; triangle < triangle_count; triangle++){\
             int triangle_base = (triangle + triangle_index) * 9; \
-\
-            int i0 = (vertex_index + triangles[triangle_base + 0]) * 3;\
-            int i1 = (vertex_index + triangles[triangle_base + 1]) * 3;\
-            int i2 = (vertex_index + triangles[triangle_base + 2]) * 3;\
-\
-            int i3 = (normal_index + triangles[triangle_base + 3]) * 3;\
-            int i4 = (normal_index + triangles[triangle_base + 4]) * 3;\
-            int i5 = (normal_index + triangles[triangle_base + 5]) * 3;\
-\
+            \
+            int i0 = (transformed_vertex_index + triangles[triangle_base + 0]) * 3;\
+            int i1 = (transformed_vertex_index + triangles[triangle_base + 1]) * 3;\
+            int i2 = (transformed_vertex_index + triangles[triangle_base + 2]) * 3;\
+            \
+            int i3 = (transformed_normal_index + triangles[triangle_base + 3]) * 3;\
+            int i4 = (transformed_normal_index + triangles[triangle_base + 4]) * 3;\
+            int i5 = (transformed_normal_index + triangles[triangle_base + 5]) * 3;\
+            \
             int i6 = (uv_index + triangles[triangle_base + 6]) * 3;\
             int i7 = (uv_index + triangles[triangle_base + 7]) * 3;\
             int i8 = (uv_index + triangles[triangle_base + 8]) * 3;\
@@ -131,6 +184,7 @@ __kernel void raster_kernel(__global float* objects, __global float* verticies, 
             float z0 = verticies[i0 + 2];\
             float x0 = verticies[i0 + 0];\
             float y0 = verticies[i0 + 1];\
+            \
             \
             float z1 = verticies[i1 + 2];\
             float x1 = verticies[i1 + 0];\
@@ -171,7 +225,6 @@ __kernel void raster_kernel(__global float* objects, __global float* verticies, 
             if (isinf(x0) || isinf(y0) || isinf(z0) || isinf(x1) || isinf(y1) || isinf(z1) || isinf(x2) || isinf(y2) || isinf(z2)){\
                 continue;\
             }\
-            \
             float smallest_x = x0; \
             float largest_x = x0; \
             float smallest_y = y0; \
@@ -273,6 +326,7 @@ __kernel void raster_kernel(__global float* objects, __global float* verticies, 
                             \
                             int uv_pixel = (iy * texture_width + ix) * 4 + texture_value_offset;\
                             \
+                            \
                             uchar r = textures[uv_pixel + 0];\
                             uchar g = textures[uv_pixel + 1];\
                             uchar b = textures[uv_pixel + 2];\
@@ -349,3 +403,5 @@ __kernel void raster_kernel(__global float* objects, __global float* verticies, 
     frame_buffer[pixel_coord] = frame_pixel; \
     \
 }\n";
+
+#endif
