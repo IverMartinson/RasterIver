@@ -78,3 +78,6 @@ Rasterizer + Iver = RasterIver
 - [ ] give objects IDs or some way to track them so that you can remove them dynamically
 - [ ] give objects IDs or some way to track them so that you can remove them dynamically
 - [ ] make CUDA version because OpenCL is slow with NVIDIA
+- [ ] fix center of perspective being in the wrong spot
+- [ ] make flag for world scale/master scale (scales everything. from origin? from object origins?)
+- [ ] I think calculations for debugging memory usage are outdated/wrong
