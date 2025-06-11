@@ -4,10 +4,8 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 #include <stdint.h>
-#include "../kernels/master_kernel.h"
-#include "../kernels/transformer.h"
-#include "../kernels/non_master_kernel.h"
 #include <SDL2/SDL.h>
+#include "object.h"
 
 typedef int RI_result;
 typedef int RI_flag;
@@ -15,7 +13,7 @@ typedef uint32_t RI_uint;
 typedef float* RI_polygons;
 typedef float* RI_verticies;
 typedef int* RI_triangles;
-typedef float* RI_objects;
+typedef Object* RI_objects;
 typedef unsigned char* RI_textures;
 
 // the size of each object instance in the objects array
@@ -37,6 +35,7 @@ typedef unsigned char* RI_textures;
 
 // PI
 #define RI_PI 3.14159265359
+#define RI_2PI 6.28318530718
 
 typedef struct {
     float x, y, z, r_x, r_y, r_z, r_w, s_x, s_y, s_z;
@@ -106,8 +105,8 @@ RI_result   RI_Stop();
 RI_result   RI_IsRunning();
 
 // Asks Rasteriver to allocate space for a number of polygons
-// Returns a pointer to the polygons array
-RI_polygons RI_RequestPolygons(int RI_PolygonsToRequest);
+// Returns a pointer to the new object
+int* RI_RequestMesh(int RI_PolygonsToRequest);
 
 // Asks Rasteriver to allocate and load objects
 // Returns a pointer to the objects array
@@ -134,7 +133,8 @@ RI_result   RI_SetFpsCap(int RI_FpsCap);
 RI_result   RI_ListFlags();
 
 // Sets the prefix when debugging
-// Default is [RASTERIVER] 
-RI_result RI_SetDebugPrefix(char *RI_Prefix);
+// Takes a 49 char string (50 including \0)
+// Default is [RasterIver] 
+RI_result RI_SetDebugPrefix(char RI_Prefix[50]);
 
 #endif // RASTERIVER_H
