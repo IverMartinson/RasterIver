@@ -162,13 +162,13 @@ __kernel void transformer_kernel(__global Object* objects, __global float* verti
         return;\
         }\
         \
-            rotate_euler(&x0, &y0, &z0, object_r_x, object_r_y, object_r_z);\
-            rotate_euler(&x1, &y1, &z1, object_r_x, object_r_y, object_r_z);\
-            rotate_euler(&x2, &y2, &z2, object_r_x, object_r_y, object_r_z);\
-            \
-            rotate_euler(&n_x0, &n_y0, &n_z0, object_r_x, object_r_y, object_r_z);\
-            rotate_euler(&n_x1, &n_y1, &n_z1, object_r_x, object_r_y, object_r_z);\
-            rotate_euler(&n_x2, &n_y2, &n_z2, object_r_x, object_r_y, object_r_z);\
+        rotate_euler(&x0, &y0, &z0, object_r_x, object_r_y, object_r_z);\
+        rotate_euler(&x1, &y1, &z1, object_r_x, object_r_y, object_r_z);\
+        rotate_euler(&x2, &y2, &z2, object_r_x, object_r_y, object_r_z);\
+        \
+        rotate_euler(&n_x0, &n_y0, &n_z0, object_r_x, object_r_y, object_r_z);\
+        rotate_euler(&n_x1, &n_y1, &n_z1, object_r_x, object_r_y, object_r_z);\
+        rotate_euler(&n_x2, &n_y2, &n_z2, object_r_x, object_r_y, object_r_z);\
         \
         z0 = (z0 * object_s_z + object_z);\
         x0 = (x0 * object_s_x + object_x) / z0 * horizontal_fov_factor;\
@@ -180,15 +180,15 @@ __kernel void transformer_kernel(__global Object* objects, __global float* verti
         y2 = (y2 * object_s_y + object_y) / z2 * horizontal_fov_factor;\
         x2 = (x2 * object_s_x + object_x) / z2 * vertical_fov_factor;\
         \
-        transformed_verticies[(triangles[triangle_base + 0] + transformed_vertex_index) * 3 + i0 + 0] = x0;\
-        transformed_verticies[(triangles[triangle_base + 0] + transformed_vertex_index) * 3 + i0 + 1] = y0;\
-        transformed_verticies[(triangles[triangle_base + 0] + transformed_vertex_index) * 3 + i0 + 2] = z0;\
-        transformed_verticies[(triangles[triangle_base + 1] + transformed_vertex_index) * 3 + i1 + 0] = x1;\
-        transformed_verticies[(triangles[triangle_base + 1] + transformed_vertex_index) * 3 + i1 + 1] = y1;\
-        transformed_verticies[(triangles[triangle_base + 1] + transformed_vertex_index) * 3 + i1 + 2] = z1;\
-        transformed_verticies[(triangles[triangle_base + 2] + transformed_vertex_index) * 3 + i2 + 0] = x2;\
-        transformed_verticies[(triangles[triangle_base + 2] + transformed_vertex_index) * 3 + i2 + 1] = y2;\
-        transformed_verticies[(triangles[triangle_base + 2] + transformed_vertex_index) * 3 + i2 + 2] = z2;\
+        transformed_verticies[(triangles[triangle_base + 0] + transformed_vertex_index) * 3 + 0] = x0;\
+        transformed_verticies[(triangles[triangle_base + 0] + transformed_vertex_index) * 3 + 1] = y0;\
+        transformed_verticies[(triangles[triangle_base + 0] + transformed_vertex_index) * 3 + 2] = z0;\
+        transformed_verticies[(triangles[triangle_base + 1] + transformed_vertex_index) * 3 + 0] = x1;\
+        transformed_verticies[(triangles[triangle_base + 1] + transformed_vertex_index) * 3 + 1] = y1;\
+        transformed_verticies[(triangles[triangle_base + 1] + transformed_vertex_index) * 3 + 2] = z1;\
+        transformed_verticies[(triangles[triangle_base + 2] + transformed_vertex_index) * 3 + 0] = x2;\
+        transformed_verticies[(triangles[triangle_base + 2] + transformed_vertex_index) * 3 + 1] = y2;\
+        transformed_verticies[(triangles[triangle_base + 2] + transformed_vertex_index) * 3 + 2] = z2;\
         \
         transformed_normals[(triangles[triangle_base + 0] + transformed_normal_index) * 3 + 0] = n_x0;\
         transformed_normals[(triangles[triangle_base + 0] + transformed_normal_index) * 3 + 1] = n_y0;\

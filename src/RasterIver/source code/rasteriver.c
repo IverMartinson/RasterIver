@@ -822,6 +822,39 @@ RI_objects RI_RequestObjects(RI_newObject *RI_ObjectBuffer, int RI_ObjectsToRequ
         debug(RI_DEBUG_MEDIUM, "Failed to Allocate Texture Info Buffer");
     }
 
+    int value_offset = 0;
+    for (int i_current_texture = 0; i_current_texture < texture_count; i_current_texture++){
+        char *current_texture_name = texture_names[i_current_texture];
+
+        int temp_width, temp_height;
+        RI_textures temp_texture = stbi_load(current_texture_name, &temp_width, &temp_height, NULL, 4);
+
+        if(stbi_failure_reason()){
+            temp_width = 1;
+            temp_height = 1;
+            
+            textures[0 + value_offset] = 255;
+            textures[1 + value_offset] = 0;
+            textures[2 + value_offset] = 255;
+            textures[3 + value_offset] = 128;
+        }
+        else {        
+            texture_info[i_current_texture * tis] = temp_width;
+            texture_info[i_current_texture * tis + 1] = temp_height;
+            texture_info[i_current_texture * tis + 2] = value_offset;
+
+            debug(RI_DEBUG_HIGH, "Texture Info for Texture #%d: width: %d, height: %d, offset: %d", i_current_texture, texture_info[i_current_texture * tis], texture_info[i_current_texture * tis + 1], texture_info[i_current_texture * tis + 2]);
+
+            for (int i_current_value = 0; i_current_value < temp_width * temp_height * 4; i_current_value++){
+                textures[i_current_value + value_offset] = temp_texture[i_current_value];
+            }
+        }
+        
+        value_offset += temp_width * temp_height * 4;
+        
+        stbi_image_free(temp_texture);
+    }
+
     if (!use_cpu && texture_count > 0){
         textures_memory_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(unsigned char) * textures_size * 4, textures, &error);
         erchk(error);
@@ -844,39 +877,6 @@ RI_objects RI_RequestObjects(RI_newObject *RI_ObjectBuffer, int RI_ObjectsToRequ
         erchk(clFinish(queue));
 
         debug(1, "Wrote Textures Buffer and Texture Info Buffer");
-    }
-
-    int value_offset = 0;
-    for (int i_current_texture = 0; i_current_texture < texture_count; i_current_texture++){
-        char *current_texture_name = texture_names[i_current_texture];
-
-        int temp_width, temp_height;
-        RI_textures temp_texture = stbi_load(current_texture_name, &temp_width, &temp_height, NULL, 4);
-
-        if(stbi_failure_reason()){
-            temp_width = 1;
-            temp_height = 1;
-            
-            textures[0 + value_offset] = 255;
-            textures[1 + value_offset] = 0;
-            textures[2 + value_offset] = 255;
-            textures[3 + value_offset] = 128;
-        }
-        else {
-            debug(RI_DEBUG_HIGH, "Texture Info for Texture #%d: width: %d, height: %d, offset: %d", i_current_texture, texture_info[i_current_texture * tis], texture_info[i_current_texture * tis + 1], texture_info[i_current_texture * tis + 2]);
-
-            for (int i_current_value = 0; i_current_value < temp_width * temp_height * 4; i_current_value++){
-                textures[i_current_value + value_offset] = temp_texture[i_current_value];
-            }
-        }
-
-        texture_info[i_current_texture * tis] = temp_width;
-        texture_info[i_current_texture * tis + 1] = temp_height;
-        texture_info[i_current_texture * tis + 2] = value_offset;
-
-        value_offset += temp_width * temp_height * 4;
-        
-        stbi_image_free(temp_texture);
     }
 
     for (int i = 0; i < face_count * 9; i++){

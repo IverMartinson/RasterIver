@@ -162,6 +162,7 @@ __kernel void raster_kernel(__global Object* objects, __global float* verticies,
         int transformed_vertex_index = objects[base].modelInfo.transformedVertexOffset;\
         int transformed_normal_index =   objects[base].modelInfo.transformedNormalOffset;\
         \
+        \
         for (int triangle = 0; triangle < triangle_count; triangle++){\
             int triangle_base = (triangle + triangle_index) * 9; \
             \
