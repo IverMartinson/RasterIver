@@ -61,7 +61,7 @@ Rasterizer + Iver = RasterIver
 - [ ] actually acurate FPS cap
 - [ ] make an option for multiple cameras, or defining a camera. I want to be able to write it to a "texture" in menory and have objects use it as their texture
 - [ ] add shaders. Maybe have shader kernels? I have no idea how you would implement that but it sounds cool
-- [ ] make the returned array from RI_RequestObjects easier to write to I.E., not a 1D array. Maybe have it so you could do objects[obj #].x_position or something like that. I wonder if I could implement functions with that, too, so you could do objects.get_first_element()
+- [x] make the returned array from RI_RequestObjects easier to write to I.E., not a 1D array. Maybe have it so you could do objects[obj #].x_position or something like that. I wonder if I could implement functions with that, too, so you could do objects.get_first_element()
 - [ ] object higherarchies (maybe not. This is moving towards game engine territory. Once I get this into a working release, I'll start working on a game engine)
 - [ ] deltaTime variable or function. (function that returns pointer? function that returns the last deltatime value?)
 - [x] make a function to set a custom debug prefix
@@ -73,11 +73,13 @@ Rasterizer + Iver = RasterIver
 - [ ] make checks for objects trying to have a texture, but no UV coords (generate them?)
 - [x] FOV
 - [ ] add materials
-- [ ] make another kernel that calculated transforms & perspective before rasterizing
+- [x] make another kernel that calculated transforms & perspective before rasterizing
 - [ ] add ability to request objects multiple times 
-- [ ] give objects IDs or some way to track them so that you can remove them dynamically
 - [ ] give objects IDs or some way to track them so that you can remove them dynamically
 - [ ] make CUDA version because OpenCL is slow with NVIDIA
 - [ ] fix center of perspective being in the wrong spot
-- [ ] make flag for world scale/master scale (scales everything. from origin? from object origins?)
-- [ ] I think calculations for debugging memory usage are outdated/wrong
+- [ ] make function for world scale/master scale (scales everything. from origin? from object origins?)
+- [x] I think calculations for debugging memory usage are outdated/wrong
+- [ ] use correct types for stuff (like size_t)
+- [ ] add target resolution
+- [ ] find a faster way to draw pixels to the window
