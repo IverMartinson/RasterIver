@@ -3,13 +3,16 @@
 #include <time.h>
 #include <CL/cl.h>
 #include "../headers/rasteriver.h"
+#include "../kernels/transformer.h"
+#include "../kernels/master_kernel.h"
+#include "../kernels/non_master_kernel.h"
 #include <stdarg.h>
 #include <stdio.h>
 #include <SDL2/SDL_ttf.h>
 
 // ----- Internal Variables
-int width;
-int height;
+int ri_width;
+int ri_height;
 
 float highest_z = 0;
 
@@ -51,7 +54,7 @@ double elapsed_ticks;
 double delta_time;
 int fps_cap = -1;
 
-char prefix[500] = "[RasterIver] ";
+char prefix[50] = "[RasterIver] ";
 // ----- Internal Variables
 
 // ----- Rendering Vars
@@ -146,11 +149,13 @@ RI_result debug_tick_func(int verbose, char *string, ...)
     va_list args;
     va_start(args, string);
 
-    char prefix[100] = "[RasterIver] ";
+    char message[500];
 
-    strcat(prefix, string);
+    strcpy(message, prefix);
 
-    vprintf(prefix, args);
+    strcat(message, string);
+
+    vprintf(message, args);
     printf("\n");
 
     va_end(args);
@@ -374,9 +379,9 @@ RI_polygons RI_RequestPolygons(int RI_PolygonsToRequest){
             polygons[i_polygon + 2] = INFINITY;
         }
         else if (populate_polygons){
-            polygons[i_polygon] = rand() % width;
-            polygons[i_polygon + 1] = rand() % height;
-            polygons[i_polygon + 2] = rand() % ((width + height) / 2);
+            polygons[i_polygon] = rand() % ri_width;
+            polygons[i_polygon + 1] = rand() % ri_height;
+            polygons[i_polygon + 2] = rand() % ((ri_width + ri_height) / 2);
         }
     }
     
@@ -425,7 +430,9 @@ int malloc_objects(int objects, char **file_names, char **allocated_file_names, 
     for (int i = 0; i < objects; i++){
         is_this_object_file_already_in_the_object_files_array = 0;
 
-        for (int i_object_file = 0; i_object_file < object_count; i_object_file++){
+        for (int i_object_file = 0; i_object_file < object_count + objects; i_object_file++){
+            debug(RI_DEBUG_HIGH, "object %d, object file %d (%s  -> %s)", i, i_object_file, file_names[i], allocated_file_names[i_object_file]);
+
             if (strcmp(allocated_file_names[i_object_file], file_names[i]) == 0){
                 debug(RI_DEBUG_HIGH, "Not Reloading Object \"%s\" (object #%d) (compared %s to %s)", file_names[i], i_object_file, allocated_file_names[i_object_file], file_names[i]);
 
@@ -480,7 +487,7 @@ int malloc_objects(int objects, char **file_names, char **allocated_file_names, 
                 } 
             }
 
-            object_file_offsets[i * 5 + 4] = tri_count;
+            object_file_offsets[i * 5 + 4] = i + 1;
             
             fclose(file);
         }
@@ -645,7 +652,10 @@ load_object_return load_object(char *object_path, int object_offset, int base){
     debug(RI_DEBUG_MEDIUM, "%d Normals", cn);
     debug(RI_DEBUG_MEDIUM, "%d UVS", cu);
 
-    objects[base + 9] = ct; // triangle count
+    objects[base].modelInfo.triangleCount = ct; // triangle count
+    objects[base].modelInfo.vertexCount = cv; // vertex count
+    objects[base].modelInfo.normalCount = cn; // normal count
+    objects[base].modelInfo.uvCount = cu; // uv count
 
     fclose(file);
 
@@ -660,22 +670,20 @@ load_object_return load_object(char *object_path, int object_offset, int base){
 
 RI_objects RI_RequestObjects(RI_newObject *RI_ObjectBuffer, int RI_ObjectsToRequest){
     debug(RI_DEBUG_HIGH, "Called RI_RequestObjects");
-
-    object_count = RI_ObjectsToRequest;
     
     debug(RI_DEBUG_MEDIUM, "Requesting %d Objects...", object_count);
 
-    if (objects != NULL)
-    {
-        free(objects);
-    }
+    int object_arary_size = sizeof(Object) * (object_count + RI_ObjectsToRequest);
 
-    int object_arary_size = sizeof(float) * object_size * RI_ObjectsToRequest;
+    debug(RI_DEBUG_MEDIUM, "object_arary_size is %d bytes", object_arary_size);
 
-    objects = malloc(object_arary_size);
+    RI_objects temp = realloc(objects, object_arary_size);
     
-    if (objects == NULL){
-        debug(RI_DEBUG_LOW, "Malloc Error");
+    if (temp == NULL){
+        debug(RI_DEBUG_LOW, "Realloc Error for Objects Array");
+    }
+    else{
+        objects = temp;
     }
 
     char **file_names = malloc(RI_ObjectsToRequest * sizeof(char *));
@@ -683,9 +691,10 @@ RI_objects RI_RequestObjects(RI_newObject *RI_ObjectBuffer, int RI_ObjectsToRequ
     char **texture_names = malloc(RI_ObjectsToRequest * sizeof(char *));
     int *object_file_offsets = malloc(RI_ObjectsToRequest * sizeof(int) * 5);
 
-    for (int i_object = 0; i_object < object_count; i_object++){
+    for (int i_object = 0; i_object < RI_ObjectsToRequest; i_object++){
         file_names[i_object] = RI_ObjectBuffer[i_object].file_path;
         texture_names[i_object] = "blahblahblah placeholder (this is some salt)";
+        allocated_file_names[i_object] = "blahblahblah placeholder (this is some salt)";
         debug(RI_DEBUG_HIGH, "file_names[object] is %s", file_names[i_object]);
         texture_names[i_object] = "blahblahblah placeholder (this is some salt)";
     }
@@ -700,22 +709,27 @@ RI_objects RI_RequestObjects(RI_newObject *RI_ObjectBuffer, int RI_ObjectsToRequ
 
     textures_size = 0;
 
-    for (int i_object = 0; i_object < object_count; i_object++){
+    int transform_vertex_offset_total = 0;
+    int transform_normal_offset_total = 0;
+
+    for (int i_object = 0; i_object < RI_ObjectsToRequest; i_object++){        
         RI_newObject *loading_object_current_object = &RI_ObjectBuffer[i_object];
         
-        int base = i_object * object_size;
-        objects[base + 10] = (float)object_file_offsets[i_object * 5 + 0]; // triangle offset
-        objects[base + 11] = (float)object_file_offsets[i_object * 5 + 1]; // vertex offset
-        objects[base + 12] = (float)object_file_offsets[i_object * 5 + 2]; // normal offset
-        objects[base + 13] = (float)object_file_offsets[i_object * 5 + 3]; // uvs offset
+        int base = object_count + i_object;
+
+        objects[base].modelInfo.triangleOffset = (float)object_file_offsets[i_object * 5 + 0]; // triangle offset
+        objects[base].modelInfo.vertexOffset = (float)object_file_offsets[i_object * 5 + 1]; // vertex offset
+        objects[base].modelInfo.normalOffset = (float)object_file_offsets[i_object * 5 + 2]; // normal offset
+        objects[base].modelInfo.uvOffset = (float)object_file_offsets[i_object * 5 + 3]; // uvs offset
 
         is_this_texture_name_already_in_the_texture_names_array = 0;
 
-        for (int i_object_texture = 0; i_object_texture < object_count; i_object_texture++){
+        for (int i_object_texture = 0; i_object_texture < RI_ObjectsToRequest; i_object_texture++){
             if (strcmp(texture_names[i_object_texture], loading_object_current_object->texture) == 0){
                 debug(RI_DEBUG_HIGH, "Not Reloading Texture \"%s\" (texture #%d) (compared %s to %s)", loading_object_current_object->texture, i_object_texture, texture_names[i_object_texture], loading_object_current_object->texture);
 
-                objects[base + 14] = i_object_texture; // texture offset
+                objects[base].material.textureOffset = i_object_texture; // texture offset
+
                 is_this_texture_name_already_in_the_texture_names_array = 1;
                 break;
             }
@@ -723,12 +737,15 @@ RI_objects RI_RequestObjects(RI_newObject *RI_ObjectBuffer, int RI_ObjectsToRequ
 
         if (!is_this_texture_name_already_in_the_texture_names_array){
             texture_names[texture_count] = loading_object_current_object->texture;
-            objects[base + 14] = texture_count; // texture offset
+            
+            objects[base].material.textureOffset = texture_count; // texture offset
+
             texture_count++;
 
             int texture_width, texture_height, channels;
 
-            stbi_load(loading_object_current_object->texture, &texture_width, &texture_height, &channels, 4);
+            unsigned char *temp_image = stbi_load(loading_object_current_object->texture, &texture_width, &texture_height, &channels, 4);
+           
             if(stbi_failure_reason()){
                 texture_width = 1;
                 texture_height = 1;
@@ -740,6 +757,8 @@ RI_objects RI_RequestObjects(RI_newObject *RI_ObjectBuffer, int RI_ObjectsToRequ
             }
 
             textures_size += texture_width * texture_height;
+
+            stbi_image_free(temp_image);
         }
 
         loading_object_current_faces_count = object_file_offsets[i_object * 5 + 0];
@@ -748,34 +767,44 @@ RI_objects RI_RequestObjects(RI_newObject *RI_ObjectBuffer, int RI_ObjectsToRequ
         loading_object_current_uvs_count = object_file_offsets[i_object * 5 + 3];
 
         if (object_file_offsets[i_object * 5 + 4] > 0){
-            debug(RI_DEBUG_HIGH, "Loading Object at Triangle Index: %f", objects[base + 10]);
-            debug(RI_DEBUG_HIGH, "Loading Object at Vertex Index: %f", objects[base + 11]);
-            debug(RI_DEBUG_HIGH, "Loading Object at Normal Index: %f", objects[base + 12]);
-            debug(RI_DEBUG_HIGH, "Loading Object at UV Index: %f", objects[base + 13]);
+            debug(RI_DEBUG_HIGH, "Loading Object at Triangle Index: %d", objects[base].modelInfo.triangleOffset);
+            debug(RI_DEBUG_HIGH, "Loading Object at Vertex Index: %d", objects[base].modelInfo.vertexOffset);
+            debug(RI_DEBUG_HIGH, "Loading Object at Normal Index: %d", objects[base].modelInfo.normalOffset);
+            debug(RI_DEBUG_HIGH, "Loading Object at UV Index: %d", objects[base].modelInfo.uvOffset);
 
             load_object((char *)loading_object_current_object->file_path, i_object, base);
         }
         else{
-            debug(RI_DEBUG_HIGH, "Object Already Loaded at Triangle Index: %f", objects[base + 10]);
-            debug(RI_DEBUG_HIGH, "Object Already Loaded at Vertex Index: %f", objects[base + 11]);
-            debug(RI_DEBUG_HIGH, "Object Already Loaded at Normal Index: %f", objects[base + 12]);
-            debug(RI_DEBUG_HIGH, "Object Already Loaded at UV Index: %f", objects[base + 13]);
+            debug(RI_DEBUG_HIGH, "Object Already Loaded at Triangle Index: %d", objects[base].modelInfo.triangleOffset);
+            debug(RI_DEBUG_HIGH, "Object Already Loaded at Vertex Index: %d", objects[base].modelInfo.vertexOffset);
+            debug(RI_DEBUG_HIGH, "Object Already Loaded at Normal Index: %d", objects[base].modelInfo.normalOffset);
+            debug(RI_DEBUG_HIGH, "Object Already Loaded at UV Index: %d", objects[base].modelInfo.uvOffset);
         
-            objects[base + 9] = -object_file_offsets[i_object * 5 + 4];
+            objects[base].modelInfo.triangleCount = objects[-object_file_offsets[i_object * 5 + 4] - 1].modelInfo.triangleCount;
+            objects[base].modelInfo.vertexCount = objects[-object_file_offsets[i_object * 5 + 4] - 1].modelInfo.vertexCount;
+            objects[base].modelInfo.normalCount = objects[-object_file_offsets[i_object * 5 + 4] - 1].modelInfo.normalCount;
 
-            debug(RI_DEBUG_HIGH, "Object Already Loaded Has %f Triangles", objects[base + 9]);
+            debug(RI_DEBUG_HIGH, "Object Already Loaded Has %d Triangles", objects[base].modelInfo.triangleCount);
         }
 
-        objects[base + 0] =  loading_object_current_object->x; // x
-        objects[base + 1] =  loading_object_current_object->y; // y
-        objects[base + 2] =  loading_object_current_object->z; // z
-        objects[base + 3] =  loading_object_current_object->r_x; // rotation x
-        objects[base + 4] =  loading_object_current_object->r_y; // rotation y
-        objects[base + 5] =  loading_object_current_object->r_z; // rotation z
-        objects[base + 15] = loading_object_current_object->r_w; // rotation w
-        objects[base + 6] =  loading_object_current_object->s_x; // scale x
-        objects[base + 7] =  loading_object_current_object->s_y; // scale y
-        objects[base + 8] =  loading_object_current_object->s_z; // scale z
+        objects[base].transform.position.x = loading_object_current_object->x; // x
+        objects[base].transform.position.y = loading_object_current_object->y; // y
+        objects[base].transform.position.z = loading_object_current_object->z; // z
+        objects[base].transform.rotation.w = loading_object_current_object->r_w; // rotation x
+        objects[base].transform.rotation.x = loading_object_current_object->r_x; // rotation y
+        objects[base].transform.rotation.y = loading_object_current_object->r_y; // rotation z
+        objects[base].transform.rotation.z = loading_object_current_object->r_z; // rotation w
+        objects[base].transform.scale.x = loading_object_current_object->s_x; // scale x
+        objects[base].transform.scale.y = loading_object_current_object->s_y; // scale y
+        objects[base].transform.scale.z = loading_object_current_object->s_z; // scale z
+
+        objects[base].modelInfo.transformedVertexOffset = transform_vertex_offset_total;
+        transform_vertex_offset_total += objects[base].modelInfo.vertexCount;
+    
+        objects[base].modelInfo.transformedNormalOffset = transform_normal_offset_total;
+        transform_normal_offset_total += objects[base].modelInfo.normalCount;
+    
+        debug(0, "%d, %d", transform_vertex_offset_total, objects[base].modelInfo.vertexCount);
     }
     
     free(object_file_offsets);
@@ -846,6 +875,8 @@ RI_objects RI_RequestObjects(RI_newObject *RI_ObjectBuffer, int RI_ObjectsToRequ
         texture_info[i_current_texture * tis + 2] = value_offset;
 
         value_offset += temp_width * temp_height * 4;
+        
+        stbi_image_free(temp_texture);
     }
 
     for (int i = 0; i < face_count * 9; i++){
@@ -870,7 +901,7 @@ RI_objects RI_RequestObjects(RI_newObject *RI_ObjectBuffer, int RI_ObjectsToRequ
         vertex_count, vertex_bytes,
         normal_count, normal_bytes,
         uv_count, uv_bytes,
-        object_count, object_arary_size);
+        RI_ObjectsToRequest, object_arary_size);
 
     debug(RI_DEBUG_HIGH, "clCreateBuffer object_arary_size: %d", object_arary_size);
 
@@ -897,33 +928,53 @@ RI_objects RI_RequestObjects(RI_newObject *RI_ObjectBuffer, int RI_ObjectsToRequ
         debug(1, "Wrote Triangles Buffer");
     }
 
+    float zero = 0.0f;
+    
     if (!use_cpu && vertex_count > 0){
+        debug(1, "transform_vertex_offset_total %d", transform_vertex_offset_total);
+
         verticies_memory_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(RI_verticies) * vertex_count * vs, verticies, &error);
         erchk(error);
-        transformed_verticies_memory_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(RI_verticies) * vertex_count * vs, verticies, &error);
+        transformed_verticies_memory_buffer = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(RI_verticies) * transform_vertex_offset_total * vs , NULL, &error);
         erchk(error);
     
         if (verticies_memory_buffer == NULL){
             debug(RI_DEBUG_LOW, "clCreateBuffer Failed for Verticies cl_mem Buffer");
         }
 
+if (transformed_verticies_memory_buffer == NULL){
+            debug(RI_DEBUG_LOW, "clCreateBuffer Failed for Verticies Transform cl_mem Buffer");
+        }   
+
         erchk(clEnqueueWriteBuffer(queue, verticies_memory_buffer, CL_TRUE, 0, sizeof(float) * vs * vertex_count, verticies, 0, NULL, NULL));
+        erchk(clFinish(queue));
+
+
+        erchk(clEnqueueFillBuffer(queue, transformed_verticies_memory_buffer, &zero, sizeof(float), 0, sizeof(RI_verticies) * transform_vertex_offset_total * vs, 0, NULL, NULL));
         erchk(clFinish(queue));
 
         debug(1, "Wrote Verticies Buffer");
     }
 
     if (!use_cpu && normal_count > 0){
+        debug(1, "transform_normal_offset_total %d", transform_normal_offset_total);
+
         normals_memory_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(RI_verticies) * normal_count * vs, normals, &error);
         erchk(error);
-        transformed_normals_memory_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(RI_verticies) * normal_count * vs, normals, &error);
+        transformed_normals_memory_buffer = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(RI_verticies) * transform_normal_offset_total * vs, NULL, &error);
         erchk(error);
     
         if (normals_memory_buffer == NULL){
             debug(RI_DEBUG_LOW, "clCreateBuffer Failed for Normals cl_mem Buffer");
         }
+        if (transformed_normals_memory_buffer == NULL){
+            debug(RI_DEBUG_LOW, "clCreateBuffer Failed for Normals Transform cl_mem Buffer");
+        }
 
         erchk(clEnqueueWriteBuffer(queue, normals_memory_buffer, CL_TRUE, 0, sizeof(float) * vs * normal_count, normals, 0, NULL, NULL));
+        erchk(clFinish(queue));
+
+        erchk(clEnqueueFillBuffer(queue, transformed_normals_memory_buffer, &zero, sizeof(float), 0, sizeof(RI_verticies) * transform_normal_offset_total * vs, 0, NULL, NULL));
         erchk(clFinish(queue));
 
         debug(1, "Wrote Normals Buffer");
@@ -943,9 +994,13 @@ RI_objects RI_RequestObjects(RI_newObject *RI_ObjectBuffer, int RI_ObjectsToRequ
         debug(1, "Wrote UVS Buffer");
     }
 
-    debug(RI_DEBUG_MEDIUM, "Request for %d Objects Granted", object_count);
+    debug(RI_DEBUG_MEDIUM, "Request for %d Objects Granted", RI_ObjectsToRequest);
     
     debug(RI_DEBUG_HIGH, "Left RI_RequestObjects");
+
+    free(texture_names);
+
+    object_count += RI_ObjectsToRequest;    
 
     return objects;
 }
@@ -993,7 +1048,7 @@ RI_result RI_SetFontFile(char *RI_PathToFontFile){
     return RI_SUCCESS;
 }
 
-RI_result RI_SetDebugPrefix(char RI_Prefix[500]){
+RI_result RI_SetDebugPrefix(char RI_Prefix[50]){
     strcpy(prefix, RI_Prefix);
 
     return RI_SUCCESS;
@@ -1094,11 +1149,11 @@ RI_result RI_Tick(){
         } 
 
         if (use_cpu){
-            float vertical_fov_factor = height / tanf(0.5 * fov);
-            float horizontal_fov_factor = width / tanf(0.5 * fov);
+            float vertical_fov_factor = ri_height / tanf(0.5 * fov);
+            float horizontal_fov_factor = ri_width / tanf(0.5 * fov);
 
-            for (int id_y = -height / 2; id_y < height / 2; id_y++){
-                for (int id_x = -width / 2; id_x < width / 2; id_x++){
+            for (int id_y = -ri_height / 2; id_y < ri_height / 2; id_y++){
+                for (int id_x = -ri_width / 2; id_x < ri_width / 2; id_x++){
                     float z_pixel = INFINITY; 
                     unsigned int frame_pixel = 0x22222222; 
                     
@@ -1114,25 +1169,25 @@ RI_result RI_Tick(){
                     
 
                     for (int i_object = 0; i_object < object_count; i_object++){ 
-                        int base = i_object * 16;
+                        int base = i_object;
                         
-                        float object_x =   objects[base + 0]; 
-                        float object_y =   objects[base + 1]; 
-                        float object_z =   objects[base + 2]; 
-                        float object_r_x = objects[base + 3]; 
-                        float object_r_y = objects[base + 4]; 
-                        float object_r_z = objects[base + 5]; 
-                        float object_r_w = objects[base + 15]; 
-                        float object_s_x = objects[base + 6]; 
-                        float object_s_y = objects[base + 7]; 
-                        float object_s_z = objects[base + 8]; 
+                        float object_x =   objects[base].transform.position.x; 
+                        float object_y =   objects[base].transform.position.y; 
+                        float object_z =   objects[base].transform.position.z; 
+                        float object_r_x = objects[base].transform.rotation.w; 
+                        float object_r_y = objects[base].transform.rotation.x; 
+                        float object_r_z = objects[base].transform.rotation.y; 
+                        float object_r_w = objects[base].transform.rotation.z; 
+                        float object_s_x = objects[base].transform.scale.x; 
+                        float object_s_y = objects[base].transform.scale.y; 
+                        float object_s_z = objects[base].transform.scale.z; 
                         
-                        int triangle_count = (int)objects[base + 9];
-                        int triangle_index = (int)objects[base + 10];
-                        int vertex_index =   (int)objects[base + 11];
-                        int normal_index =   (int)objects[base + 12];
-                        int uv_index =       (int)objects[base + 13];
-                        int texture_index =  (int)objects[base + 14];
+                        int triangle_count = objects[base].modelInfo.triangleCount;
+                        int triangle_index = objects[base].modelInfo.triangleOffset;
+                        int vertex_index =   objects[base].modelInfo.vertexOffset;
+                        int normal_index =   objects[base].modelInfo.normalOffset;
+                        int uv_index =       objects[base].modelInfo.uvOffset;
+                        int texture_index =  objects[base].material.textureOffset;
                         
                         for (int i_triangle = 0; i_triangle < triangle_count; i_triangle++){
                             int triangle_base = (i_triangle + triangle_index) * 9; 
@@ -1215,9 +1270,9 @@ RI_result RI_Tick(){
                             if (y2 < smallest_y) smallest_y = y2;
                             
                             smallest_x = fmin(smallest_x, 0); 
-                            largest_x = fmax(largest_x, width); 
+                            largest_x = fmax(largest_x, ri_width);  
                             smallest_y = fmin(smallest_y, 0); 
-                            largest_y = fmax(largest_y, height); 
+                            largest_y = fmax(largest_y, ri_height); 
                             
                             if (id_x >= smallest_x && id_x <= largest_x && id_y >= smallest_y && id_y <= largest_y){ 
                                 int intersections = 0; 
@@ -1361,9 +1416,9 @@ RI_result RI_Tick(){
                         }
                     }
                     
-                    int pixel_coord = (height * 0.5 - id_y) * width + id_x + width * 0.5;
+                    int pixel_coord = (ri_height * 0.5 - id_y) * ri_width + id_x + ri_width * 0.5;
                     
-                    if (pixel_coord >= width * height || pixel_coord < 0){
+                    if (pixel_coord >= ri_width * ri_height || pixel_coord < 0){
                         continue;
                     }
                     
@@ -1373,11 +1428,15 @@ RI_result RI_Tick(){
             }
         else if (be_master_renderer){
             if (object_count > 0) {
-                erchk(clEnqueueWriteBuffer(queue, object_memory_buffer, CL_TRUE, 0, sizeof(float) * object_size * object_count, objects, 0, NULL, NULL));
+                erchk(clEnqueueWriteBuffer(queue, object_memory_buffer, CL_TRUE, 0, sizeof(Object) * object_count, objects, 0, NULL, NULL));
                 erchk(clFinish(queue));
 
                 debug_tick_func(1, "Wrote Objects Buffer");
             }
+
+            erchk(clEnqueueFillBuffer(queue, output_memory_buffer, &pattern, sizeof(RI_uint), 0, sizeof(RI_uint) * ri_width * ri_height, 0, NULL, NULL));
+            erchk(clFinish(queue));
+            debug_tick_func(1, "Cleared Frame Buffer");
 
             erchk(clSetKernelArg(compiled_kernel_transformer, 0, sizeof(cl_mem), &object_memory_buffer));
             erchk(clSetKernelArg(compiled_kernel_transformer, 1, sizeof(cl_mem), &verticies_memory_buffer));
@@ -1386,12 +1445,12 @@ RI_result RI_Tick(){
             erchk(clSetKernelArg(compiled_kernel_transformer, 4, sizeof(cl_mem), &transformed_verticies_memory_buffer));
             erchk(clSetKernelArg(compiled_kernel_transformer, 5, sizeof(cl_mem), &transformed_normals_memory_buffer));
             erchk(clSetKernelArg(compiled_kernel_transformer, 6, sizeof(float), (void*)&fov)); 
-            erchk(clSetKernelArg(compiled_kernel_transformer, 7, sizeof(int), (void*)&width));
-            erchk(clSetKernelArg(compiled_kernel_transformer, 8, sizeof(int), (void*)&height));
-
+            erchk(clSetKernelArg(compiled_kernel_transformer, 7, sizeof(int), (void*)&ri_width));
+            erchk(clSetKernelArg(compiled_kernel_transformer, 8, sizeof(int), (void*)&ri_height));
+            erchk(clSetKernelArg(compiled_kernel_transformer, 9, sizeof(cl_mem), &output_memory_buffer));
 
             size_t size_1d[1] = {object_count};            
-
+ 
             erchk(clEnqueueNDRangeKernel(queue, compiled_kernel_transformer, 1, NULL, size_1d, NULL, 0, NULL, NULL));
             erchk(clFinish(queue));
 
@@ -1406,30 +1465,23 @@ RI_result RI_Tick(){
             erchk(clSetKernelArg(compiled_kernel_master, 6, sizeof(cl_mem), &textures_memory_buffer));
             erchk(clSetKernelArg(compiled_kernel_master, 7, sizeof(cl_mem), &texture_info_memory_buffer));
             erchk(clSetKernelArg(compiled_kernel_master, 8, sizeof(int), (void*)&object_count));
-            erchk(clSetKernelArg(compiled_kernel_master, 9, sizeof(int), (void*)&width));
-            erchk(clSetKernelArg(compiled_kernel_master, 10, sizeof(int), (void*)&height));
+            erchk(clSetKernelArg(compiled_kernel_master, 9, sizeof(int), (void*)&ri_width));
+            erchk(clSetKernelArg(compiled_kernel_master, 10, sizeof(int), (void*)&ri_height));
             erchk(clSetKernelArg(compiled_kernel_master, 11, sizeof(int), (void*)&show_buffer)); 
             erchk(clSetKernelArg(compiled_kernel_master, 12, sizeof(int), (void*)&frame)); 
             erchk(clSetKernelArg(compiled_kernel_master, 13, sizeof(float), (void*)&fov)); 
-
-            erchk(clEnqueueFillBuffer(queue, output_memory_buffer, &pattern, sizeof(RI_uint), 0, sizeof(RI_uint) * width * height, 0, NULL, NULL));
-            erchk(clFinish(queue));
-            debug_tick_func(1, "Cleared Frame Buffer");
+            erchk(clSetKernelArg(compiled_kernel_master, 14, sizeof(int), (void*)&face_count)); 
+            erchk(clSetKernelArg(compiled_kernel_master, 15, sizeof(int), (void*)&vertex_count)); 
 
             // size_t local_size_2d[2] = {sqrt(local_size), sqrt(local_size)};
             size_t local_size_2d[2] = {16, 16};
-
-            if (!queue){
-                debug(RI_DEBUG_LOW, "Invalid Command Queue");
-                RI_Stop(1);
-            }
 
             erchk(clEnqueueNDRangeKernel(queue, compiled_kernel_master, 2, NULL, size_2d, NULL, 0, NULL, NULL));
             erchk(clFinish(queue));
 
             debug_tick_func(RI_DEBUG_HIGH, "Ran Rasterization Kernel");
 
-            erchk(clEnqueueReadBuffer(queue, output_memory_buffer, CL_TRUE, 0, sizeof(RI_uint) * width * height, frame_buffer, 0, NULL, NULL));
+            erchk(clEnqueueReadBuffer(queue, output_memory_buffer, CL_TRUE, 0, sizeof(RI_uint) * ri_width * ri_height, frame_buffer, 0, NULL, NULL));
             erchk(clFinish(queue));
             debug_tick_func(1, "Read Frame Buffer");
         }
@@ -1459,8 +1511,8 @@ RI_result RI_Tick(){
             erchk(clSetKernelArg(compiled_kernel_non_master, 0, sizeof(cl_mem), &input_memory_buffer));
             erchk(clSetKernelArg(compiled_kernel_non_master, 1, sizeof(cl_mem), &output_memory_buffer));
             erchk(clSetKernelArg(compiled_kernel_non_master, 2, sizeof(int), (void*)&polygon_count));
-            erchk(clSetKernelArg(compiled_kernel_non_master, 3, sizeof(int), (void*)&width));
-            erchk(clSetKernelArg(compiled_kernel_non_master, 4, sizeof(int), (void*)&height));
+            erchk(clSetKernelArg(compiled_kernel_non_master, 3, sizeof(int), (void*)&ri_width));
+            erchk(clSetKernelArg(compiled_kernel_non_master, 4, sizeof(int), (void*)&ri_height));
             erchk(clSetKernelArg(compiled_kernel_non_master, 5, sizeof(int), (void*)&show_buffer)); 
             erchk(clSetKernelArg(compiled_kernel_non_master, 6, sizeof(float), (void*)&highest_z));
 
@@ -1469,7 +1521,7 @@ RI_result RI_Tick(){
 
             debug_tick_func(1, "Wrote Polygon Buffer");
 
-            erchk(clEnqueueFillBuffer(queue, output_memory_buffer, &pattern, sizeof(RI_uint), 0, sizeof(RI_uint) * width * height, 0, NULL, NULL));
+            erchk(clEnqueueFillBuffer(queue, output_memory_buffer, &pattern, sizeof(RI_uint), 0, sizeof(RI_uint) * ri_width * ri_height, 0, NULL, NULL));
             erchk(clFinish(queue));
 
             debug_tick_func(1, "Cleared Frame Buffer");
@@ -1480,7 +1532,7 @@ RI_result RI_Tick(){
         
             erchk(clFinish(queue));
 
-            erchk(clEnqueueReadBuffer(queue, output_memory_buffer, CL_TRUE, 0, sizeof(RI_uint) * width * height, frame_buffer, 0, NULL, NULL));
+            erchk(clEnqueueReadBuffer(queue, output_memory_buffer, CL_TRUE, 0, sizeof(RI_uint) * ri_width * ri_height, frame_buffer, 0, NULL, NULL));
             erchk(clFinish(queue));
             debug_tick_func(1, "Read Frame Buffer");
         }
@@ -1496,7 +1548,7 @@ RI_result RI_Tick(){
             }
         }
 
-        SDL_UpdateTexture(texture, NULL, frame_buffer, width * sizeof(RI_uint));
+        SDL_UpdateTexture(texture, NULL, frame_buffer, ri_width * sizeof(RI_uint));
 
         SDL_RenderClear(renderer);
         SDL_RenderCopy(renderer, texture, NULL, NULL);
@@ -1519,6 +1571,9 @@ RI_result RI_Tick(){
             total_text_height += text_surface->h;
 
             SDL_RenderCopy(renderer, text_texture, NULL, &text_rect);
+
+            SDL_FreeSurface(text_surface);
+            SDL_DestroyTexture(text_texture);
         }
 
         if (debug_frame){
@@ -1541,14 +1596,17 @@ RI_result RI_Tick(){
             total_text_height += text_surface->h;
 
             SDL_RenderCopy(renderer, text_texture, NULL, &text_rect);
+
+            SDL_FreeSurface(text_surface);
+            SDL_DestroyTexture(text_texture);
         }
 
         if (show_info){
             char frame_string[256];
             
-            sprintf(frame_string, "%d objects, %d triangles, %d verticies, %d normals, %d UVS, %d pixels (%dx%d), FPS cap: %d", object_count, face_count, vertex_count, normal_count, uv_count, width * height, width, height, fps_cap);
+            sprintf(frame_string, "%d objects, %d triangles, %d verticies, %d normals, %d UVS, %d pixels (%dx%d), FPS cap: %d", object_count, face_count, vertex_count, normal_count, uv_count, ri_width * ri_height, ri_width, ri_height, fps_cap);
 
-            text_surface = TTF_RenderText_Blended_Wrapped(font, frame_string, font_color, width);
+            text_surface = TTF_RenderText_Blended_Wrapped(font, frame_string, font_color, ri_width);
             text_texture = SDL_CreateTextureFromSurface(renderer, text_surface);
             
             text_rect.x = 5;
@@ -1559,6 +1617,9 @@ RI_result RI_Tick(){
             total_text_height += text_surface->h;
 
             SDL_RenderCopy(renderer, text_texture, NULL, &text_rect);
+
+            SDL_FreeSurface(text_surface);
+            SDL_DestroyTexture(text_texture);
         }
 
         SDL_RenderPresent(renderer);
@@ -1588,7 +1649,7 @@ RI_result RI_Tick(){
         }
         
         if (debug_fps){
-            debug(0, "FPS: %lf (%d polygons, %d pixels)", fps, polygon_count, width * height);
+            debug(0, "FPS: %lf (%d polygons, %d pixels)", fps, polygon_count, ri_width * ri_height);
         }
 
         debug_tick_func(1, "Ticked");
@@ -1627,9 +1688,8 @@ RI_result RI_Stop(int quit){
         clReleaseCommandQueue(queue);
         clReleaseContext(context);
     }
-    
-    SDL_FreeSurface(text_surface);
-    SDL_DestroyTexture(text_texture);
+
+    TTF_CloseFont(font);
 
     SDL_DestroyTexture(texture);
     SDL_DestroyRenderer(renderer);
@@ -1696,7 +1756,7 @@ RI_result Rendering_init(char *title){
 
     debug(RI_DEBUG_LOW, "Initializing Rendering...");
 
-    frame_buffer = malloc(sizeof(RI_uint) * width * height);
+    frame_buffer = malloc(sizeof(RI_uint) * ri_width * ri_height);
 
     if (frame_buffer == NULL)
     {
@@ -1716,13 +1776,13 @@ RI_result Rendering_init(char *title){
         return -1;
     }
 
-    if (width <= 0 || height <= 0)
+    if (ri_width <= 0 || ri_height <= 0)
     {
         debug(RI_DEBUG_LOW, "Invalid width or height");
         return RI_ERROR;
     }
 
-    window = SDL_CreateWindow(title, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width, height, SDL_WINDOW_OPENGL);
+    window = SDL_CreateWindow(title, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, ri_width, ri_height, SDL_WINDOW_OPENGL);
     if (!window)
     {
         debug(RI_DEBUG_LOW, "SDL_CreateWindow Failed");
@@ -1736,7 +1796,7 @@ RI_result Rendering_init(char *title){
         return RI_ERROR;
     }
 
-    texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, width, height);
+    texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, ri_width, ri_height);
     if (!texture)
     {
         debug(RI_DEBUG_LOW, "SDL_CreateTexture Failed");
@@ -1744,18 +1804,6 @@ RI_result Rendering_init(char *title){
     }
     
     font = TTF_OpenFont(font_file, font_size);
-
-    text_surface = TTF_RenderText_Solid(font, "FPS", font_color);
-    if (text_surface == NULL){
-        debug(RI_DEBUG_LOW, "TTF_RenderText_Solid Failed: %s", TTF_GetError());
-        return RI_ERROR;
-    }
-
-    text_texture = SDL_CreateTextureFromSurface(renderer, text_surface);
-    if (text_texture == NULL){
-        debug(RI_DEBUG_LOW, "SDL_CreateTextureFromSurface Failed");
-        return RI_ERROR;
-    }
 
     debug(RI_DEBUG_LOW, "Initialized Rendering");
 
@@ -1767,11 +1815,9 @@ RI_result OpenCL_init(){
 
     debug(RI_DEBUG_LOW, "Initialiing OpenCL...");
 
-    clGetPlatformIDs(1, &platform, &number_of_platforms);
-
-    if (number_of_platforms == 0)
-    {
-        debug(RI_DEBUG_LOW, "No OpenCL Platforms. Switching to CPU");
+    error = clGetPlatformIDs(1, &platform, &number_of_platforms);
+    if (error != CL_SUCCESS || number_of_platforms == 0) {
+        debug(RI_DEBUG_LOW, "No OpenCL Platforms (Error %d). Switching to CPU", error);
         
         use_cpu = 1;
         return RI_ERROR;
@@ -1779,9 +1825,9 @@ RI_result OpenCL_init(){
 
     clGetDeviceIDs(platform, CL_DEVICE_TYPE_GPU, 1, &device, &number_of_devices);
 
-    if (number_of_devices == 0)
-    {
-        debug(RI_DEBUG_LOW, "No Valid GPU's Found. Switching to CPU");
+    error = clGetDeviceIDs(platform, CL_DEVICE_TYPE_GPU, 1, &device, &number_of_devices);
+    if (error != CL_SUCCESS || number_of_devices == 0) {
+        debug(RI_DEBUG_LOW, "No Valid GPUs Found (Error %d). Switching to CPU", error);
         
         use_cpu = 1;
         return RI_ERROR;
@@ -1792,7 +1838,7 @@ RI_result OpenCL_init(){
     queue = clCreateCommandQueue(context, device, 0, &error);
     erchk(error);
 
-    output_memory_buffer = clCreateBuffer(context, CL_MEM_WRITE_ONLY, sizeof(RI_uint) * width * height, NULL, &error);
+    output_memory_buffer = clCreateBuffer(context, CL_MEM_WRITE_ONLY, sizeof(RI_uint) * ri_width * ri_height, NULL, &error);
     erchk(error);
 
     kernel_program_non_master = clCreateProgramWithSource(context, 1, &kernel_source_non_master, NULL, &error);
@@ -1861,8 +1907,8 @@ RI_result OpenCL_init(){
     compiled_kernel_transformer = clCreateKernel(kernel_program_transformer, "transformer_kernel", &error);
     erchk(error);
 
-    size_2d[0] = width;
-    size_2d[1] = height;
+    size_2d[0] = ri_width;
+    size_2d[1] = ri_height;
 
     pattern = 0x22222222;
 
@@ -1876,8 +1922,8 @@ RI_result RI_Init(int RI_WindowWidth, int RI_WindowHeight, char *RI_WindowTitle)
 
     srand(time(NULL));                                                         
 
-    width = RI_WindowWidth;
-    height = RI_WindowHeight;
+    ri_width = RI_WindowWidth;
+    ri_height = RI_WindowHeight;
 
     if (!use_cpu && OpenCL_init() == RI_ERROR){
         if (!use_cpu){

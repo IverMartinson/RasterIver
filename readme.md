@@ -76,3 +76,5 @@ Rasterizer + Iver = RasterIver
 - [ ] make another kernel that calculated transforms & perspective before rasterizing
 - [ ] add ability to request objects multiple times 
 - [ ] give objects IDs or some way to track them so that you can remove them dynamically
+- [ ] give objects IDs or some way to track them so that you can remove them dynamically
+- [ ] make CUDA version because OpenCL is slow with NVIDIA
