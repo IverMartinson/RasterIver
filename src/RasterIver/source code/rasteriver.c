@@ -22,7 +22,9 @@ RI_polygons polygons = NULL;
 int object_count;
 RI_objects objects;
 RI_verticies verticies;
+RI_verticies transformed_verticies;
 RI_verticies normals;
+RI_verticies transformed_normals;
 RI_verticies uvs;
 RI_triangles triangles;
 RI_textures textures;
@@ -845,20 +847,22 @@ RI_objects RI_RequestObjects(RI_newObject *RI_ObjectBuffer, int RI_ObjectsToRequ
     size_t texture_bytes   = sizeof(unsigned char) * textures_size * 4;
     size_t triangle_bytes  = sizeof(RI_triangles) * face_count * vs;
     size_t vertex_bytes    = sizeof(RI_verticies) * vertex_count * vs;
+    size_t transformed_vertex_bytes    = sizeof(RI_verticies) * transform_vertex_offset_total * vs * use_cpu;
     size_t normal_bytes    = sizeof(RI_verticies) * normal_count * vs;
+    size_t transformed_normal_bytes    = sizeof(RI_verticies) * transform_normal_offset_total * vs * use_cpu;
     size_t uv_bytes        = sizeof(RI_verticies) * uv_count * vs;
-    size_t total_bytes     = texture_bytes + triangle_bytes + vertex_bytes + normal_bytes + uv_bytes + object_arary_size;
+    size_t total_bytes     = texture_bytes + triangle_bytes + vertex_bytes + transformed_vertex_bytes + normal_bytes + transformed_normal_bytes + uv_bytes + object_arary_size;
 
     debug(RI_DEBUG_MEDIUM,
         "Allocated %zu Bytes for Objects (%d Textures (%zu Bytes), "
-        "%d Triangles (%zu Bytes), %d Vertices (%zu Bytes), "
-        "%d Normals (%zu Bytes), %d UVs (%zu Bytes), "
+        "%d Triangles (%zu Bytes), %d Vertices (%zu Original & %zu Transformed Bytes), "
+        "%d Normals (%zu Original & %zu Transformed Bytes), %d UVs (%zu Bytes), "
         "%d Objects (%zu Bytes))",
         total_bytes,
         texture_count, texture_bytes,
         face_count, triangle_bytes,
-        vertex_count, vertex_bytes,
-        normal_count, normal_bytes,
+        vertex_count, vertex_bytes, transformed_vertex_bytes,
+        normal_count, normal_bytes, transformed_normal_bytes,
         uv_count, uv_bytes,
         RI_ObjectsToRequest, object_arary_size);
 
@@ -952,6 +956,9 @@ if (transformed_verticies_memory_buffer == NULL){
 
         debug(1, "Wrote UVS Buffer");
     }
+
+    transformed_verticies = malloc(transformed_vertex_bytes);
+    transformed_normals = malloc(transformed_normal_bytes);
 
     debug(RI_DEBUG_MEDIUM, "Request for %d Objects Granted", RI_ObjectsToRequest);
     
@@ -1108,8 +1115,112 @@ RI_result RI_Tick(){
         } 
 
         if (use_cpu){
-            float vertical_fov_factor = ri_height / tanf(0.5 * fov);
+            for (int base = 0; base < object_count; base++){
+            
+                float vertical_fov_factor = ri_height / tanf(0.5 * fov);
             float horizontal_fov_factor = ri_width / tanf(0.5 * fov);
+
+    int has_normals = 1;
+    
+    float object_x =   objects[base].transform.position.x;
+    float object_y =   objects[base].transform.position.y;
+    float object_z =   objects[base].transform.position.z;
+    float object_r_x = objects[base].transform.rotation.w;
+    float object_r_y = objects[base].transform.rotation.x;
+    float object_r_z = objects[base].transform.rotation.y;
+    float object_r_w = objects[base].transform.rotation.z;
+    float object_s_x = objects[base].transform.scale.x; 
+    float object_s_y = objects[base].transform.scale.y; 
+    float object_s_z = objects[base].transform.scale.z; 
+    
+    int triangle_count = objects[base].modelInfo.triangleCount;
+    int triangle_index = objects[base].modelInfo.triangleOffset;
+    int vertex_index =   objects[base].modelInfo.vertexOffset;
+    int transformed_vertex_index = objects[base].modelInfo.transformedVertexOffset;
+    int normal_index =   objects[base].modelInfo.normalOffset;
+    int transformed_normal_index =   objects[base].modelInfo.transformedNormalOffset;
+    
+    for (int triangle = 0; triangle < triangle_count; triangle++){
+        int triangle_base = (triangle + triangle_index) * 9; 
+        
+        int i0 = (vertex_index + triangles[triangle_base + 0]) * 3;
+        int i1 = (vertex_index + triangles[triangle_base + 1]) * 3;
+        int i2 = (vertex_index + triangles[triangle_base + 2]) * 3;
+        
+        int i3 = (normal_index + triangles[triangle_base + 3]) * 3;
+        int i4 = (normal_index + triangles[triangle_base + 4]) * 3;
+        int i5 = (normal_index + triangles[triangle_base + 5]) * 3;
+        
+        float x0 = verticies[i0 + 0];
+        float z0 = verticies[i0 + 2];
+        float y0 = verticies[i0 + 1];
+        float z1 = verticies[i1 + 2];
+        float x1 = verticies[i1 + 0];
+        float y1 = verticies[i1 + 1];
+        float z2 = verticies[i2 + 2];
+        float x2 = verticies[i2 + 0];
+        float y2 = verticies[i2 + 1];
+        float n_x0 = normals[i3 + 0];
+        float n_y0 = normals[i3 + 1];
+        float n_z0 = normals[i3 + 2];
+        float n_x1 = normals[i4 + 0];
+        float n_y1 = normals[i4 + 1];
+        float n_z1 = normals[i4 + 2];
+        float n_x2 = normals[i5 + 0];
+        float n_y2 = normals[i5 + 1];
+        float n_z2 = normals[i5 + 2];
+        
+        if (i3 < 0 || i4 < 0 || i5 < 0){
+            has_normals = 0;
+        }
+        
+        if (isinf(x0) || isinf(y0) || isinf(z0) || isinf(x1) || isinf(y1) || isinf(z1) || isinf(x2) || isinf(y2) || isinf(z2)){
+        return;
+        }
+        
+        rotate_euler(&x0, &y0, &z0, object_r_x, object_r_y, object_r_z);
+        rotate_euler(&x1, &y1, &z1, object_r_x, object_r_y, object_r_z);
+        rotate_euler(&x2, &y2, &z2, object_r_x, object_r_y, object_r_z);
+        
+        rotate_euler(&n_x0, &n_y0, &n_z0, object_r_x, object_r_y, object_r_z);
+        rotate_euler(&n_x1, &n_y1, &n_z1, object_r_x, object_r_y, object_r_z);
+        rotate_euler(&n_x2, &n_y2, &n_z2, object_r_x, object_r_y, object_r_z);
+        
+        z0 = (z0 * object_s_z + object_z);
+        x0 = (x0 * object_s_x + object_x) / z0 * horizontal_fov_factor;
+        y0 = (y0 * object_s_y + object_y) / z0 * vertical_fov_factor;
+        z1 = (z1 * object_s_z + object_z);
+        x1 = (x1 * object_s_x + object_x) / z1 * horizontal_fov_factor;
+        y1 = (y1 * object_s_y + object_y) / z1 * vertical_fov_factor;
+        z2 = (z2 * object_s_z + object_z);
+        y2 = (y2 * object_s_y + object_y) / z2 * horizontal_fov_factor;
+        x2 = (x2 * object_s_x + object_x) / z2 * vertical_fov_factor;
+        
+        // if ((x0 < 0 && x1 < 0 && x2 < 0) || (y0 < 0 && y1 < 0 && y2 < 0) || (x0 >= ri_width && x1 >= ri_width && x2 >= ri_width) || (y0 >= ri_height && y1 >= ri_height && y2 >= ri_height)){
+        //     transformed_verticies[(triangles[triangle_base + 0] + transformed_vertex_index) * 3 + 0] = 9999;
+        // }
+        // else{
+            transformed_verticies[(triangles[triangle_base + 0] + transformed_vertex_index) * 3 + 0] = x0;
+            transformed_verticies[(triangles[triangle_base + 0] + transformed_vertex_index) * 3 + 1] = y0;
+            transformed_verticies[(triangles[triangle_base + 0] + transformed_vertex_index) * 3 + 2] = z0;
+            transformed_verticies[(triangles[triangle_base + 1] + transformed_vertex_index) * 3 + 0] = x1;
+            transformed_verticies[(triangles[triangle_base + 1] + transformed_vertex_index) * 3 + 1] = y1;
+            transformed_verticies[(triangles[triangle_base + 1] + transformed_vertex_index) * 3 + 2] = z1;
+            transformed_verticies[(triangles[triangle_base + 2] + transformed_vertex_index) * 3 + 0] = x2;
+            transformed_verticies[(triangles[triangle_base + 2] + transformed_vertex_index) * 3 + 1] = y2;
+            transformed_verticies[(triangles[triangle_base + 2] + transformed_vertex_index) * 3 + 2] = z2;
+            
+            transformed_normals[(triangles[triangle_base + 0] + transformed_normal_index) * 3 + 0] = n_x0;
+            transformed_normals[(triangles[triangle_base + 0] + transformed_normal_index) * 3 + 1] = n_y0;
+            transformed_normals[(triangles[triangle_base + 0] + transformed_normal_index) * 3 + 2] = n_z0;
+            transformed_normals[(triangles[triangle_base + 1] + transformed_normal_index) * 3 + 0] = n_x1;
+            transformed_normals[(triangles[triangle_base + 1] + transformed_normal_index) * 3 + 1] = n_y1;
+            transformed_normals[(triangles[triangle_base + 1] + transformed_normal_index) * 3 + 2] = n_z1;
+            transformed_normals[(triangles[triangle_base + 2] + transformed_normal_index) * 3 + 0] = n_x2;
+            transformed_normals[(triangles[triangle_base + 2] + transformed_normal_index) * 3 + 1] = n_y2;
+            transformed_normals[(triangles[triangle_base + 2] + transformed_normal_index) * 3 + 2] = n_z2;
+        // }
+    }}
 
             for (int id_y = -ri_height / 2; id_y < ri_height / 2; id_y++){
                 for (int id_x = -ri_width / 2; id_x < ri_width / 2; id_x++){
@@ -1129,18 +1240,7 @@ RI_result RI_Tick(){
 
                     for (int i_object = 0; i_object < object_count; i_object++){ 
                         int base = i_object;
-                        
-                        float object_x =   objects[base].transform.position.x; 
-                        float object_y =   objects[base].transform.position.y; 
-                        float object_z =   objects[base].transform.position.z; 
-                        float object_r_x = objects[base].transform.rotation.w; 
-                        float object_r_y = objects[base].transform.rotation.x; 
-                        float object_r_z = objects[base].transform.rotation.y; 
-                        float object_r_w = objects[base].transform.rotation.z; 
-                        float object_s_x = objects[base].transform.scale.x; 
-                        float object_s_y = objects[base].transform.scale.y; 
-                        float object_s_z = objects[base].transform.scale.z; 
-                        
+
                         uint64_t material_flags = objects[base].material.properties;
                         ColorARGB albedo = objects[base].material.albedo;
 
@@ -1150,54 +1250,37 @@ RI_result RI_Tick(){
                         int normal_index =   objects[base].modelInfo.normalOffset;
                         int uv_index =       objects[base].modelInfo.uvOffset;
                         int texture_index =  objects[base].material.textureOffset;
+                        int transformed_vertex_index = objects[base].modelInfo.transformedVertexOffset;
+                        int transformed_normal_index =   objects[base].modelInfo.transformedNormalOffset;
                         
                         for (int i_triangle = 0; i_triangle < triangle_count; i_triangle++){
                             int triangle_base = (i_triangle + triangle_index) * 9; 
 
-                            int i0 = (vertex_index + triangles[triangle_base + 0]) * 3;
-                            int i1 = (vertex_index + triangles[triangle_base + 1]) * 3;
-                            int i2 = (vertex_index + triangles[triangle_base + 2]) * 3;
+                            int i0 = (transformed_vertex_index + triangles[triangle_base + 0]) * 3;
+                            int i1 = (transformed_vertex_index + triangles[triangle_base + 1]) * 3;
+                            int i2 = (transformed_vertex_index + triangles[triangle_base + 2]) * 3;
 
-                            int i3 = (normal_index + triangles[triangle_base + 3]) * 3;
-                            int i4 = (normal_index + triangles[triangle_base + 4]) * 3;
-                            int i5 = (normal_index + triangles[triangle_base + 5]) * 3;
+                            int i3 = (transformed_normal_index + triangles[triangle_base + 3]) * 3;
+                            int i4 = (transformed_normal_index + triangles[triangle_base + 4]) * 3;
+                            int i5 = (transformed_normal_index + triangles[triangle_base + 5]) * 3;
 
                             int i6 = (uv_index + triangles[triangle_base + 6]) * 3;
                             int i7 = (uv_index + triangles[triangle_base + 7]) * 3;
                             int i8 = (uv_index + triangles[triangle_base + 8]) * 3;
                             
-                            float z0 = verticies[i0 + 2];
-                            float x0 = verticies[i0 + 0];
-                            float y0 = verticies[i0 + 1];
+                            float x0 = transformed_verticies[i0 + 0];
                             
-                            float z1 = verticies[i1 + 2];
-                            float x1 = verticies[i1 + 0];
-                            float y1 = verticies[i1 + 1];
+        if (x0 >= 9999)continue;
+        float z0 = transformed_verticies[i0 + 2];
+                            float y0 = transformed_verticies[i0 + 1];
                             
-                            float z2 = verticies[i2 + 2];
-                            float x2 = verticies[i2 + 0];
-                            float y2 = verticies[i2 + 1];
+                            float z1 = transformed_verticies[i1 + 2];
+                            float x1 = transformed_verticies[i1 + 0];
+                            float y1 = transformed_verticies[i1 + 1];
                             
-                            if (object_r_w <= -9999999){
-                                rotate_euler(&x0, &y0, &z0, object_r_x, object_r_y, object_r_z);
-                                rotate_euler(&x1, &y1, &z1, object_r_x, object_r_y, object_r_z);
-                                rotate_euler(&x2, &y2, &z2, object_r_x, object_r_y, object_r_z);
-                            }
-                            else{
-                                rotate_euler(&x0, &y0, &z0, object_r_x, object_r_y, object_r_z);
-                                rotate_euler(&x1, &y1, &z1, object_r_x, object_r_y, object_r_z);
-                                rotate_euler(&x2, &y2, &z2, object_r_x, object_r_y, object_r_z);
-                            }
-
-                            z0 = (z0 * object_s_z + object_z);
-                            x0 = (x0 * object_s_x + object_x) / z0 * horizontal_fov_factor;
-                            y0 = (y0 * object_s_y + object_y) / z0 * vertical_fov_factor;
-                            z1 = (z1 * object_s_z + object_z);
-                            x1 = (x1 * object_s_x + object_x) / z1 * horizontal_fov_factor;
-                            y1 = (y1 * object_s_y + object_y) / z1 * vertical_fov_factor;
-                            z2 = (z2 * object_s_z + object_z);
-                            x2 = (x2 * object_s_x + object_x) / z2 * horizontal_fov_factor;
-                            y2 = (y2 * object_s_y + object_y) / z2 * vertical_fov_factor;
+                            float z2 = transformed_verticies[i2 + 2];
+                            float x2 = transformed_verticies[i2 + 0];
+                            float y2 = transformed_verticies[i2 + 1];
                             
                             if (i3 < 0 || i4 < 0 || i5 < 0){
                                 has_normals = 0;
@@ -1260,17 +1343,17 @@ RI_result RI_Tick(){
                                 if (z < z_pixel){ 
                                     z_pixel = z; 
                                     
-                                    float n_x0 = normals[i3 + 0];
-                                    float n_y0 = normals[i3 + 1];
-                                    float n_z0 = normals[i3 + 2];
+                                    float n_x0 = transformed_normals[i3 + 0];
+                                    float n_y0 = transformed_normals[i3 + 1];
+                                    float n_z0 = transformed_normals[i3 + 2];
                                     
-                                    float n_x1 = normals[i4 + 0];
-                                    float n_y1 = normals[i4 + 1];
-                                    float n_z1 = normals[i4 + 2];
+                                    float n_x1 = transformed_normals[i4 + 0];
+                                    float n_y1 = transformed_normals[i4 + 1];
+                                    float n_z1 = transformed_normals[i4 + 2];
                                     
-                                    float n_x2 = normals[i5 + 0];
-                                    float n_y2 = normals[i5 + 1];
-                                    float n_z2 = normals[i5 + 2];
+                                    float n_x2 = transformed_normals[i5 + 0];
+                                    float n_y2 = transformed_normals[i5 + 1];
+                                    float n_z2 = transformed_normals[i5 + 2];
                                     
                                     float u_x0 = uvs[i6 + 0];
                                     float u_y0 = uvs[i6 + 1];
@@ -1283,17 +1366,6 @@ RI_result RI_Tick(){
                                     float u_x2 = uvs[i8 + 0];
                                     float u_y2 = uvs[i8 + 1];
                                     float u_z2 = uvs[i8 + 2];
-                                    
-                                    if (object_r_w <= -9999999){
-                                        rotate_euler(&n_x0, &n_y0, &n_z0, object_r_x, object_r_y, object_r_z);
-                                        rotate_euler(&n_x1, &n_y1, &n_z1, object_r_x, object_r_y, object_r_z);
-                                        rotate_euler(&n_x2, &n_y2, &n_z2, object_r_x, object_r_y, object_r_z);
-                                    }
-                                    else{
-                                        rotate_euler(&n_x0, &n_y0, &n_z0, object_r_x, object_r_y, object_r_z);
-                                        rotate_euler(&n_x1, &n_y1, &n_z1, object_r_x, object_r_y, object_r_z);
-                                        rotate_euler(&n_x2, &n_y2, &n_z2, object_r_x, object_r_y, object_r_z);
-                                    }
                                     
                                     switch (show_buffer){
                                         case 0:{
