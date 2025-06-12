@@ -1237,16 +1237,6 @@ RI_result RI_Tick(){
                             largest_y = fmax(largest_y, ri_height); 
                             
                             if (id_x >= smallest_x && id_x <= largest_x && id_y >= smallest_y && id_y <= largest_y){ 
-                                int intersections = 0; 
-                                
-                                intersections += is_intersecting(id_x, id_y, 10000, 100000, x0, y0, x1, y1); 
-                                intersections += is_intersecting(id_x, id_y, 10000, 100000, x1, y1, x2, y2); 
-                                intersections += is_intersecting(id_x, id_y, 10000, 100000, x2, y2, x0, y0); 
-                                
-                                if (intersections % 2 == 0){ 
-                                    continue; 
-                                } 
-                                
                                 float denominator = (y1 - y2) * (x0 - x2) + (x2 - x1) * (y0 - y2); 
                                 
                                 if (!(material_flags & RI_MATERIAL_DOUBLE_SIDED) && denominator >= 0) { 
@@ -1256,6 +1246,10 @@ RI_result RI_Tick(){
                                 w1 = ((y2 - y0) * (id_x - x0) + (x0 - x2) * (id_y - y0)) / denominator; 
                                 w2 = 1.0 - w0 - w1; 
                                 
+                                if (!(w0 > 0 && w1 > 0 && w2 > 0)){
+                                    continue;
+                                }
+
                                 if (material_flags & RI_MATERIAL_WIREFRAME && (w0 >= wireframe_width && w1 >= wireframe_width && w2 >= wireframe_width)){
                                     continue;
                                 }

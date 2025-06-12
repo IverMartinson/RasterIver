@@ -184,8 +184,11 @@ __kernel void raster_kernel(__global Object* objects, __global float* verticies,
             int i7 = (uv_index + triangles[triangle_base + 7]) * 3;\
             int i8 = (uv_index + triangles[triangle_base + 8]) * 3;\
             \
-            float z0 = verticies[i0 + 2];\
             float x0 = verticies[i0 + 0];\
+            \
+            if (x0 == 999999999)continue;\
+            \
+            float z0 = verticies[i0 + 2];\
             float y0 = verticies[i0 + 1];\
             \
             \

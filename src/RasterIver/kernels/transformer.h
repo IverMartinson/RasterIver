@@ -183,25 +183,30 @@ __kernel void transformer_kernel(__global Object* objects, __global float* verti
         y2 = (y2 * object_s_y + object_y) / z2 * horizontal_fov_factor;\
         x2 = (x2 * object_s_x + object_x) / z2 * vertical_fov_factor;\
         \
-        transformed_verticies[(triangles[triangle_base + 0] + transformed_vertex_index) * 3 + 0] = x0;\
-        transformed_verticies[(triangles[triangle_base + 0] + transformed_vertex_index) * 3 + 1] = y0;\
-        transformed_verticies[(triangles[triangle_base + 0] + transformed_vertex_index) * 3 + 2] = z0;\
-        transformed_verticies[(triangles[triangle_base + 1] + transformed_vertex_index) * 3 + 0] = x1;\
-        transformed_verticies[(triangles[triangle_base + 1] + transformed_vertex_index) * 3 + 1] = y1;\
-        transformed_verticies[(triangles[triangle_base + 1] + transformed_vertex_index) * 3 + 2] = z1;\
-        transformed_verticies[(triangles[triangle_base + 2] + transformed_vertex_index) * 3 + 0] = x2;\
-        transformed_verticies[(triangles[triangle_base + 2] + transformed_vertex_index) * 3 + 1] = y2;\
-        transformed_verticies[(triangles[triangle_base + 2] + transformed_vertex_index) * 3 + 2] = z2;\
-        \
-        transformed_normals[(triangles[triangle_base + 0] + transformed_normal_index) * 3 + 0] = n_x0;\
-        transformed_normals[(triangles[triangle_base + 0] + transformed_normal_index) * 3 + 1] = n_y0;\
-        transformed_normals[(triangles[triangle_base + 0] + transformed_normal_index) * 3 + 2] = n_z0;\
-        transformed_normals[(triangles[triangle_base + 1] + transformed_normal_index) * 3 + 0] = n_x1;\
-        transformed_normals[(triangles[triangle_base + 1] + transformed_normal_index) * 3 + 1] = n_y1;\
-        transformed_normals[(triangles[triangle_base + 1] + transformed_normal_index) * 3 + 2] = n_z1;\
-        transformed_normals[(triangles[triangle_base + 2] + transformed_normal_index) * 3 + 0] = n_x2;\
-        transformed_normals[(triangles[triangle_base + 2] + transformed_normal_index) * 3 + 1] = n_y2;\
-        transformed_normals[(triangles[triangle_base + 2] + transformed_normal_index) * 3 + 2] = n_z2;\
+        if ((x0 < 0 && x1 < 0 && x2 < 0) || (y0 < 0 && y1 < 0 && y2 < 0) || (x0 >= width && x1 >= width && x2 >= width) || (y0 >= height && y1 >= height && y2 >= height)){\
+            transformed_verticies[(triangles[triangle_base + 0] + transformed_vertex_index) * 3 + 0] = 999999999;\
+        }\
+        else{\
+            transformed_verticies[(triangles[triangle_base + 0] + transformed_vertex_index) * 3 + 0] = x0;\
+            transformed_verticies[(triangles[triangle_base + 0] + transformed_vertex_index) * 3 + 1] = y0;\
+            transformed_verticies[(triangles[triangle_base + 0] + transformed_vertex_index) * 3 + 2] = z0;\
+            transformed_verticies[(triangles[triangle_base + 1] + transformed_vertex_index) * 3 + 0] = x1;\
+            transformed_verticies[(triangles[triangle_base + 1] + transformed_vertex_index) * 3 + 1] = y1;\
+            transformed_verticies[(triangles[triangle_base + 1] + transformed_vertex_index) * 3 + 2] = z1;\
+            transformed_verticies[(triangles[triangle_base + 2] + transformed_vertex_index) * 3 + 0] = x2;\
+            transformed_verticies[(triangles[triangle_base + 2] + transformed_vertex_index) * 3 + 1] = y2;\
+            transformed_verticies[(triangles[triangle_base + 2] + transformed_vertex_index) * 3 + 2] = z2;\
+            \
+            transformed_normals[(triangles[triangle_base + 0] + transformed_normal_index) * 3 + 0] = n_x0;\
+            transformed_normals[(triangles[triangle_base + 0] + transformed_normal_index) * 3 + 1] = n_y0;\
+            transformed_normals[(triangles[triangle_base + 0] + transformed_normal_index) * 3 + 2] = n_z0;\
+            transformed_normals[(triangles[triangle_base + 1] + transformed_normal_index) * 3 + 0] = n_x1;\
+            transformed_normals[(triangles[triangle_base + 1] + transformed_normal_index) * 3 + 1] = n_y1;\
+            transformed_normals[(triangles[triangle_base + 1] + transformed_normal_index) * 3 + 2] = n_z1;\
+            transformed_normals[(triangles[triangle_base + 2] + transformed_normal_index) * 3 + 0] = n_x2;\
+            transformed_normals[(triangles[triangle_base + 2] + transformed_normal_index) * 3 + 1] = n_y2;\
+            transformed_normals[(triangles[triangle_base + 2] + transformed_normal_index) * 3 + 2] = n_z2;\
+        }\
     }\
 }\n";
 
