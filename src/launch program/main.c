@@ -23,7 +23,7 @@ int main(){
     RI_SetFlag(RI_FLAG_SHOW_INFO, 0);
     RI_SetFlag(RI_FLAG_USE_CPU, 0);
 
-    RI_SetValue(RI_VALUE_WIREFRAME_SCALE, 0.02);
+    RI_SetValue(RI_VALUE_WIREFRAME_SCALE, 0.01);
 
     char prefix[50] = "[RASTERIVER IS AMAZING] ";
     RI_SetDebugPrefix(prefix);
