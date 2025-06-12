@@ -14,6 +14,9 @@
 int ri_width;
 int ri_height;
 
+int ri_h_width;
+int ri_h_height;
+
 float highest_z = 0;
 
 int polygon_count;
@@ -1196,11 +1199,10 @@ RI_result RI_Tick(){
         y2 = (y2 * object_s_y + object_y) / z2 * horizontal_fov_factor;
         x2 = (x2 * object_s_x + object_x) / z2 * vertical_fov_factor;
         
-        // this needs to be fixed becuase the edge of the screen is -width/2 and width/2 not 0 and width
-        // if ((x0 < 0 && x1 < 0 && x2 < 0) || (y0 < 0 && y1 < 0 && y2 < 0) || (x0 >= ri_width && x1 >= ri_width && x2 >= ri_width) || (y0 >= ri_height && y1 >= ri_height && y2 >= ri_height)){
-        //     transformed_verticies[(triangles[triangle_base + 0] + transformed_vertex_index) * 3 + 0] = 9999;
-        // }
-        // else{
+        if ((x0 < -ri_h_width && x1 < -ri_h_width && x2 < -ri_h_width) || (y0 < -ri_h_height && y1 < -ri_h_height && y2 < -ri_h_height) || (x0 >= ri_h_width && x1 >= ri_h_width && x2 >= ri_h_width) || (y0 >= ri_h_height && y1 >= ri_h_height && y2 >= ri_h_height)){
+            transformed_verticies[(triangles[triangle_base + 0] + transformed_vertex_index) * 3 + 0] = 9999;
+        }
+        else{
             transformed_verticies[(triangles[triangle_base + 0] + transformed_vertex_index) * 3 + 0] = x0;
             transformed_verticies[(triangles[triangle_base + 0] + transformed_vertex_index) * 3 + 1] = y0;
             transformed_verticies[(triangles[triangle_base + 0] + transformed_vertex_index) * 3 + 2] = z0;
@@ -1220,11 +1222,11 @@ RI_result RI_Tick(){
             transformed_normals[(triangles[triangle_base + 2] + transformed_normal_index) * 3 + 0] = n_x2;
             transformed_normals[(triangles[triangle_base + 2] + transformed_normal_index) * 3 + 1] = n_y2;
             transformed_normals[(triangles[triangle_base + 2] + transformed_normal_index) * 3 + 2] = n_z2;
-        // }
+        }
     }}
 
-            for (int id_y = -ri_height / 2; id_y < ri_height / 2; id_y++){
-                for (int id_x = -ri_width / 2; id_x < ri_width / 2; id_x++){
+            for (int id_y = -ri_h_height; id_y < ri_h_height; id_y++){
+                for (int id_x = -ri_h_width; id_x < ri_h_width; id_x++){
                     float z_pixel = INFINITY; 
                     unsigned int frame_pixel = 0x22222222; 
                     
@@ -1487,6 +1489,8 @@ RI_result RI_Tick(){
             erchk(clSetKernelArg(compiled_kernel_transformer, 7, sizeof(int), (void*)&ri_width));
             erchk(clSetKernelArg(compiled_kernel_transformer, 8, sizeof(int), (void*)&ri_height));
             erchk(clSetKernelArg(compiled_kernel_transformer, 9, sizeof(cl_mem), &output_memory_buffer));
+            erchk(clSetKernelArg(compiled_kernel_transformer, 10, sizeof(int), (void*)&ri_h_width));
+            erchk(clSetKernelArg(compiled_kernel_transformer, 11, sizeof(int), (void*)&ri_h_height));
 
             size_t size_1d[1] = {object_count};            
  
@@ -1511,6 +1515,8 @@ RI_result RI_Tick(){
             erchk(clSetKernelArg(compiled_kernel_master, 13, sizeof(float), (void*)&fov)); 
             erchk(clSetKernelArg(compiled_kernel_master, 14, sizeof(int), (void*)&face_count)); 
             erchk(clSetKernelArg(compiled_kernel_master, 15, sizeof(int), (void*)&vertex_count)); 
+            erchk(clSetKernelArg(compiled_kernel_master, 16, sizeof(int), (void*)&ri_h_width));
+            erchk(clSetKernelArg(compiled_kernel_master, 17, sizeof(int), (void*)&ri_h_height));
 
             // size_t local_size_2d[2] = {sqrt(local_size), sqrt(local_size)};
             size_t local_size_2d[2] = {16, 16};
@@ -1554,6 +1560,8 @@ RI_result RI_Tick(){
             erchk(clSetKernelArg(compiled_kernel_non_master, 4, sizeof(int), (void*)&ri_height));
             erchk(clSetKernelArg(compiled_kernel_non_master, 5, sizeof(int), (void*)&show_buffer)); 
             erchk(clSetKernelArg(compiled_kernel_non_master, 6, sizeof(float), (void*)&highest_z));
+            erchk(clSetKernelArg(compiled_kernel_non_master, 7, sizeof(int), (void*)&ri_h_width));
+            erchk(clSetKernelArg(compiled_kernel_non_master, 8, sizeof(int), (void*)&ri_h_height));
 
             erchk(clEnqueueWriteBuffer(queue, input_memory_buffer, CL_TRUE, 0, sizeof(float) * 3 * 3 * polygon_count, polygons, 0, NULL, NULL));
             erchk(clFinish(queue));
@@ -1963,6 +1971,9 @@ RI_result RI_Init(int RI_WindowWidth, int RI_WindowHeight, char *RI_WindowTitle)
 
     ri_width = RI_WindowWidth;
     ri_height = RI_WindowHeight;
+
+    ri_h_width = RI_WindowWidth * 0.5;
+    ri_h_height = RI_WindowHeight * 0.5;
 
     if (!use_cpu && OpenCL_init() == RI_ERROR){
         if (!use_cpu){
