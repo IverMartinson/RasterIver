@@ -1196,6 +1196,7 @@ RI_result RI_Tick(){
         y2 = (y2 * object_s_y + object_y) / z2 * horizontal_fov_factor;
         x2 = (x2 * object_s_x + object_x) / z2 * vertical_fov_factor;
         
+        // this needs to be fixed becuase the edge of the screen is -width/2 and width/2 not 0 and width
         // if ((x0 < 0 && x1 < 0 && x2 < 0) || (y0 < 0 && y1 < 0 && y2 < 0) || (x0 >= ri_width && x1 >= ri_width && x2 >= ri_width) || (y0 >= ri_height && y1 >= ri_height && y2 >= ri_height)){
         //     transformed_verticies[(triangles[triangle_base + 0] + transformed_vertex_index) * 3 + 0] = 9999;
         // }
