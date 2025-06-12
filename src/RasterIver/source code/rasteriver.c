@@ -66,6 +66,8 @@ SDL_Texture *texture;
 
 int *texture_info;
 
+float wireframe_width = 0.05;
+
 float fov = 90 * RI_PI / 180;
 
 RI_uint *frame_buffer;
@@ -164,67 +166,7 @@ RI_result debug_tick_func(int verbose, char *string, ...)
 }
 
 const char* code_to_string(cl_int code) {
-    switch (code) {
-        case -1:  return "CL_DEVICE_NOT_FOUND";
-        case -2:  return "CL_DEVICE_NOT_AVAILABLE";
-        case -3:  return "CL_COMPILER_NOT_AVAILABLE";
-        case -4:  return "CL_MEM_OBJECT_ALLOCATION_FAILURE";
-        case -5:  return "CL_OUT_OF_RESOURCES";
-        case -6:  return "CL_OUT_OF_HOST_MEMORY";
-        case -7:  return "CL_PROFILING_INFO_NOT_AVAILABLE";
-        case -8:  return "CL_MEM_COPY_OVERLAP";
-        case -9:  return "CL_IMAGE_FORMAT_MISMATCH";
-        case -10: return "CL_IMAGE_FORMAT_NOT_SUPPORTED";
-        case -11: return "CL_BUILD_PROGRAM_FAILURE";
-        case -12: return "CL_MAP_FAILURE";
-        case -13: return "CL_MISALIGNED_SUB_BUFFER_OFFSET";
-        case -14: return "CL_EXEC_STATUS_ERROR_FOR_EVENTS_IN_WAIT_LIST";
-        case -15: return "CL_COMPILE_PROGRAM_FAILURE";
-        case -16: return "CL_LINKER_NOT_AVAILABLE";
-        case -17: return "CL_LINK_PROGRAM_FAILURE";
-        case -18: return "CL_DEVICE_PARTITION_FAILED";
-        case -19: return "CL_KERNEL_ARG_INFO_NOT_AVAILABLE";
-        case -30: return "CL_INVALID_VALUE";
-        case -31: return "CL_INVALID_DEVICE_TYPE";
-        case -32: return "CL_INVALID_PLATFORM";
-        case -33: return "CL_INVALID_DEVICE";
-        case -34: return "CL_INVALID_CONTEXT";
-        case -35: return "CL_INVALID_QUEUE_PROPERTIES";
-        case -36: return "CL_INVALID_COMMAND_QUEUE";
-        case -37: return "CL_INVALID_HOST_PTR";
-        case -38: return "CL_INVALID_MEM_OBJECT";
-        case -39: return "CL_INVALID_IMAGE_FORMAT_DESCRIPTOR";
-        case -40: return "CL_INVALID_IMAGE_SIZE";
-        case -41: return "CL_INVALID_SAMPLER";
-        case -42: return "CL_INVALID_BINARY";
-        case -43: return "CL_INVALID_BUILD_OPTIONS";
-        case -44: return "CL_INVALID_PROGRAM";
-        case -45: return "CL_INVALID_PROGRAM_EXECUTABLE";
-        case -46: return "CL_INVALID_KERNEL_NAME";
-        case -47: return "CL_INVALID_KERNEL_DEFINITION";
-        case -48: return "CL_INVALID_KERNEL";
-        case -49: return "CL_INVALID_ARG_INDEX";
-        case -50: return "CL_INVALID_ARG_VALUE";
-        case -51: return "CL_INVALID_ARG_SIZE";
-        case -52: return "CL_INVALID_KERNEL_ARGS";
-        case -53: return "CL_INVALID_WORK_DIMENSION";
-        case -54: return "CL_INVALID_WORK_GROUP_SIZE";
-        case -55: return "CL_INVALID_WORK_ITEM_SIZE";
-        case -56: return "CL_INVALID_GLOBAL_OFFSET";
-        case -57: return "CL_INVALID_EVENT_WAIT_LIST";
-        case -58: return "CL_INVALID_EVENT";
-        case -59: return "CL_INVALID_OPERATION";
-        case -60: return "CL_INVALID_GL_OBJECT";
-        case -61: return "CL_INVALID_BUFFER_SIZE";
-        case -62: return "CL_INVALID_MIP_LEVEL";
-        case -63: return "CL_INVALID_GLOBAL_WORK_SIZE";
-        case -64: return "CL_INVALID_PROPERTY";
-        case -65: return "CL_INVALID_IMAGE_DESCRIPTOR";
-        case -66: return "CL_INVALID_COMPILER_OPTIONS";
-        case -67: return "CL_INVALID_LINKER_OPTIONS";
-        case -68: return "CL_INVALID_DEVICE_PARTITION_COUNT";
-        default:  return "Unknown OpenCL error code";
-    }
+    switch (code) {case -1:  return "CL_DEVICE_NOT_FOUND";case -2:  return "CL_DEVICE_NOT_AVAILABLE";case -3:  return "CL_COMPILER_NOT_AVAILABLE";case -4:  return "CL_MEM_OBJECT_ALLOCATION_FAILURE";case -5:  return "CL_OUT_OF_RESOURCES";case -6:  return "CL_OUT_OF_HOST_MEMORY";case -7:  return "CL_PROFILING_INFO_NOT_AVAILABLE";case -8:  return "CL_MEM_COPY_OVERLAP";case -9:  return "CL_IMAGE_FORMAT_MISMATCH";case -10: return "CL_IMAGE_FORMAT_NOT_SUPPORTED";case -11: return "CL_BUILD_PROGRAM_FAILURE";case -12: return "CL_MAP_FAILURE";case -13: return "CL_MISALIGNED_SUB_BUFFER_OFFSET";case -14: return "CL_EXEC_STATUS_ERROR_FOR_EVENTS_IN_WAIT_LIST";case -15: return "CL_COMPILE_PROGRAM_FAILURE";case -16: return "CL_LINKER_NOT_AVAILABLE";case -17: return "CL_LINK_PROGRAM_FAILURE";case -18: return "CL_DEVICE_PARTITION_FAILED";case -19: return "CL_KERNEL_ARG_INFO_NOT_AVAILABLE";case -30: return "CL_INVALID_VALUE";case -31: return "CL_INVALID_DEVICE_TYPE";case -32: return "CL_INVALID_PLATFORM";case -33: return "CL_INVALID_DEVICE";case -34: return "CL_INVALID_CONTEXT";case -35: return "CL_INVALID_QUEUE_PROPERTIES";case -36: return "CL_INVALID_COMMAND_QUEUE";case -37: return "CL_INVALID_HOST_PTR";case -38: return "CL_INVALID_MEM_OBJECT";case -39: return "CL_INVALID_IMAGE_FORMAT_DESCRIPTOR";case -40: return "CL_INVALID_IMAGE_SIZE";case -41: return "CL_INVALID_SAMPLER";case -42: return "CL_INVALID_BINARY";case -43: return "CL_INVALID_BUILD_OPTIONS";case -44: return "CL_INVALID_PROGRAM";case -45: return "CL_INVALID_PROGRAM_EXECUTABLE";case -46: return "CL_INVALID_KERNEL_NAME";case -47: return "CL_INVALID_KERNEL_DEFINITION";case -48: return "CL_INVALID_KERNEL";case -49: return "CL_INVALID_ARG_INDEX";case -50: return "CL_INVALID_ARG_VALUE";case -51: return "CL_INVALID_ARG_SIZE";case -52: return "CL_INVALID_KERNEL_ARGS";case -53: return "CL_INVALID_WORK_DIMENSION";case -54: return "CL_INVALID_WORK_GROUP_SIZE";case -55: return "CL_INVALID_WORK_ITEM_SIZE";case -56: return "CL_INVALID_GLOBAL_OFFSET";case -57: return "CL_INVALID_EVENT_WAIT_LIST";case -58: return "CL_INVALID_EVENT";case -59: return "CL_INVALID_OPERATION";case -60: return "CL_INVALID_GL_OBJECT";case -61: return "CL_INVALID_BUFFER_SIZE";case -62: return "CL_INVALID_MIP_LEVEL";case -63: return "CL_INVALID_GLOBAL_WORK_SIZE";case -64: return "CL_INVALID_PROPERTY";case -65: return "CL_INVALID_IMAGE_DESCRIPTOR";case -66: return "CL_INVALID_COMPILER_OPTIONS";case -67: return "CL_INVALID_LINKER_OPTIONS";case -68: return "CL_INVALID_DEVICE_PARTITION_COUNT";default:  return "Unknown OpenCL error code";}
 }
 
 RI_result erchk_func(cl_int error, int line, char *file)
@@ -337,6 +279,22 @@ RI_result RI_SetFlag(RI_flag RI_FlagToSet, int RI_Value){
 
     default:
         return RI_INVALID_FLAG;
+    }
+
+    return RI_SUCCESS;
+}
+
+RI_result RI_SetValue(RI_value RI_ValueToSet, float RI_Value){
+    debug(RI_DEBUG_HIGH, "Called RI_SetValue");
+
+    switch (RI_ValueToSet)
+    {
+    case RI_VALUE_WIREFRAME_SCALE:
+        wireframe_width= RI_Value;
+        break;
+
+    default:
+        return RI_INVALID_VALUE;
     }
 
     return RI_SUCCESS;
@@ -721,6 +679,7 @@ RI_objects RI_RequestObjects(RI_newObject *RI_ObjectBuffer, int RI_ObjectsToRequ
         objects[base].modelInfo.vertexOffset = (float)object_file_offsets[i_object * 5 + 1]; // vertex offset
         objects[base].modelInfo.normalOffset = (float)object_file_offsets[i_object * 5 + 2]; // normal offset
         objects[base].modelInfo.uvOffset = (float)object_file_offsets[i_object * 5 + 3]; // uvs offset
+        objects[base].material.properties = loading_object_current_object->material_flags;
 
         is_this_texture_name_already_in_the_texture_names_array = 0;
 
@@ -1182,6 +1141,9 @@ RI_result RI_Tick(){
                         float object_s_y = objects[base].transform.scale.y; 
                         float object_s_z = objects[base].transform.scale.z; 
                         
+                        uint64_t material_flags = objects[base].material.properties;
+                        ColorARGB albedo = objects[base].material.albedo;
+
                         int triangle_count = objects[base].modelInfo.triangleCount;
                         int triangle_index = objects[base].modelInfo.triangleOffset;
                         int vertex_index =   objects[base].modelInfo.vertexOffset;
@@ -1287,13 +1249,17 @@ RI_result RI_Tick(){
                                 
                                 float denominator = (y1 - y2) * (x0 - x2) + (x2 - x1) * (y0 - y2); 
                                 
-                                if (denominator >= 0) { 
+                                if (!(material_flags & RI_MATERIAL_DOUBLE_SIDED) && denominator >= 0) { 
                                     continue; 
                                 } 
                                 w0 = ((y1 - y2) * (id_x - x2) + (x2 - x1) * (id_y - y2)) / denominator; 
                                 w1 = ((y2 - y0) * (id_x - x0) + (x0 - x2) * (id_y - y0)) / denominator; 
                                 w2 = 1.0 - w0 - w1; 
                                 
+                                if (material_flags & RI_MATERIAL_WIREFRAME && (w0 >= wireframe_width && w1 >= wireframe_width && w2 >= wireframe_width)){
+                                    continue;
+                                }
+
                                 float w_over_z = (w0 / z0 + w1 / z1 + w2 / z2); 
                                 float z = 1.0 / w_over_z;
 
@@ -1337,6 +1303,12 @@ RI_result RI_Tick(){
                                     
                                     switch (show_buffer){
                                         case 0:{
+                                            if (!(material_flags & RI_MATERIAL_HAS_TEXTURE)){
+                                                frame_pixel = (albedo.a << 24) | (albedo.r << 16) | (albedo.g << 8) | albedo.b;
+                                            
+                                                break;
+                                            }
+
                                             double ux = (w0 * (u_x0 / z0) + w1 * (u_x1 / z1) + w2 * (u_x2 / z2)) / w_over_z;
                                             double uy = (w0 * (u_y0 / z0) + w1 * (u_y1 / z1) + w2 * (u_y2 / z2)) / w_over_z;
                                             

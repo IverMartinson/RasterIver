@@ -3,8 +3,8 @@
 #include <time.h>
 #include <stdlib.h>
 
-int width = 800;
-int height = 800;
+int width = 100;
+int height = 100;
 
 int main(){ 
     srand(time(NULL));                                                         
@@ -23,6 +23,8 @@ int main(){
     RI_SetFlag(RI_FLAG_SHOW_INFO, 0);
     RI_SetFlag(RI_FLAG_USE_CPU, 0);
 
+    RI_SetValue(RI_VALUE_WIREFRAME_SCALE, 0.02);
+
     char prefix[50] = "[RASTERIVER IS AMAZING] ";
     RI_SetDebugPrefix(prefix);
     //RI_SetFpsCap(120);
@@ -32,58 +34,58 @@ int main(){
     }
 
     RI_newObject object_buffer[49] = {
-        {0, 0, 100,          0, 0, 0, -9999999,          10, 10, 10,        "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
-        {10, 0, 100,        0, 0, 0, -9999999,          10, 10, 10,         "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
-        {20, 0, 100,         0, 0, 0, -9999999,          10, 10, 10,        "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
-        {30, 0, 100,       0, 0, 0, -9999999,          10, 10, 10,          "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
-        {-10, 0, 100,       0, 0, 0, -9999999,          10, 10, 10,         "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
-        {-20, 0, 100,       0, 0, 0, -9999999,          10, 10, 10,         "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
-        {-30, 0, 100,          0, 0, 0, -9999999,          10, 10, 10,      "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
-        {0, 10, 100,          0, 0, 0, -9999999,          10, 10, 10,       "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
-        {10, 10, 100,        0, 0, 0, -9999999,          10, 10, 10,        "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
-        {20, 10, 100,         0, 0, 0, -9999999,          10, 10, 10,       "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
-        {30, 10, 100,       0, 0, 0, -9999999,          10, 10, 10,         "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
-        {-10, 10, 100,       0, 0, 0, -9999999,          10, 10, 10,        "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
-        {-20, 10, 100,       0, 0, 0, -9999999,          10, 10, 10,        "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
-        {-30, 10, 100,          0, 0, 0, -9999999,          10, 10, 10,     "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
-        {0, -10, 100,          0, 0, 0, -9999999,          10, 10, 10,      "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
-        {10, -10, 100,        0, 0, 0, -9999999,          10, 10, 10,       "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
-        {20, -10, 100,         0, 0, 0, -9999999,          10, 10, 10,      "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
-        {30, -10, 100,       0, 0, 0, -9999999,          10, 10, 10,        "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
-        {-10, -10, 100,       0, 0, 0, -9999999,          10, 10, 10,       "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
-        {-20, -10, 100,       0, 0, 0, -9999999,          10, 10, 10,       "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
-        {-30, -10, 100,          0, 0, 0, -9999999,          10, 10, 10,    "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
-        {0, 20, 100,          0, 0, 0, -9999999,          10, 10, 10,       "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
-        {10, 20, 100,        0, 0, 0, -9999999,          10, 10, 10,        "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
-        {20, 20, 100,         0, 0, 0, -9999999,          10, 10, 10,       "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
-        {30, 20, 100,       0, 0, 0, -9999999,          10, 10, 10,         "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
-        {-10, 20, 100,       0, 0, 0, -9999999,          10, 10, 10,        "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
-        {-20, 20, 100,       0, 0, 0, -9999999,          10, 10, 10,        "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
-        {-30, 20, 100,          0, 0, 0, -9999999,          10, 10, 10,     "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
-        {0, -20, 100,          0, 0, 0, -9999999,          10, 10, 10,      "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
-        {10, -20, 100,        0, 0, 0, -9999999,          10, 10, 10,       "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
-        {20, -20, 100,         0, 0, 0, -9999999,          10, 10, 10,      "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
-        {30, -20, 100,       0, 0, 0, -9999999,          10, 10, 10,        "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
-        {-10, -20, 100,       0, 0, 0, -9999999,          10, 10, 10,       "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
-        {-20, -20, 100,       0, 0, 0, -9999999,          10, 10, 10,       "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
-        {-30, -20, 100,          0, 0, 0, -9999999,          10, 10, 10,    "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
-        {0, 30, 100,          0, 0, 0, -9999999,          10, 10, 10,       "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
-        {10, 30, 100,        0, 0, 0, -9999999,          10, 10, 10,        "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
-        {20, 30, 100,         0, 0, 0, -9999999,          10, 10, 10,       "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
-        {30, 30, 100,       0, 0, 0, -9999999,          10, 10, 10,         "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
-        {-10, 30, 100,       0, 0, 0, -9999999,          10, 10, 10,        "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
-        {-20, 30, 100,       0, 0, 0, -9999999,          10, 10, 10,        "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
-        {-30, 30, 100,          0, 0, 0, -9999999,          10, 10, 10,     "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
-        {0, -30, 100,          0, 0, 0, -9999999,          10, 10, 10,      "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
-        {10, -30, 100,        0, 0, 0, -9999999,          10, 10, 10,       "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
-        {20, -30, 100,         0, 0, 0, -9999999,          10, 10, 10,      "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
-        {30, -30, 100,       0, 0, 0, -9999999,          10, 10, 10,        "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
-        {-10, -30, 100,       0, 0, 0, -9999999,          10, 10, 10,       "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
-        {-20, -30, 100,       0, 0, 0, -9999999,          10, 10, 10,       "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
-        {-30, -30, 100,          0, 0, 0, -9999999,          10, 10, 10,    "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
+        {0, 0, 50,          0, 0, 0, -9999999,          10, 10, 10,        RI_MATERIAL_WIREFRAME | RI_MATERIAL_DOUBLE_SIDED | RI_MATERIAL_HAS_TEXTURE, "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
+        {10, 0, 100,        0, 0, 0, -9999999,          10, 10, 10,         RI_PMP_TEXTURED, "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
+        {20, 0, 100,         0, 0, 0, -9999999,          10, 10, 10,        RI_PMP_TEXTURED, "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
+        {30, 0, 100,       0, 0, 0, -9999999,          10, 10, 10,          RI_PMP_TEXTURED, "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
+        {-10, 0, 100,       0, 0, 0, -9999999,          10, 10, 10,         RI_PMP_TEXTURED, "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
+        {-20, 0, 100,       0, 0, 0, -9999999,          10, 10, 10,         RI_PMP_TEXTURED, "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
+        {-30, 0, 100,          0, 0, 0, -9999999,          10, 10, 10,      RI_PMP_TEXTURED, "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
+        {0, 10, 100,          0, 0, 0, -9999999,          10, 10, 10,       RI_PMP_TEXTURED, "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
+        {10, 10, 100,        0, 0, 0, -9999999,          10, 10, 10,        RI_PMP_TEXTURED, "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
+        {20, 10, 100,         0, 0, 0, -9999999,          10, 10, 10,       RI_PMP_TEXTURED, "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
+        {30, 10, 100,       0, 0, 0, -9999999,          10, 10, 10,         RI_PMP_TEXTURED, "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
+        {-10, 10, 100,       0, 0, 0, -9999999,          10, 10, 10,        RI_PMP_TEXTURED, "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
+        {-20, 10, 100,       0, 0, 0, -9999999,          10, 10, 10,        RI_PMP_TEXTURED, "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
+        {-30, 10, 100,          0, 0, 0, -9999999,          10, 10, 10,     RI_PMP_TEXTURED, "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
+        {0, -10, 100,          0, 0, 0, -9999999,          10, 10, 10,      RI_PMP_TEXTURED, "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
+        {10, -10, 100,        0, 0, 0, -9999999,          10, 10, 10,       RI_PMP_TEXTURED, "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
+        {20, -10, 100,         0, 0, 0, -9999999,          10, 10, 10,      RI_PMP_TEXTURED, "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
+        {30, -10, 100,       0, 0, 0, -9999999,          10, 10, 10,        RI_PMP_TEXTURED, "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
+        {-10, -10, 100,       0, 0, 0, -9999999,          10, 10, 10,       RI_PMP_TEXTURED, "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
+        {-20, -10, 100,       0, 0, 0, -9999999,          10, 10, 10,       RI_PMP_TEXTURED, "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
+        {-30, -10, 100,          0, 0, 0, -9999999,          10, 10, 10,    RI_PMP_TEXTURED, "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
+        {0, 20, 100,          0, 0, 0, -9999999,          10, 10, 10,       RI_PMP_TEXTURED, "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
+        {10, 20, 100,        0, 0, 0, -9999999,          10, 10, 10,        RI_PMP_TEXTURED, "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
+        {20, 20, 100,         0, 0, 0, -9999999,          10, 10, 10,       RI_PMP_TEXTURED, "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
+        {30, 20, 100,       0, 0, 0, -9999999,          10, 10, 10,         RI_PMP_TEXTURED, "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
+        {-10, 20, 100,       0, 0, 0, -9999999,          10, 10, 10,        RI_PMP_TEXTURED, "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
+        {-20, 20, 100,       0, 0, 0, -9999999,          10, 10, 10,        RI_PMP_TEXTURED, "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
+        {-30, 20, 100,          0, 0, 0, -9999999,          10, 10, 10,     RI_PMP_TEXTURED, "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
+        {0, -20, 100,          0, 0, 0, -9999999,          10, 10, 10,      RI_PMP_TEXTURED, "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
+        {10, -20, 100,        0, 0, 0, -9999999,          10, 10, 10,       RI_PMP_TEXTURED, "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
+        {20, -20, 100,         0, 0, 0, -9999999,          10, 10, 10,      RI_PMP_TEXTURED, "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
+        {30, -20, 100,       0, 0, 0, -9999999,          10, 10, 10,        RI_PMP_TEXTURED, "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
+        {-10, -20, 100,       0, 0, 0, -9999999,          10, 10, 10,       RI_PMP_TEXTURED, "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
+        {-20, -20, 100,       0, 0, 0, -9999999,          10, 10, 10,       RI_PMP_TEXTURED, "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
+        {-30, -20, 100,          0, 0, 0, -9999999,          10, 10, 10,    RI_PMP_TEXTURED, "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
+        {0, 30, 100,          0, 0, 0, -9999999,          10, 10, 10,       RI_PMP_TEXTURED, "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
+        {10, 30, 100,        0, 0, 0, -9999999,          10, 10, 10,        RI_PMP_TEXTURED, "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
+        {20, 30, 100,         0, 0, 0, -9999999,          10, 10, 10,       RI_PMP_TEXTURED, "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
+        {30, 30, 100,       0, 0, 0, -9999999,          10, 10, 10,         RI_PMP_TEXTURED, "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
+        {-10, 30, 100,       0, 0, 0, -9999999,          10, 10, 10,        RI_PMP_TEXTURED, "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
+        {-20, 30, 100,       0, 0, 0, -9999999,          10, 10, 10,        RI_PMP_TEXTURED, "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
+        {-30, 30, 100,          0, 0, 0, -9999999,          10, 10, 10,     RI_PMP_TEXTURED, "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
+        {0, -30, 100,          0, 0, 0, -9999999,          10, 10, 10,      RI_PMP_TEXTURED, "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
+        {10, -30, 100,        0, 0, 0, -9999999,          10, 10, 10,       RI_PMP_TEXTURED, "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
+        {20, -30, 100,         0, 0, 0, -9999999,          10, 10, 10,      RI_PMP_TEXTURED, "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
+        {30, -30, 100,       0, 0, 0, -9999999,          10, 10, 10,        RI_PMP_TEXTURED, "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
+        {-10, -30, 100,       0, 0, 0, -9999999,          10, 10, 10,       RI_PMP_TEXTURED, "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
+        {-20, -30, 100,       0, 0, 0, -9999999,          10, 10, 10,       RI_PMP_TEXTURED, "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
+        {-30, -30, 100,          0, 0, 0, -9999999,          10, 10, 10,    RI_PMP_TEXTURED, "objects/rotated_cube.obj", "textures/bill_mcdinner.png"},
     };
 
-    int objects_to_request = 49;
+    int objects_to_request = 1;
 
     RI_objects objects = RI_RequestObjects(object_buffer, objects_to_request);
 

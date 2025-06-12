@@ -9,6 +9,7 @@
 
 typedef int RI_result;
 typedef int RI_flag;
+typedef int RI_value;
 typedef uint32_t RI_uint;
 typedef float* RI_polygons;
 typedef float* RI_verticies;
@@ -39,6 +40,7 @@ typedef unsigned char* RI_textures;
 
 typedef struct {
     float x, y, z, r_x, r_y, r_z, r_w, s_x, s_y, s_z;
+    uint64_t material_flags;
     char file_path[40];
     char texture[40];
 } RI_newObject;
@@ -54,6 +56,7 @@ typedef enum {
     RI_NOT_RUNNING  = -2,
     RI_RUNNING      =  1,
     RI_INVALID_FLAG = -3,
+    RI_INVALID_VALUE = -4,
 } RI_result_enum;
 
 // RI_flag
@@ -74,6 +77,10 @@ typedef enum {
     RI_FLAG_HANDLE_SDL_EVENTS   = 13,
 } RI_flag_enum;
 
+typedef enum {
+    RI_VALUE_WIREFRAME_SCALE = 0,
+} RI_value_enum;
+
 // RI_BUFFER
 typedef enum {
     RI_BUFFER_COMPLETE  = 0,
@@ -89,11 +96,29 @@ typedef enum {
     RI_DEBUG_HIGH     = 2,
 } RI_debug_enum;
 
-// RI_VALUE
+typedef enum {
+    RI_MATERIAL_UNLIT = ((uint64_t)1 << 0), // should calculate lighting
+    RI_MATERIAL_DONT_CAST_SHADOW = ((uint64_t)1 << 1), // should cast shadow on other objects
+    RI_MATERIAL_HAS_TEXTURE = ((uint64_t)1 << 2), // has a texture
+    RI_MATERIAL_HAS_NORMAL_MAP = ((uint64_t)1 << 3), // has a normal map
+    RI_MATERIAL_HAS_BUMP_MAP = ((uint64_t)1 << 4), // has a bump map
+    RI_MATERIAL_TRANSPARENT = ((uint64_t)1 << 5), // has transparency
+    RI_MATERIAL_WIREFRAME = ((uint64_t)1 << 6), // render as wireframe
+    RI_MATERIAL_DONT_RECEIVE_SHADOW = ((uint64_t)1 << 7), // should shadows render on it
+    RI_MATERIAL_DONT_DEPTH_TEST = ((uint64_t)1 << 8), // should check Z buffer (if 1, render on top of everything)
+    RI_MATERIAL_DONT_DEPTH_WRITE = ((uint64_t)1 << 9), // should write to the Z buffer (if 1, render behind everything)
+    RI_MATERIAL_DOUBLE_SIDED = ((uint64_t)1 << 10), // ignore backface culling
+} RI_material_properties_enum;
+
+typedef enum {
+    RI_PMP_TEXTURED = RI_MATERIAL_HAS_TEXTURE,
+} RI_preset_material_properties;
+
+// RI_BOOL
 typedef enum {
     RI_TRUE      = 1,
     RI_FALSE   = 0,
-} RI_value_enum;
+} RI_bool_enum;
 
 // Initializes OpenCL, SDL2, and anything else Rasteriver needs to function
 RI_result   RI_Init();
@@ -124,6 +149,9 @@ RI_result   RI_ShowZBuffer(int RI_ShowZBufferFlag);
 
 // Sets a flag
 RI_result   RI_SetFlag(RI_flag RI_FlagToSet, int RI_Value);
+
+// Sets a value
+RI_result   RI_SetValue(RI_value RI_ValueToSet, float RI_Value);
 
 // Sets the FPS limit
 RI_result   RI_SetFpsCap(int RI_FpsCap);
