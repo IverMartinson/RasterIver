@@ -83,3 +83,4 @@ Rasterizer + Iver = RasterIver
 - [ ] use correct types for stuff (like size_t)
 - [ ] add target resolution
 - [ ] find a faster way to draw pixels to the window
+- [ ] replace "RI_RequestObjects" with 2 functions, RI_CreateObject (which returns a pointer to the object) and RI_LoadObjectFile (which takes in an object file and a pointer). It'll be tough making the object data arrays basically dynamic, but it shouldn't be too hard. Maybe I'll make a termination sequence after each object's data points. Like [x, y, z..... NULL, 0, INFINITY, x, y, z......]. If I know the object I want to delete, I know the start and stopping points of all it's data points. All I have to do is cut them out. Is there a way to squish it back together though? Maybe I could shift all the other data points down, but if there is a substantial amount of them after the cut one, it could take forever.
