@@ -56,7 +56,7 @@ Rasterizer + Iver = RasterIver
 - [ ] sheer transform (and other fancy ones?)
 - [ ] simple lighting using normals
 - [ ] complex lighting using rays for shadows and stuff
-- [ ] polygon clipping by subdividing
+- [ ] polygon clipping by subdividing (do we need this? I think the logic rn is fine without it)
 - [x] flag for using CPU instead of GPU
 - [ ] actually acurate FPS cap
 - [ ] make an option for multiple cameras, or defining a camera. I want to be able to write it to a "texture" in menory and have objects use it as their texture
