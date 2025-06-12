@@ -25,7 +25,10 @@ typedef struct {\
 \
 typedef struct {\
     ColorARGB albedo;\
-    int textureOffset;\
+    cl_int textureOffset;\
+    cl_int normalMapOffset;\
+    cl_int bumpMapOffset;\
+    cl_ulong properties;\
 } Material;\
 \
 typedef struct {\
