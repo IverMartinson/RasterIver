@@ -100,7 +100,7 @@ void rotate_euler(float *x, float *y, float *z, float r_x, float r_y, float r_z)
     *z = temp_z;\
 };\
 \
-__kernel void transformer_kernel(__global Object* objects, __global float* verticies, __global float* normals, __global int* triangles, __global float* transformed_verticies, __global float* transformed_normals, float fov, int width, int height, __global uint* frame_buffer){ \
+__kernel void transformer_kernel(__global Object* objects, __global float* verticies, __global float* normals, __global int* triangles, __global float* transformed_verticies, __global float* transformed_normals, float fov, int width, int height, __global uint* frame_buffer, int ri_h_width, int ri_h_height){ \
     int id_x = get_global_id(0);\
     \
     float vertical_fov_factor = height / tan(0.5 * fov);\
@@ -183,7 +183,7 @@ __kernel void transformer_kernel(__global Object* objects, __global float* verti
         y2 = (y2 * object_s_y + object_y) / z2 * horizontal_fov_factor;\
         x2 = (x2 * object_s_x + object_x) / z2 * vertical_fov_factor;\
         \
-        if ((x0 < 0 && x1 < 0 && x2 < 0) || (y0 < 0 && y1 < 0 && y2 < 0) || (x0 >= width && x1 >= width && x2 >= width) || (y0 >= height && y1 >= height && y2 >= height)){\
+        if ((x0 < -ri_h_width && x1 < -ri_h_width && x2 < -ri_h_width) || (y0 < -ri_h_height && y1 < -ri_h_height && y2 < -ri_h_height) || (x0 >= ri_h_width && x1 >= ri_h_width && x2 >= ri_h_width) || (y0 >= ri_h_height && y1 >= ri_h_height && y2 >= ri_h_height)){\
             transformed_verticies[(triangles[triangle_base + 0] + transformed_vertex_index) * 3 + 0] = 999999999;\
         }\
         else{\
