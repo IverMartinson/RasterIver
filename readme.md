@@ -56,7 +56,7 @@ Rasterizer + Iver = RasterIver
 - [ ] sheer transform (and other fancy ones?)
 - [ ] simple lighting using normals
 - [ ] complex lighting using rays for shadows and stuff
-- [ ] polygon clipping by subdividing
+- [ ] polygon clipping by subdividing (do we need this? I think the logic rn is fine without it)
 - [x] flag for using CPU instead of GPU
 - [ ] actually acurate FPS cap
 - [ ] make an option for multiple cameras, or defining a camera. I want to be able to write it to a "texture" in menory and have objects use it as their texture
@@ -72,7 +72,7 @@ Rasterizer + Iver = RasterIver
 - [ ] allow objects to have no texture
 - [ ] make checks for objects trying to have a texture, but no UV coords (generate them?)
 - [x] FOV
-- [ ] add materials
+- [x] add materials
 - [x] make another kernel that calculated transforms & perspective before rasterizing
 - [ ] add ability to request objects multiple times 
 - [ ] give objects IDs or some way to track them so that you can remove them dynamically
@@ -83,3 +83,7 @@ Rasterizer + Iver = RasterIver
 - [ ] use correct types for stuff (like size_t)
 - [ ] add target resolution
 - [ ] find a faster way to draw pixels to the window
+- [ ] replace "RI_RequestObjects" with 2 functions, RI_CreateObject (which returns a pointer to the object) and RI_LoadObjectFile (which takes in an object file and a pointer). It'll be tough making the object data arrays basically dynamic, but it shouldn't be too hard. Maybe I'll make a termination sequence after each object's data points. Like [x, y, z..... NULL, 0, INFINITY, x, y, z......]. If I know the object I want to delete, I know the start and stopping points of all it's data points. All I have to do is cut them out. Is there a way to squish it back together though? Maybe I could shift all the other data points down, but if there is a substantial amount of them after the cut one, it could take forever.
+- [ ] antialiasing
+- [ ] fix gaps in thin lines
+- [ ] add "transformed" before verticies and normals memory buffers in main kernel to make it less confusing

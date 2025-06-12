@@ -10,10 +10,13 @@ typedef struct __attribute__((aligned(4))) {
     cl_uchar b; // 1
 } ColorARGB; // size: 4, align: 4
 
-typedef struct __attribute__((aligned(8))) {
+typedef struct __attribute__((aligned(4))) {
     ColorARGB albedo;     // 4
     cl_int textureOffset; // 4
-} Material; // size 8, align: 4
+    cl_int normalMapOffset; // 4
+    cl_int bumpMapOffset; // 4
+    cl_ulong properties; // 8
+} Material; // size 24
 
 typedef struct __attribute__((aligned(16))) {
     cl_float x; // 4
@@ -33,7 +36,7 @@ typedef struct __attribute__((aligned(16))) {
     Vec3 position;  // 16 bytes
     Vec3 scale;     // 16 bytes
     Vec4 rotation;  // 16 bytes
-} Transform; // size: 48 bytes (actually 64 because 3x16)
+} Transform; // size: 48 bytes
 
 typedef struct __attribute__((aligned(4))) {
     cl_int transformedVertexOffset;
