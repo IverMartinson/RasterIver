@@ -138,15 +138,15 @@ __kernel void transformer_kernel(__global Object* objects, __global float* verti
         int i4 = (normal_index + triangles[triangle_base + 4]) * 3;\
         int i5 = (normal_index + triangles[triangle_base + 5]) * 3;\
         \
-        float z0 = verticies[i0 + 2];\
-        float x0 = verticies[i0 + 0];\
-        float y0 = verticies[i0 + 1];\
-        float z1 = verticies[i1 + 2];\
-        float x1 = verticies[i1 + 0];\
-        float y1 = verticies[i1 + 1];\
-        float z2 = verticies[i2 + 2];\
-        float x2 = verticies[i2 + 0];\
-        float y2 = verticies[i2 + 1];\
+        float x0 = verticies[i0 + 0] * object_s_x;\
+        float y0 = verticies[i0 + 1] * object_s_y;\
+        float z0 = verticies[i0 + 2] * object_s_z;\
+        float x1 = verticies[i1 + 0] * object_s_x;\
+        float y1 = verticies[i1 + 1] * object_s_y;\
+        float z1 = verticies[i1 + 2] * object_s_z;\
+        float x2 = verticies[i2 + 0] * object_s_x;\
+        float y2 = verticies[i2 + 1] * object_s_y;\
+        float z2 = verticies[i2 + 2] * object_s_z;\
         float n_x0 = normals[i3 + 0];\
         float n_y0 = normals[i3 + 1];\
         float n_z0 = normals[i3 + 2];\
@@ -173,15 +173,15 @@ __kernel void transformer_kernel(__global Object* objects, __global float* verti
         rotate_euler(&n_x1, &n_y1, &n_z1, object_r_x, object_r_y, object_r_z);\
         rotate_euler(&n_x2, &n_y2, &n_z2, object_r_x, object_r_y, object_r_z);\
         \
-        z0 = (z0 * object_s_z + object_z);\
-        x0 = (x0 * object_s_x + object_x) / z0 * horizontal_fov_factor;\
-        y0 = (y0 * object_s_y + object_y) / z0 * vertical_fov_factor;\
-        z1 = (z1 * object_s_z + object_z);\
-        x1 = (x1 * object_s_x + object_x) / z1 * horizontal_fov_factor;\
-        y1 = (y1 * object_s_y + object_y) / z1 * vertical_fov_factor;\
-        z2 = (z2 * object_s_z + object_z);\
-        y2 = (y2 * object_s_y + object_y) / z2 * horizontal_fov_factor;\
-        x2 = (x2 * object_s_x + object_x) / z2 * vertical_fov_factor;\
+        z0 = (z0 + object_z);\
+        x0 = (x0 + object_x) / z0 * horizontal_fov_factor;\
+        y0 = (y0 + object_y) / z0 * vertical_fov_factor;\
+        z1 = (z1 + object_z);\
+        x1 = (x1 + object_x) / z1 * horizontal_fov_factor;\
+        y1 = (y1 + object_y) / z1 * vertical_fov_factor;\
+        z2 = (z2 + object_z);\
+        y2 = (y2 + object_y) / z2 * horizontal_fov_factor;\
+        x2 = (x2 + object_x) / z2 * vertical_fov_factor;\
         \
         if ((x0 < -ri_h_width && x1 < -ri_h_width && x2 < -ri_h_width) || (y0 < -ri_h_height && y1 < -ri_h_height && y2 < -ri_h_height) || (x0 >= ri_h_width && x1 >= ri_h_width && x2 >= ri_h_width) || (y0 >= ri_h_height && y1 >= ri_h_height && y2 >= ri_h_height)){\
             transformed_verticies[(triangles[triangle_base + 0] + transformed_vertex_index) * 3 + 0] = 999999999;\

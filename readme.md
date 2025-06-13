@@ -77,7 +77,7 @@ Rasterizer + Iver = RasterIver
 - [ ] add ability to request objects multiple times 
 - [ ] give objects IDs or some way to track them so that you can remove them dynamically
 - [ ] make CUDA version because OpenCL is slow with NVIDIA
-- [ ] fix center of perspective being in the wrong spot
+- [x] [this wasn't actually a problem. I had -999999999 for r_w but switched how the inputs are. It was rotatiing things -99999999 rad and looked like it was off] fix center of perspective being in the wrong spot
 - [ ] make function for world scale/master scale (scales everything. from origin? from object origins?)
 - [x] I think calculations for debugging memory usage are outdated/wrong
 - [ ] use correct types for stuff (like size_t)
