@@ -87,3 +87,4 @@ Rasterizer + Iver = RasterIver
 - [ ] antialiasing
 - [ ] fix gaps in thin lines
 - [ ] add "transformed" before verticies and normals memory buffers in main kernel to make it less confusing
+- [ ] add overdraw buffer
