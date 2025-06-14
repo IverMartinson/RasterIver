@@ -12,6 +12,8 @@
         "stdio.h": "c",
         "stdint.h": "c",
         "cmath": "c",
-        "time.h": "c"
+        "time.h": "c",
+        "*.cl": "c",
+        "sdl_ttf.h": "c"
     }
 }

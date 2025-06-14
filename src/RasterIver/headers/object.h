@@ -3,6 +3,24 @@
 
 #include <CL/cl_platform.h>
 
+typedef struct {
+    float x;
+    float y;
+} Vec2;
+
+Vec2 lerp(Vec2 pos1, Vec2 pos2, float fraction){
+    Vec2 result;
+
+    float w0 = 1.0 - fraction;
+    float w1 = fraction;
+
+    result.x = pos1.x * w0 + pos2.x * w1;
+    result.y = pos1.y * w0 + pos2.y * w1;
+
+    return result;
+
+}
+
 typedef struct __attribute__((aligned(4))) {
     cl_uchar a; // 1
     cl_uchar r; // 1
@@ -55,7 +73,7 @@ typedef struct __attribute__((aligned(16))) {
     Transform transform;   // 64
     ModelInfo modelInfo;   // 40
     cl_int id;             // 4
-    cl_int _pad1;          // 4 (pad so Material starts at 8-byte boundary)
+    cl_int split_triangles;          // 4 (pad so Material starts at 8-byte boundary)
     Material material;     // 8
     cl_int _pad2;          // 4 (pad to make Object size 128 bytes)
     cl_int _pad3;          // 4

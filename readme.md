@@ -44,8 +44,8 @@ Rasterizer + Iver = RasterIver
 - [x] texture support
 - [x] fix interpolation issue with UV maps (and probably normals and Z values too)
 - [ ] fix horribly named variables in request object functions
-- [ ] include rasteriver.h in the kernels for better code updatability
-- [ ] make kernels not be in strings (read the file at compile time and put it inside rasteriver.c as a string? put it in a header like how it is now?)
+- [ ] include rasteriver.h in the kernels for better code updatability (i dont think you can do that)
+- [x] make kernels not be in strings (read the file at compile time and put it inside rasteriver.c as a string? put it in a header like how it is now?)
 - [x] change all iterator variables in for loops to have "i_" before it's variable name
 - [x] add descriptions to RI functions
 - [x] optimize object memory usage by not loading object data multiple times when the same object is requested
@@ -56,7 +56,7 @@ Rasterizer + Iver = RasterIver
 - [ ] sheer transform (and other fancy ones?)
 - [ ] simple lighting using normals
 - [ ] complex lighting using rays for shadows and stuff
-- [ ] polygon clipping by subdividing (do we need this? I think the logic rn is fine without it)
+- [x] polygon clipping by subdividing
 - [x] flag for using CPU instead of GPU
 - [ ] actually acurate FPS cap
 - [ ] make an option for multiple cameras, or defining a camera. I want to be able to write it to a "texture" in menory and have objects use it as their texture
@@ -87,4 +87,6 @@ Rasterizer + Iver = RasterIver
 - [ ] antialiasing
 - [ ] fix gaps in thin lines
 - [ ] add "transformed" before verticies and normals memory buffers in main kernel to make it less confusing
-- [ ] add overdraw buffer
+- [ ] add overdraw "buffer"
+- [ ] fix spaghetti code
+- [ ] add polygon clipping to GPU

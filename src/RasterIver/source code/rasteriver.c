@@ -3,9 +3,6 @@
 #include <time.h>
 #include <CL/cl.h>
 #include "../headers/rasteriver.h"
-#include "../kernels/transformer.h"
-#include "../kernels/master_kernel.h"
-#include "../kernels/non_master_kernel.h"
 #include <stdarg.h>
 #include <stdio.h>
 #include <SDL2/SDL_ttf.h>
@@ -13,6 +10,8 @@
 // ----- Internal Variables
 int ri_width;
 int ri_height;
+
+int selected_triangle = 0;
 
 int ri_h_width;
 int ri_h_height;
@@ -25,11 +24,13 @@ RI_polygons polygons = NULL;
 int object_count;
 RI_objects objects;
 RI_verticies verticies;
+RI_verticies split_verticies;
 RI_verticies transformed_verticies;
 RI_verticies normals;
 RI_verticies transformed_normals;
 RI_verticies uvs;
 RI_triangles triangles;
+int *split_triangles;
 RI_textures textures;
 int textures_size;
 int texture_count;
@@ -71,6 +72,7 @@ SDL_Texture *texture;
 
 int *texture_info;
 
+float near_clip = 0.01;
 float wireframe_width = 0.05;
 
 float fov = 90 * RI_PI / 180;
@@ -149,7 +151,7 @@ RI_result debug(int verbose, char *string, ...){
 
 RI_result debug_tick_func(int verbose, char *string, ...)
 {
-    if (!show_debug || (verbose && debug_level != RI_DEBUG_HIGH) || !debug_tick){
+    if (!show_debug || (verbose > debug_level) || !debug_tick){
         return RI_ERROR;
     }
 
@@ -295,8 +297,15 @@ RI_result RI_SetValue(RI_value RI_ValueToSet, float RI_Value){
     switch (RI_ValueToSet)
     {
     case RI_VALUE_WIREFRAME_SCALE:
-        wireframe_width= RI_Value;
+        wireframe_width = RI_Value;
         break;
+
+    case RI_VALUE_SELECTED_TRIANGLE:
+        selected_triangle = RI_Value;
+        break;
+
+    case RI_VALUE_MINIMUM_CLIP:
+        near_clip = RI_Value;
 
     default:
         return RI_INVALID_VALUE;
@@ -848,23 +857,25 @@ RI_objects RI_RequestObjects(RI_newObject *RI_ObjectBuffer, int RI_ObjectsToRequ
     }
     
     size_t texture_bytes   = sizeof(unsigned char) * textures_size * 4;
-    size_t triangle_bytes  = sizeof(RI_triangles) * face_count * vs;
+    size_t triangle_bytes  = sizeof(RI_triangles) * face_count * ts;
+    size_t split_triangle_bytes  = sizeof(int) * face_count;
     size_t vertex_bytes    = sizeof(RI_verticies) * vertex_count * vs;
-    size_t transformed_vertex_bytes    = sizeof(RI_verticies) * transform_vertex_offset_total * vs * use_cpu;
+    size_t transformed_vertex_bytes    = sizeof(RI_verticies) * transform_vertex_offset_total * transformed_verticies_size * use_cpu;
+    size_t split_vertex_bytes    = sizeof(RI_verticies) * face_count * transformed_verticies_size * use_cpu;
     size_t normal_bytes    = sizeof(RI_verticies) * normal_count * vs;
     size_t transformed_normal_bytes    = sizeof(RI_verticies) * transform_normal_offset_total * vs * use_cpu;
     size_t uv_bytes        = sizeof(RI_verticies) * uv_count * vs;
-    size_t total_bytes     = texture_bytes + triangle_bytes + vertex_bytes + transformed_vertex_bytes + normal_bytes + transformed_normal_bytes + uv_bytes + object_arary_size;
+    size_t total_bytes     = texture_bytes + triangle_bytes + vertex_bytes + transformed_vertex_bytes + split_vertex_bytes + normal_bytes + transformed_normal_bytes + uv_bytes + object_arary_size;
 
     debug(RI_DEBUG_MEDIUM,
         "Allocated %zu Bytes for Objects (%d Textures (%zu Bytes), "
-        "%d Triangles (%zu Bytes), %d Vertices (%zu Original & %zu Transformed Bytes), "
+        "%d Triangles (%zu Original & %zu Split Bytes), %d Vertices (%zu Original, %zu Transformed, & %zu Split Bytes), "
         "%d Normals (%zu Original & %zu Transformed Bytes), %d UVs (%zu Bytes), "
         "%d Objects (%zu Bytes))",
         total_bytes,
         texture_count, texture_bytes,
-        face_count, triangle_bytes,
-        vertex_count, vertex_bytes, transformed_vertex_bytes,
+        face_count, triangle_bytes, split_triangle_bytes,
+        vertex_count, vertex_bytes, transformed_vertex_bytes, split_vertex_bytes,
         normal_count, normal_bytes, transformed_normal_bytes,
         uv_count, uv_bytes,
         RI_ObjectsToRequest, object_arary_size);
@@ -901,14 +912,14 @@ RI_objects RI_RequestObjects(RI_newObject *RI_ObjectBuffer, int RI_ObjectsToRequ
 
         verticies_memory_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(RI_verticies) * vertex_count * vs, verticies, &error);
         erchk(error);
-        transformed_verticies_memory_buffer = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(RI_verticies) * transform_vertex_offset_total * vs , NULL, &error);
+        transformed_verticies_memory_buffer = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(RI_verticies) * transform_vertex_offset_total * vs, NULL, &error);
         erchk(error);
     
         if (verticies_memory_buffer == NULL){
             debug(RI_DEBUG_LOW, "clCreateBuffer Failed for Verticies cl_mem Buffer");
         }
 
-if (transformed_verticies_memory_buffer == NULL){
+        if (transformed_verticies_memory_buffer == NULL){
             debug(RI_DEBUG_LOW, "clCreateBuffer Failed for Verticies Transform cl_mem Buffer");
         }   
 
@@ -916,7 +927,7 @@ if (transformed_verticies_memory_buffer == NULL){
         erchk(clFinish(queue));
 
 
-        erchk(clEnqueueFillBuffer(queue, transformed_verticies_memory_buffer, &zero, sizeof(float), 0, sizeof(RI_verticies) * transform_vertex_offset_total * vs, 0, NULL, NULL));
+        erchk(clEnqueueFillBuffer(queue, transformed_verticies_memory_buffer, &zero, sizeof(float), 0, sizeof(RI_verticies) * transform_vertex_offset_total * vs * 2, 0, NULL, NULL));
         erchk(clFinish(queue));
 
         debug(1, "Wrote Verticies Buffer");
@@ -960,8 +971,12 @@ if (transformed_verticies_memory_buffer == NULL){
         debug(1, "Wrote UVS Buffer");
     }
 
-    transformed_verticies = malloc(transformed_vertex_bytes);
-    transformed_normals = malloc(transformed_normal_bytes);
+    if (use_cpu){
+        transformed_verticies = malloc(transformed_vertex_bytes);
+        transformed_normals = malloc(transformed_normal_bytes);
+        split_verticies = malloc(split_vertex_bytes);
+        split_triangles = malloc(split_vertex_bytes);
+    }
 
     debug(RI_DEBUG_MEDIUM, "Request for %d Objects Granted", RI_ObjectsToRequest);
     
@@ -1101,6 +1116,73 @@ void rotate_euler(float *x, float *y, float *z, float r_x, float r_y, float r_z)
     *z = temp_z;
 };
 
+// P0: correct point, point we're lerping to (first 3)
+// P1 & P2: points that lerp (last 12)
+void clip_tri_shrink(float x0, float y0, float z0, float x1, float y1, float z1, float x2, float y2, float z2, float *nx1, float *ny1, float *nz1, float *nx2, float *ny2, float *nz2, float *frac_0, float *frac_2){
+    float percent_clipped_0 = (near_clip - z0) / (z1 - z0);
+    float percent_clipped_1 = (near_clip - z0) / (z2 - z0);
+    
+    *frac_0 = percent_clipped_0;
+    *frac_2 = percent_clipped_1;
+
+    Vec2 pos1 = {x0, y0};
+    Vec2 pos2 = {x1, y1};
+
+    Vec2 p1 = lerp(pos1, pos2, percent_clipped_0);
+
+    pos2.x = x2;
+    pos2.y = y2;
+
+    Vec2 p2 = lerp(pos1, pos2, percent_clipped_1);
+
+    *nx1 = p1.x;
+    *ny1 = p1.y;
+
+    *nx2 = p2.x;
+    *ny2 = p2.y;
+
+    *nz1 = near_clip;
+    *nz2 = near_clip;
+}
+
+// P0 & P1 are okay
+// P2 is clipped
+void clip_tri_split(float x0, float y0, float z0, float x1, float y1, float z1, float x2, float y2, float z2, float *nx, float *ny, float *nz, float *tx0, float *ty0, float *tz0, float *tx1, float *ty1, float *tz1, float *tx2, float *ty2, float *tz2, float *frac_1, float *frac_2, float *tfrac_1){
+    float percent_clipped_0 = (near_clip - z2) / (z0 - z2);
+    float percent_clipped_1 = (near_clip - z2) / (z1 - z2);
+    
+    *frac_1 = percent_clipped_1;
+    *frac_2 = percent_clipped_0;
+    *tfrac_1 = percent_clipped_1;
+
+    Vec2 pos1 = {x2, y2};
+    Vec2 pos2 = {x0, y0};
+
+    Vec2 p2_tp0 = lerp(pos1, pos2, percent_clipped_0);
+
+    pos2.x = x1;
+    pos2.y = y1;
+
+    Vec2 tp2 = lerp(pos1, pos2, percent_clipped_1);
+
+    *nx = p2_tp0.x;
+    *ny = p2_tp0.y;
+
+    *tx0 = *nx;
+    *ty0 = *ny;
+
+    *tx2 = tp2.x;
+    *ty2 = tp2.y;
+
+    *nz = near_clip;
+    *tz0 = near_clip;
+    *tz2 = near_clip;
+
+    *tx1 = x1;
+    *ty1 = y1;
+    *tz1 = z1;
+}
+
 // ----- Renderer Action Functions
 RI_result RI_Tick(){
     if (show_fps || debug_fps){
@@ -1123,7 +1205,6 @@ RI_result RI_Tick(){
                 float vertical_fov_factor = ri_height / tanf(0.5 * fov);
             float horizontal_fov_factor = ri_width / tanf(0.5 * fov);
 
-    int has_normals = 1;
     
     float object_x =   objects[base].transform.position.x;
     float object_y =   objects[base].transform.position.y;
@@ -1143,8 +1224,8 @@ RI_result RI_Tick(){
     int normal_index =   objects[base].modelInfo.normalOffset;
     int transformed_normal_index =   objects[base].modelInfo.transformedNormalOffset;
     
-    for (int triangle = 0; triangle < triangle_count; triangle++){
-        int triangle_base = (triangle + triangle_index) * 9; 
+    for (int i_triangle = 0; i_triangle < triangle_count; i_triangle++){
+        int triangle_base = (i_triangle + triangle_index) * 9; 
         
         int i0 = (vertex_index + triangles[triangle_base + 0]) * 3;
         int i1 = (vertex_index + triangles[triangle_base + 1]) * 3;
@@ -1174,11 +1255,11 @@ RI_result RI_Tick(){
         float n_z2 = normals[i5 + 2];
         
         if (i3 < 0 || i4 < 0 || i5 < 0){
-            has_normals = 0;
+            //   has_normals = 0;
         }
         
         if (isinf(x0) || isinf(y0) || isinf(z0) || isinf(x1) || isinf(y1) || isinf(z1) || isinf(x2) || isinf(y2) || isinf(z2)){
-        return;
+            continue;
         }
         
         rotate_euler(&x0, &y0, &z0, object_r_x, object_r_y, object_r_z);
@@ -1190,28 +1271,157 @@ RI_result RI_Tick(){
         rotate_euler(&n_x2, &n_y2, &n_z2, object_r_x, object_r_y, object_r_z);
         
         z0 = (z0 + object_z);
-        x0 = (x0 + object_x) / z0 * horizontal_fov_factor;
-        y0 = (y0 + object_y) / z0 * vertical_fov_factor;
+        x0 = (x0 + object_x);
+        y0 = (y0 + object_y);
         z1 = (z1 + object_z);
-        x1 = (x1 + object_x) / z1 * horizontal_fov_factor;
-        y1 = (y1 + object_y) / z1 * vertical_fov_factor;
+        x1 = (x1 + object_x);
+        y1 = (y1 + object_y);
         z2 = (z2 + object_z);
-        y2 = (y2 + object_y) / z2 * horizontal_fov_factor;
-        x2 = (x2 + object_x) / z2 * vertical_fov_factor;
+        x2 = (x2 + object_x);
+        y2 = (y2 + object_y);
         
+        
+        float clipped_z0 = z0;
+        float clipped_x0 = x0;
+        float clipped_y0 = y0;
+        float clipped_z1 = z1;
+        float clipped_x1 = x1;
+        float clipped_y1 = y1;
+        float clipped_z2 = z2;
+        float clipped_x2 = x2;
+        float clipped_y2 = y2;
+
+        int clip_z0 = z0 <= near_clip;
+                            int clip_z1 = z1 <= near_clip;
+                            int clip_z2 = z2 <= near_clip;
+                            
+                            int clip_count = clip_z0 + clip_z1 + clip_z2;
+
+                            split_triangles[i_triangle] = -1;
+
+
+                            float *frac_0 = &transformed_verticies[i_triangle * transformed_verticies_size + 9]; // p0 to p1
+                            float *frac_1 = &transformed_verticies[i_triangle * transformed_verticies_size + 10]; // p1 to p2
+                            float *frac_2 = &transformed_verticies[i_triangle * transformed_verticies_size + 11]; // p2 to p0
+
+if (selected_triangle >= 0 && selected_triangle != i_triangle)continue;
+                            switch (clip_count){
+                                case 0:{ // do nothing, they are all okay!! >w<
+
+
+                                    break;}
+                                
+                                case 1:{ // split triangle into 2
+                                    float *tx0 = &split_verticies[i_triangle * transformed_verticies_size + 0];
+                                    float *ty0 = &split_verticies[i_triangle * transformed_verticies_size + 1];
+                                    float *tz0 = &split_verticies[i_triangle * transformed_verticies_size + 2];
+                                    float *tx1 = &split_verticies[i_triangle * transformed_verticies_size + 3];
+                                    float *ty1 = &split_verticies[i_triangle * transformed_verticies_size + 4];
+                                    float *tz1 = &split_verticies[i_triangle * transformed_verticies_size + 5];
+                                    float *tx2 = &split_verticies[i_triangle * transformed_verticies_size + 6];
+                                    float *ty2 = &split_verticies[i_triangle * transformed_verticies_size + 7];
+                                    float *tz2 = &split_verticies[i_triangle * transformed_verticies_size + 8];
+                                    float *tfrac_0 = &split_verticies[i_triangle * transformed_verticies_size + 9];
+                                    float *tfrac_1 = &split_verticies[i_triangle * transformed_verticies_size + 10];
+                                    float *tfrac_2 = &split_verticies[i_triangle * transformed_verticies_size + 11];
+
+                                    *frac_0 = 0;
+                                    *frac_1 = 0;
+                                    *frac_2 = 0;
+                                    *tfrac_0 = 0;
+                                    *tfrac_1 = 0;
+                                    *tfrac_2 = 0;
+                                    
+                                    if (clip_z0){
+                                        clip_tri_split(x2, y2, z2,x1, y1, z1,  x0, y0, z0, &clipped_x0, &clipped_y0, &clipped_z0,     tx1, ty1, tz1,     tx2, ty2, tz2,     tx0, ty0, tz0,   frac_2, frac_0,  tfrac_2);
+                                    }
+                                    
+                                    if (clip_z1){
+                                        clip_tri_split(x2, y2, z2, x0, y0, z0, x1, y1, z1, &clipped_x1, &clipped_y1, &clipped_z1,     tx2, ty2, tz2,     tx0, ty0, tz0,     tx1, ty1, tz1,   frac_0, frac_1,   tfrac_0);
+                                    }
+
+                                    if (clip_z2){
+                                        clip_tri_split(x0, y0, z0, x1, y1, z1, x2, y2, z2, &clipped_x2, &clipped_y2, &clipped_z2,     tx0, ty0, tz0,     tx1, ty1, tz1,     tx2, ty2, tz2,   frac_1, frac_2,  tfrac_1);
+                                    }
+
+                                    *tx0 = *tx0 / *tz0 * horizontal_fov_factor;
+                                    *ty0 = *ty0 / *tz0 * vertical_fov_factor;
+                                    *tx1 = *tx1 / *tz1 * horizontal_fov_factor;
+                                    *ty1 = *ty1 / *tz1 * vertical_fov_factor;
+                                    *tx2 = *tx2 / *tz2 * horizontal_fov_factor;
+                                    *ty2 = *ty2 / *tz2 * vertical_fov_factor;
+
+                                    split_triangles[i_triangle] = 0;
+
+                                    objects[base].split_triangles++;
+
+                                    break;
+                                }
+
+                                case 2:{ // shrink triangle into 1
+                                    
+                                    if (!clip_z0){ // z0 is fine
+                                        clip_tri_shrink(x0, y0, z0, x1, y1, z1, x2, y2, z2, &clipped_x1, &clipped_y1, &clipped_z1, &clipped_x2, &clipped_y2, &clipped_z2,   frac_0, frac_2);
+                                        *frac_1 = 0;
+
+                                        break;
+                                    }
+
+                                    if (!clip_z1){
+ //                                                                                                                                                                         0 >1    2 > 1
+                                        clip_tri_shrink(x1, y1, z1, x0, y0, z0, x2, y2, z2, &clipped_x0, &clipped_y0, &clipped_z0, &clipped_x2, &clipped_y2, &clipped_z2,   frac_0, frac_1);
+                                        *frac_2 = 0;
+                                    
+                                        break;
+                                    }
+
+                                    if (!clip_z2){
+//                                                                                                                                                                          0 > 2   1 > 2
+                                        clip_tri_shrink(x2, y2, z2, x0, y0, z0, x1, y1, z1, &clipped_x0, &clipped_y0, &clipped_z0, &clipped_x1, &clipped_y1, &clipped_z1,   frac_2, frac_1);
+                                        *frac_0 = 0;
+                                    
+                                        break;
+                                    }
+
+
+                                    break;
+                                }
+
+                                case 3:{ // lost cause, exit
+            // transformed_verticies[(triangles[triangle_base + 0] + transformed_vertex_index) * 3 + 0] = 10561923;
+                                 
+                            split_triangles[i_triangle] = -2;
+                                 
+                                    continue;
+                                }
+
+                                default: { // shouldn't happen
+                                    continue;
+                                }
+                            }
+                            
+
+        
+                            clipped_x0 = clipped_x0 / clipped_z0 * horizontal_fov_factor;
+                            clipped_y0 = clipped_y0 / clipped_z0 * vertical_fov_factor;
+                            clipped_x1 = clipped_x1 / clipped_z1 * horizontal_fov_factor;
+                            clipped_y1 = clipped_y1 / clipped_z1 * vertical_fov_factor;
+                            clipped_x2 = clipped_x2 / clipped_z2 * horizontal_fov_factor;
+                            clipped_y2 = clipped_y2 / clipped_z2 * vertical_fov_factor;
+
         // if ((x0 < -ri_h_width && x1 < -ri_h_width && x2 < -ri_h_width) || (y0 < -ri_h_height && y1 < -ri_h_height && y2 < -ri_h_height) || (x0 >= ri_h_width && x1 >= ri_h_width && x2 >= ri_h_width) || (y0 >= ri_h_height && y1 >= ri_h_height && y2 >= ri_h_height)){
-        //     transformed_verticies[(triangles[triangle_base + 0] + transformed_vertex_index) * 3 + 0] = 9999;
+            // transformed_verticies[(triangles[triangle_base + 0] + transformed_vertex_index) * 3 + 0] = 999999;
         // }
         // else{
-            transformed_verticies[(triangles[triangle_base + 0] + transformed_vertex_index) * 3 + 0] = x0;
-            transformed_verticies[(triangles[triangle_base + 0] + transformed_vertex_index) * 3 + 1] = y0;
-            transformed_verticies[(triangles[triangle_base + 0] + transformed_vertex_index) * 3 + 2] = z0;
-            transformed_verticies[(triangles[triangle_base + 1] + transformed_vertex_index) * 3 + 0] = x1;
-            transformed_verticies[(triangles[triangle_base + 1] + transformed_vertex_index) * 3 + 1] = y1;
-            transformed_verticies[(triangles[triangle_base + 1] + transformed_vertex_index) * 3 + 2] = z1;
-            transformed_verticies[(triangles[triangle_base + 2] + transformed_vertex_index) * 3 + 0] = x2;
-            transformed_verticies[(triangles[triangle_base + 2] + transformed_vertex_index) * 3 + 1] = y2;
-            transformed_verticies[(triangles[triangle_base + 2] + transformed_vertex_index) * 3 + 2] = z2;
+            transformed_verticies[(i_triangle + transformed_vertex_index) * transformed_verticies_size + 0] = clipped_x0;
+            transformed_verticies[(i_triangle + transformed_vertex_index) * transformed_verticies_size + 1] = clipped_y0;
+            transformed_verticies[(i_triangle + transformed_vertex_index) * transformed_verticies_size + 2] = clipped_z0;
+            transformed_verticies[(i_triangle + transformed_vertex_index) * transformed_verticies_size + 3] = clipped_x1;
+            transformed_verticies[(i_triangle + transformed_vertex_index) * transformed_verticies_size + 4] = clipped_y1;
+            transformed_verticies[(i_triangle + transformed_vertex_index) * transformed_verticies_size + 5] = clipped_z1;
+            transformed_verticies[(i_triangle + transformed_vertex_index) * transformed_verticies_size + 6] = clipped_x2;
+            transformed_verticies[(i_triangle + transformed_vertex_index) * transformed_verticies_size + 7] = clipped_y2;
+            transformed_verticies[(i_triangle + transformed_vertex_index) * transformed_verticies_size + 8] = clipped_z2;
             
             transformed_normals[(triangles[triangle_base + 0] + transformed_normal_index) * 3 + 0] = n_x0;
             transformed_normals[(triangles[triangle_base + 0] + transformed_normal_index) * 3 + 1] = n_y0;
@@ -1224,7 +1434,6 @@ RI_result RI_Tick(){
             transformed_normals[(triangles[triangle_base + 2] + transformed_normal_index) * 3 + 2] = n_z2;
         // }
     }}
-
             for (int id_y = -ri_h_height; id_y < ri_h_height; id_y++){
                 for (int id_x = -ri_h_width; id_x < ri_h_width; id_x++){
                     float z_pixel = INFINITY; 
@@ -1240,7 +1449,6 @@ RI_result RI_Tick(){
                     float w1;
                     float w2;
                     
-
                     for (int i_object = 0; i_object < object_count; i_object++){ 
                         int base = i_object;
 
@@ -1255,13 +1463,21 @@ RI_result RI_Tick(){
                         int texture_index =  objects[base].material.textureOffset;
                         int transformed_vertex_index = objects[base].modelInfo.transformedVertexOffset;
                         int transformed_normal_index =   objects[base].modelInfo.transformedNormalOffset;
+                        int split_triangles_count = objects[base].split_triangles;
                         
-                        for (int i_triangle = 0; i_triangle < triangle_count; i_triangle++){
+                        for (int i_triangle = 0; i_triangle < triangle_count; i_triangle++){    
+                            albedo = objects[base].material.albedo;
+                            if (selected_triangle >= 0 && i_triangle != selected_triangle){
+                                continue;
+                            }
+
+                            if (split_triangles[i_triangle] == -2){
+                                continue;
+                            }
+
                             int triangle_base = (i_triangle + triangle_index) * 9; 
 
-                            int i0 = (transformed_vertex_index + triangles[triangle_base + 0]) * 3;
-                            int i1 = (transformed_vertex_index + triangles[triangle_base + 1]) * 3;
-                            int i2 = (transformed_vertex_index + triangles[triangle_base + 2]) * 3;
+                            int i0 = i_triangle * transformed_verticies_size;
 
                             int i3 = (transformed_normal_index + triangles[triangle_base + 3]) * 3;
                             int i4 = (transformed_normal_index + triangles[triangle_base + 4]) * 3;
@@ -1271,21 +1487,22 @@ RI_result RI_Tick(){
                             int i7 = (uv_index + triangles[triangle_base + 7]) * 3;
                             int i8 = (uv_index + triangles[triangle_base + 8]) * 3;
                             
-                            float x0 = transformed_verticies[i0 + 0];
-                            
-        if (x0 >= 9999)continue;
-        float z0 = transformed_verticies[i0 + 2];
-                            float y0 = transformed_verticies[i0 + 1];
-                            
-                            float z1 = transformed_verticies[i1 + 2];
-                            float x1 = transformed_verticies[i1 + 0];
-                            float y1 = transformed_verticies[i1 + 1];
-                            
-                            float z2 = transformed_verticies[i2 + 2];
-                            float x2 = transformed_verticies[i2 + 0];
-                            float y2 = transformed_verticies[i2 + 1];
-                            
-                            if (i3 < 0 || i4 < 0 || i5 < 0){
+
+                        
+                        float x0 = transformed_verticies[i0 + 0]; 
+                        float y0 = transformed_verticies[i0 + 1];
+                        float z0 = transformed_verticies[i0 + 2];   
+                        float x1 = transformed_verticies[i0 + 3];
+                        float y1 = transformed_verticies[i0 + 4];
+                        float z1 = transformed_verticies[i0 + 5];
+                        float x2 = transformed_verticies[i0 + 6];
+                        float y2 = transformed_verticies[i0 + 7];
+                        float z2 = transformed_verticies[i0 + 8];
+                        float frac_0 = transformed_verticies[i0 + 9];
+                        float frac_1 = transformed_verticies[i0 + 10];
+                        float frac_2 = transformed_verticies[i0 + 11];
+
+                        if (i3 < 0 || i4 < 0 || i5 < 0){
                                 has_normals = 0;
                             }
                             if (i6 < 0 || i7 < 0 || i8 < 0){
@@ -1358,18 +1575,15 @@ RI_result RI_Tick(){
                                     float n_x2 = transformed_normals[i5 + 0];
                                     float n_y2 = transformed_normals[i5 + 1];
                                     float n_z2 = transformed_normals[i5 + 2];
-                                    
-                                    float u_x0 = uvs[i6 + 0];
-                                    float u_y0 = uvs[i6 + 1];
-                                    float u_z0 = uvs[i6 + 2];
-                                    
-                                    float u_x1 = uvs[i7 + 0];
-                                    float u_y1 = uvs[i7 + 1];
-                                    float u_z1 = uvs[i7 + 2];
-                                    
-                                    float u_x2 = uvs[i8 + 0];
-                                    float u_y2 = uvs[i8 + 1];
-                                    float u_z2 = uvs[i8 + 2];
+
+                                    float u_x0 = frac_2 * uvs[i6 + 0] + (1.0 - frac_2) * uvs[i7 + 0];
+                                    float u_y0 = frac_2 * uvs[i6 + 1] + (1.0 - frac_2) * uvs[i7 + 1];
+
+                                    float u_x1 = frac_2 * uvs[i7 + 0] + (1.0 - frac_2) * uvs[i8 + 0];
+                                    float u_y1 = frac_2 * uvs[i7 + 1] + (1.0 - frac_2) * uvs[i8 + 1];
+                                                                
+                                    float u_x2 = frac_2 * uvs[i8 + 0] + (1.0 - frac_2) * uvs[i6 + 0];
+                                    float u_y2 = frac_2 * uvs[i8 + 1] + (1.0 - frac_2) * uvs[i6 + 1];
                                     
                                     switch (show_buffer){
                                         case 0:{
@@ -1390,6 +1604,211 @@ RI_result RI_Tick(){
                                             int iy = fmax((int)(uy * texture_height), 0);
                                             
                                             int uv_pixel = (iy * texture_width + ix) * 4 + texture_value_offset;
+
+                                            if (uv_pixel >= texture_width * texture_height * 4 + texture_value_offset)break;
+                                            
+                                            unsigned char r = textures[uv_pixel + 0];
+                                            unsigned char g = textures[uv_pixel + 1];
+                                            unsigned char b = textures[uv_pixel + 2];
+                                            unsigned char a = textures[uv_pixel + 3];
+                                            
+                                            frame_pixel = (a << 24) | (r << 16) | (g << 8) | b;
+                                            
+                                            break;}
+                                        case 1:{
+                                            float z = clamppp_float(z_pixel, 0.0f, highest_z);
+                                            
+                                            float norm_z = z / highest_z;
+                                            
+                                            unsigned char intensity = (unsigned char)(norm_z * 255.0f);
+                                            
+                                            frame_pixel = 0xFF000000 | (intensity << 16) | (intensity << 8) | intensity;
+                                            
+                                            break;}
+                                        case 2:{
+                                            float nx = (w0 * (n_x0 / z0) + w1 * (n_x1 / z1) + w2 * (n_x2 / z2)) / w_over_z;
+                                            float ny = (w0 * (n_y0 / z0) + w1 * (n_y1 / z1) + w2 * (n_y2 / z2)) / w_over_z;
+                                            float nz = (w0 * (n_z0 / z0) + w1 * (n_z1 / z1) + w2 * (n_z2 / z2)) / w_over_z;
+                                            
+                                            nx = clamppp_float((nx * 0.5f + 0.5f) * 255.0f, 0.0f, 255.0f);
+                                            ny = clamppp_float((ny * 0.5f + 0.5f) * 255.0f, 0.0f, 255.0f);
+                                            nz = clamppp_float((nz * 0.5f + 0.5f) * 255.0f, 0.0f, 255.0f);
+                                            
+                                            unsigned char r = (unsigned char)nx;
+                                            unsigned char g = (unsigned char)ny;
+                                            unsigned char b = (unsigned char)nz;
+                                            
+                                            if (!has_normals){
+                                                r = 20;
+                                                g = 20;
+                                                b = 20;
+                                            }
+                                            
+                                            frame_pixel = 0xFF000000 | (r << 16) | (g << 8) | b;
+                                            
+                                            break;}
+                                        case 3:{
+                                            float ux = w0 * u_x0 + w1 * u_x1 + w2 * u_x2;
+                                            float uy = w0 * u_y0 + w1 * u_y1 + w2 * u_y2;
+                                            
+                                            unsigned char r = (unsigned char)clamppp_float(ux * 255.0f, 0.0f, 255.0f);
+                                            unsigned char g = (unsigned char)clamppp_float(uy * 255.0f, 0.0f, 255.0f);
+                                            unsigned char b = 0;
+                                            
+                                            if (!has_uvs){
+                                                r = 20;
+                                                g = 20;
+                                                b = 20;
+                                            }
+                                            
+                                            frame_pixel = 0xFF000000 | (r << 16) | (g << 8) | b;
+                                            
+                                            break;}
+                                        default:{
+                                            frame_pixel = 0xFF00FFFF;
+                                            
+                                            break;}
+                                    }
+                                } 
+                            }
+                        }
+
+                        for (int i_triangle = 0; i_triangle < triangle_count; i_triangle++){      
+                            albedo = objects[base].material.albedo;
+                            if (selected_triangle >= 0 && i_triangle != selected_triangle){
+                                continue;
+                            }        
+
+                            if (split_triangles[i_triangle] < 0){
+                                continue;
+                            }
+
+                            int triangle_base = (i_triangle + triangle_index) * 9; 
+                            
+                            int i0 = i_triangle * transformed_verticies_size;
+
+                            int i3 = (transformed_normal_index + triangles[triangle_base + 3]) * 3;
+                            int i4 = (transformed_normal_index + triangles[triangle_base + 4]) * 3;
+                            int i5 = (transformed_normal_index + triangles[triangle_base + 5]) * 3;
+
+                            int i6 = (uv_index + triangles[triangle_base + 6]) * 3;
+                            int i7 = (uv_index + triangles[triangle_base + 7]) * 3;
+                            int i8 = (uv_index + triangles[triangle_base + 8]) * 3;
+                            
+                            float x0 = split_verticies[i0 + 0];
+                            float y0 = split_verticies[i0 + 1];
+                            float z0 = split_verticies[i0 + 2];   
+                            float x1 = split_verticies[i0 + 3];
+                            float y1 = split_verticies[i0 + 4];
+                            float z1 = split_verticies[i0 + 5];
+                            float x2 = split_verticies[i0 + 6]; 
+                            float y2 = split_verticies[i0 + 7];
+                            float z2 = split_verticies[i0 + 8];
+                            
+                        float frac_0 = split_verticies[i0 + 9];
+                        float frac_1 = split_verticies[i0 + 10];
+                        float frac_2 = split_verticies[i0 + 11];
+                            if (i3 < 0 || i4 < 0 || i5 < 0){
+                                has_normals = 0;
+                            }
+                            if (i6 < 0 || i7 < 0 || i8 < 0){
+                                has_uvs = 0;
+                            }
+                            
+                            if (isinf(x0) || isinf(y0) || isinf(z0) || isinf(x1) || isinf(y1) || isinf(z1) || isinf(x2) || isinf(y2) || isinf(z2)){
+                                continue;
+                            }
+                            
+                            float smallest_x = x0; 
+                            float largest_x = x0; 
+                            float smallest_y = y0; 
+                            float largest_y = y0; 
+                            
+                            if (x0 > largest_x) largest_x = x0;
+                            if (x1 > largest_x) largest_x = x1;
+                            if (x2 > largest_x) largest_x = x2;
+                            
+                            if (x0 < smallest_x) smallest_x = x0;
+                            if (x1 < smallest_x) smallest_x = x1;
+                            if (x2 < smallest_x) smallest_x = x2;
+                            
+                            if (y0 > largest_y) largest_y = y0;
+                            if (y1 > largest_y) largest_y = y1;
+                            if (y2 > largest_y) largest_y = y2;
+                            
+                            if (y0 < smallest_y) smallest_y = y0;
+                            if (y1 < smallest_y) smallest_y = y1;
+                            if (y2 < smallest_y) smallest_y = y2;
+                            
+                            smallest_x = fmin(smallest_x, 0); 
+                            largest_x = fmax(largest_x, ri_width);  
+                            smallest_y = fmin(smallest_y, 0); 
+                            largest_y = fmax(largest_y, ri_height); 
+                            
+                            if (id_x >= smallest_x && id_x <= largest_x && id_y >= smallest_y && id_y <= largest_y){ 
+                                float denominator = (y1 - y2) * (x0 - x2) + (x2 - x1) * (y0 - y2); 
+                                
+                                w0 = ((y1 - y2) * (id_x - x2) + (x2 - x1) * (id_y - y2)) / denominator; 
+                                w1 = ((y2 - y0) * (id_x - x0) + (x0 - x2) * (id_y - y0)) / denominator; 
+                                w2 = 1.0 - w0 - w1; 
+                                
+                                if (!(w0 > 0 && w1 > 0 && w2 > 0)){
+                                    continue;
+                                }
+
+                                if (material_flags & RI_MATERIAL_WIREFRAME && (w0 >= wireframe_width && w1 >= wireframe_width && w2 >= wireframe_width)){
+                                    continue;
+                                }
+
+                                float w_over_z = (w0 / z0 + w1 / z1 + w2 / z2); 
+                                float z = 1.0 / w_over_z;
+
+                                if (z < z_pixel){ 
+                                    z_pixel = z; 
+                                    
+                                    float n_x0 = transformed_normals[i3 + 0];
+                                    float n_y0 = transformed_normals[i3 + 1];
+                                    float n_z0 = transformed_normals[i3 + 2];
+                                    
+                                    float n_x1 = transformed_normals[i4 + 0];
+                                    float n_y1 = transformed_normals[i4 + 1];
+                                    float n_z1 = transformed_normals[i4 + 2];
+                                    
+                                    float n_x2 = transformed_normals[i5 + 0];
+                                    float n_y2 = transformed_normals[i5 + 1];
+                                    float n_z2 = transformed_normals[i5 + 2];
+                                    
+
+                                    float u_x0 = frac_2 * uvs[i6 + 0] + (1.0 - frac_2) * uvs[i7 + 0];
+                                    float u_y0 = frac_2 * uvs[i6 + 1] + (1.0 - frac_2) * uvs[i7 + 1];
+
+                                    float u_x1 = frac_2 * uvs[i7 + 0] + (1.0 - frac_2) * uvs[i8 + 0];
+                                    float u_y1 = frac_2 * uvs[i7 + 1] + (1.0 - frac_2) * uvs[i8 + 1];
+                                                                
+                                    float u_x2 = frac_2 * uvs[i8 + 0] + (1.0 - frac_2) * uvs[i6 + 0];
+                                    float u_y2 = frac_2 * uvs[i8 + 1] + (1.0 - frac_2) * uvs[i6 + 1];
+                                    
+                                    switch (show_buffer){
+                                        case 0:{
+                                            if (!(material_flags & RI_MATERIAL_HAS_TEXTURE)){
+                                                frame_pixel = (albedo.a << 24) | (0 << 16) | (0 << 8) | 255;
+                                            
+                                                break;
+                                            }
+
+                                            double ux = (w0 * (u_x0 / z0) + w1 * (u_x1 / z1) + w2 * (u_x2 / z2)) / w_over_z;
+                                            double uy = (w0 * (u_y0 / z0) + w1 * (u_y1 / z1) + w2 * (u_y2 / z2)) / w_over_z;
+                                            
+                                            int texture_width = texture_info[texture_index * 3];
+                                            int texture_height = texture_info[texture_index * 3 + 1];
+                                            int texture_value_offset = texture_info[texture_index * 3 + 2];
+                                            
+                                            int ix = fmax((int)(ux * texture_width), 0);
+                                            int iy = fmax((int)(uy * texture_height), 0);
+                                            
+                                            int uv_pixel = (iy * texture_width + ix) * 4 + texture_value_offset;
+
+                                            if (uv_pixel >= texture_width * texture_height * 4 + texture_value_offset)break;
                                             
                                             unsigned char r = textures[uv_pixel + 0];
                                             unsigned char g = textures[uv_pixel + 1];
@@ -1467,6 +1886,8 @@ RI_result RI_Tick(){
                     frame_buffer[pixel_coord] = frame_pixel; 
                     }
                 }
+
+                
             }
         else if (be_master_renderer){
             if (object_count > 0) {
@@ -1518,7 +1939,8 @@ RI_result RI_Tick(){
             erchk(clSetKernelArg(compiled_kernel_master, 15, sizeof(int), (void*)&vertex_count)); 
             erchk(clSetKernelArg(compiled_kernel_master, 16, sizeof(int), (void*)&ri_h_width));
             erchk(clSetKernelArg(compiled_kernel_master, 17, sizeof(int), (void*)&ri_h_height));
-
+            erchk(clSetKernelArg(compiled_kernel_master, 18, sizeof(float), (void*)&wireframe_width));
+            
             // size_t local_size_2d[2] = {sqrt(local_size), sqrt(local_size)};
             size_t local_size_2d[2] = {16, 16};
 
@@ -1530,6 +1952,8 @@ RI_result RI_Tick(){
             erchk(clEnqueueReadBuffer(queue, output_memory_buffer, CL_TRUE, 0, sizeof(RI_uint) * ri_width * ri_height, frame_buffer, 0, NULL, NULL));
             erchk(clFinish(queue));
             debug_tick_func(1, "Read Frame Buffer");
+
+            frame_buffer[sizeof(Object)] = 0xFFFF00FF;
         }
         else{
             if (polygons == NULL)
@@ -1858,6 +2282,19 @@ RI_result Rendering_init(char *title){
     return RI_SUCCESS;
 }
 
+char *load_kernel_source(const char *filename) {
+    FILE *f = fopen(filename, "rb");
+    fseek(f, 0, SEEK_END);
+    size_t size = ftell(f);
+    rewind(f);
+    char *source = malloc(size + 1);
+    fread(source, 1, size, f);
+    source[size] = '\0';
+    fclose(f);
+    return source;
+}
+
+
 RI_result OpenCL_init(){
     debug(RI_DEBUG_HIGH, "Called OpenCL_init");
 
@@ -1889,8 +2326,12 @@ RI_result OpenCL_init(){
     output_memory_buffer = clCreateBuffer(context, CL_MEM_WRITE_ONLY, sizeof(RI_uint) * ri_width * ri_height, NULL, &error);
     erchk(error);
 
+    const char *kernel_source_non_master = load_kernel_source("/home/iver/Documents/C-rasterizer/src/RasterIver/kernels/non_master_kernel.cl");
+
     kernel_program_non_master = clCreateProgramWithSource(context, 1, &kernel_source_non_master, NULL, &error);
     erchk(error);
+
+    debug(1, "Building Non Master Kernel");
 
     error = clBuildProgram(kernel_program_non_master, 1, &device, NULL, NULL, NULL);
     if (error == -11){
@@ -1908,9 +2349,12 @@ RI_result OpenCL_init(){
     compiled_kernel_non_master = clCreateKernel(kernel_program_non_master, "raster_kernel", &error);
     erchk(error);
 
+    const char *kernel_source_master = load_kernel_source("/home/iver/Documents/C-rasterizer/src/RasterIver/kernels/master_kernel.cl");
 
     kernel_program_master = clCreateProgramWithSource(context, 1, &kernel_source_master, NULL, &error);
     erchk(error);
+
+    debug(1, "Building Master Kernel");
 
     error = clBuildProgram(kernel_program_master, 1, &device, NULL, NULL, NULL);
     if (error == -11){
@@ -1934,9 +2378,12 @@ RI_result OpenCL_init(){
     debug(RI_DEBUG_MEDIUM, "Local Size: %d", local_size);
 
 
+    const char *kernel_source_transformer = load_kernel_source("/home/iver/Documents/C-rasterizer/src/RasterIver/kernels/transformer.cl");
 
     kernel_program_transformer = clCreateProgramWithSource(context, 1, &kernel_source_transformer, NULL, &error);
     erchk(error);
+
+    debug(1, "Building Transformer Kernel");
 
     error = clBuildProgram(kernel_program_transformer, 1, &device, NULL, NULL, NULL);
     if (error == -11){
