@@ -34,6 +34,8 @@ typedef unsigned char* RI_textures;
 // width + height + value offset = 3
 #define tis 3
 
+#define transformed_verticies_size 12
+
 // PI
 #define RI_PI 3.14159265359
 #define RI_2PI 6.28318530718
@@ -79,6 +81,8 @@ typedef enum {
 
 typedef enum {
     RI_VALUE_WIREFRAME_SCALE = 0,
+    RI_VALUE_SELECTED_TRIANGLE = 1,
+    RI_VALUE_MINIMUM_CLIP = 2,
 } RI_value_enum;
 
 // RI_BUFFER
