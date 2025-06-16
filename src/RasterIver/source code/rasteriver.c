@@ -1122,7 +1122,7 @@ void clip_tri_shrink(float x0, float y0, float z0, float x1, float y1, float z1,
     float percent_clipped_0 = (near_clip - z0) / (z1 - z0);
     float percent_clipped_1 = (near_clip - z0) / (z2 - z0);
     
-    *frac_0 = percent_clipped_0;
+    *frac_0 = 1.0 - percent_clipped_0;
     *frac_2 = percent_clipped_1;
 
     Vec2 pos1 = {x0, y0};
@@ -1145,42 +1145,26 @@ void clip_tri_shrink(float x0, float y0, float z0, float x1, float y1, float z1,
     *nz2 = near_clip;
 }
 
-// P0 & P1 are okay
-// P2 is clipped
-void clip_tri_split(float x0, float y0, float z0, float x1, float y1, float z1, float x2, float y2, float z2, float *nx, float *ny, float *nz, float *tx0, float *ty0, float *tz0, float *tx1, float *ty1, float *tz1, float *tx2, float *ty2, float *tz2, float *frac_1, float *frac_2, float *tfrac_1){
-    float percent_clipped_0 = (near_clip - z2) / (z0 - z2);
-    float percent_clipped_1 = (near_clip - z2) / (z1 - z2);
-    
-    *frac_1 = percent_clipped_1;
-    *frac_2 = percent_clipped_0;
-    *tfrac_1 = percent_clipped_1;
+// Refer to clip_tri_split.png in diagrams
+void clip_tri_split(Triangle original, Triangle a, Triangle b, float *frac_1, float *frac_2, float *tfrac_1){
+    float percent_clipped_0 = (near_clip - original.point2.z) / (original.point1.z - original.point2.z);
+    float percent_clipped_1 = (near_clip - original.point2.z) / (original.point2.z - original.point2.z);
 
-    Vec2 pos1 = {x2, y2};
-    Vec2 pos2 = {x0, y0};
+    Vec3 new_ab_2 = lerp3(original.point2, original.point0, percent_clipped_0);
+    Vec3 new_b_0 = lerp3(original.point2, original.point1, percent_clipped_1);
 
-    Vec2 p2_tp0 = lerp(pos1, pos2, percent_clipped_0);
+    a.point0 = original.point0;
+    a.point1 = original.point1;
+    a.point2 = new_ab_2;
 
-    pos2.x = x1;
-    pos2.y = y1;
+    a.point2.z = near_clip;
 
-    Vec2 tp2 = lerp(pos1, pos2, percent_clipped_1);
+    b.point0 = new_b_0;
+    b.point1 = original.point1;
+    b.point2 = new_ab_2;
 
-    *nx = p2_tp0.x;
-    *ny = p2_tp0.y;
-
-    *tx0 = *nx;
-    *ty0 = *ny;
-
-    *tx2 = tp2.x;
-    *ty2 = tp2.y;
-
-    *nz = near_clip;
-    *tz0 = near_clip;
-    *tz2 = near_clip;
-
-    *tx1 = x1;
-    *ty1 = y1;
-    *tz1 = z1;
+    b.point0.z = near_clip;
+    b.point2.z = near_clip;
 }
 
 // ----- Renderer Action Functions
@@ -1304,6 +1288,10 @@ RI_result RI_Tick(){
                             float *frac_1 = &transformed_verticies[i_triangle * transformed_verticies_size + 10]; // p1 to p2
                             float *frac_2 = &transformed_verticies[i_triangle * transformed_verticies_size + 11]; // p2 to p0
 
+                            *frac_0 = 1;
+                            *frac_1 = 1;
+                            *frac_2 = 1;
+
 if (selected_triangle >= 0 && selected_triangle != i_triangle)continue;
                             switch (clip_count){
                                 case 0:{ // do nothing, they are all okay!! >w<
@@ -1325,24 +1313,27 @@ if (selected_triangle >= 0 && selected_triangle != i_triangle)continue;
                                     float *tfrac_1 = &split_verticies[i_triangle * transformed_verticies_size + 10];
                                     float *tfrac_2 = &split_verticies[i_triangle * transformed_verticies_size + 11];
 
-                                    *frac_0 = 0;
-                                    *frac_1 = 0;
-                                    *frac_2 = 0;
-                                    *tfrac_0 = 0;
-                                    *tfrac_1 = 0;
-                                    *tfrac_2 = 0;
+                                    *frac_0 = 1;
+                                    *frac_1 = 1;
+                                    *frac_2 = 1;
+                                    *tfrac_0 = 1;
+                                    *tfrac_1 = 1;
+                                    *tfrac_2 = 1;
                                     
                                     if (clip_z0){
-                                        clip_tri_split(x2, y2, z2,x1, y1, z1,  x0, y0, z0, &clipped_x0, &clipped_y0, &clipped_z0,     tx1, ty1, tz1,     tx2, ty2, tz2,     tx0, ty0, tz0,   frac_2, frac_0,  tfrac_2);
+                                        clip_tri_split(x2, y2, z2,   x1, y1, z1,  x0, y0, z0, &clipped_x0, &clipped_y0, &clipped_z0,     tx1, ty1, tz1,     tx2, ty2, tz2,     tx0, ty0, tz0,   frac_0, tfrac_1,  tfrac_1);
+                                        split_triangles[i_triangle] = 1;
                                     }
                                     
                                     if (clip_z1){
-                                        clip_tri_split(x2, y2, z2, x0, y0, z0, x1, y1, z1, &clipped_x1, &clipped_y1, &clipped_z1,     tx2, ty2, tz2,     tx0, ty0, tz0,     tx1, ty1, tz1,   frac_0, frac_1,   tfrac_0);
+                                        clip_tri_split(x2, y2, z2, x0, y0, z0, x1, y1, z1, &clipped_x1, &clipped_y1, &clipped_z1,     tx2, ty2, tz2,     tx0, ty0, tz0,     tx1, ty1, tz1,   frac_1, tfrac_1,   tfrac_2);
+                                        split_triangles[i_triangle] = 0;
                                     }
 
                                     if (clip_z2){
-                                        clip_tri_split(x0, y0, z0, x1, y1, z1, x2, y2, z2, &clipped_x2, &clipped_y2, &clipped_z2,     tx0, ty0, tz0,     tx1, ty1, tz1,     tx2, ty2, tz2,   frac_1, frac_2,  tfrac_1);
-                                    }
+                                        clip_tri_split(x0, y0, z0, x1, y1, z1, x2, y2, z2, &clipped_x2, &clipped_y2, &clipped_z2,     tx0, ty0, tz0,     tx1, ty1, tz1,     tx2, ty2, tz2,   frac_2, tfrac_2,  tfrac_0);
+                                    split_triangles[i_triangle] = 2;
+                                }
 
                                     *tx0 = *tx0 / *tz0 * horizontal_fov_factor;
                                     *ty0 = *ty0 / *tz0 * vertical_fov_factor;
@@ -1351,35 +1342,37 @@ if (selected_triangle >= 0 && selected_triangle != i_triangle)continue;
                                     *tx2 = *tx2 / *tz2 * horizontal_fov_factor;
                                     *ty2 = *ty2 / *tz2 * vertical_fov_factor;
 
-                                    split_triangles[i_triangle] = 0;
 
                                     objects[base].split_triangles++;
-
+                                    
                                     break;
                                 }
 
                                 case 2:{ // shrink triangle into 1
-                                    
+                                        
                                     if (!clip_z0){ // z0 is fine
-                                        clip_tri_shrink(x0, y0, z0, x1, y1, z1, x2, y2, z2, &clipped_x1, &clipped_y1, &clipped_z1, &clipped_x2, &clipped_y2, &clipped_z2,   frac_0, frac_2);
-                                        *frac_1 = 0;
+                                        clip_tri_shrink(x0, y0, z0, x1, y1, z1, x2, y2, z2, &clipped_x1, &clipped_y1, &clipped_z1, &clipped_x2, &clipped_y2, &clipped_z2,   frac_1, frac_2);
+                                        *frac_0 = 1;
+                                        split_triangles[i_triangle] = -3;
 
                                         break;
                                     }
 
                                     if (!clip_z1){
- //                                                                                                                                                                         0 >1    2 > 1
-                                        clip_tri_shrink(x1, y1, z1, x0, y0, z0, x2, y2, z2, &clipped_x0, &clipped_y0, &clipped_z0, &clipped_x2, &clipped_y2, &clipped_z2,   frac_0, frac_1);
-                                        *frac_2 = 0;
+ //                                                                                                                                                                           
+                                        clip_tri_shrink(x1, y1, z1, x0, y0, z0, x2, y2, z2, &clipped_x0, &clipped_y0, &clipped_z0, &clipped_x2, &clipped_y2, &clipped_z2,   frac_2, frac_0);
+                                        *frac_1 = 1;
+                                        split_triangles[i_triangle] = -4;
                                     
                                         break;
                                     }
 
                                     if (!clip_z2){
-//                                                                                                                                                                          0 > 2   1 > 2
-                                        clip_tri_shrink(x2, y2, z2, x0, y0, z0, x1, y1, z1, &clipped_x0, &clipped_y0, &clipped_z0, &clipped_x1, &clipped_y1, &clipped_z1,   frac_2, frac_1);
-                                        *frac_0 = 0;
+//                                                                                                                                                                          
+                                        clip_tri_shrink(x2, y2, z2, x0, y0, z0, x1, y1, z1, &clipped_x0, &clipped_y0, &clipped_z0, &clipped_x1, &clipped_y1, &clipped_z1,   frac_0, frac_1);
+                                        *frac_2 = 1;
                                     
+                                        split_triangles[i_triangle] = -5;
                                         break;
                                     }
 
@@ -1438,6 +1431,8 @@ if (selected_triangle >= 0 && selected_triangle != i_triangle)continue;
                 for (int id_x = -ri_h_width; id_x < ri_h_width; id_x++){
                     float z_pixel = INFINITY; 
                     unsigned int frame_pixel = 0x22222222; 
+
+                    if (show_buffer == RI_BUFFER_OVERDRAW)frame_pixel = 0xFF000000;
                     
                     float highest_z = 800;
                     float lowest_z = 0;
@@ -1576,15 +1571,50 @@ if (selected_triangle >= 0 && selected_triangle != i_triangle)continue;
                                     float n_y2 = transformed_normals[i5 + 1];
                                     float n_z2 = transformed_normals[i5 + 2];
 
-                                    float u_x0 = frac_2 * uvs[i6 + 0] + (1.0 - frac_2) * uvs[i7 + 0];
-                                    float u_y0 = frac_2 * uvs[i6 + 1] + (1.0 - frac_2) * uvs[i7 + 1];
+                                    float u_x0 = frac_0 * uvs[i6 + 0] + (1.0 - frac_0) * uvs[i7 + 0];
+                                    float u_y0 = frac_0 * uvs[i6 + 1] + (1.0 - frac_0) * uvs[i7 + 1];
 
-                                    float u_x1 = frac_2 * uvs[i7 + 0] + (1.0 - frac_2) * uvs[i8 + 0];
-                                    float u_y1 = frac_2 * uvs[i7 + 1] + (1.0 - frac_2) * uvs[i8 + 1];
+                                    float u_x1 = frac_1 * uvs[i7 + 0] + (1.0 - frac_1) * uvs[i8 + 0];
+                                    float u_y1 = frac_1 * uvs[i7 + 1] + (1.0 - frac_1) * uvs[i8 + 1];
                                                                 
                                     float u_x2 = frac_2 * uvs[i8 + 0] + (1.0 - frac_2) * uvs[i6 + 0];
                                     float u_y2 = frac_2 * uvs[i8 + 1] + (1.0 - frac_2) * uvs[i6 + 1];
-                                    
+
+                                    if (split_triangles[i_triangle] == -3){
+                                        u_x0 = frac_0 * uvs[i6 + 0] + (1.0 - frac_0) * uvs[i7 + 0];
+                                        u_y0 = frac_0 * uvs[i6 + 1] + (1.0 - frac_0) * uvs[i7 + 1];
+                                        u_x1 = frac_1 * uvs[i6 + 0] + (1.0 - frac_1) * uvs[i7 + 0];
+                                        u_y1 = frac_1 * uvs[i6 + 1] + (1.0 - frac_1) * uvs[i7 + 1];
+                                        u_x2 = frac_2 * uvs[i8 + 0] + (1.0 - frac_2) * uvs[i6 + 0];
+                                        u_y2 = frac_2 * uvs[i8 + 1] + (1.0 - frac_2) * uvs[i6 + 1];
+                                    }
+                                    else if (split_triangles[i_triangle] == -4){
+                                        u_x0 = frac_0 * uvs[i6 + 0] + (1.0 - frac_0) * uvs[i7 + 0];
+                                        u_y0 = frac_0 * uvs[i6 + 1] + (1.0 - frac_0) * uvs[i7 + 1];
+                                        u_x1 = frac_1 * uvs[i7 + 0] + (1.0 - frac_1) * uvs[i8 + 0];
+                                        u_y1 = frac_1 * uvs[i7 + 1] + (1.0 - frac_1) * uvs[i8 + 1];
+                                        u_x2 = frac_2 * uvs[i7 + 0] + (1.0 - frac_2) * uvs[i8 + 0];
+                                        u_y2 = frac_2 * uvs[i7 + 1] + (1.0 - frac_2) * uvs[i8 + 1];
+                                    }
+                                    else if (split_triangles[i_triangle] == -5){
+                                        u_x0 = frac_0 * uvs[i8 + 0] + (1.0 - frac_0) * uvs[i7 + 0];
+                                        u_y0 = frac_0 * uvs[i8 + 1] + (1.0 - frac_0) * uvs[i7 + 1];
+                                        u_x1 = frac_1 * uvs[i7 + 0] + (1.0 - frac_1) * uvs[i8 + 0];
+                                        u_y1 = frac_1 * uvs[i7 + 1] + (1.0 - frac_1) * uvs[i8 + 1];
+                                        u_x2 = frac_2 * uvs[i8 + 0] + (1.0 - frac_2) * uvs[i7 + 0];
+                                        u_y2 = frac_2 * uvs[i8 + 1] + (1.0 - frac_2) * uvs[i7 + 1];
+                                    }
+                                    else if (split_triangles[i_triangle] == 1){
+                                        u_x0 = frac_0 * uvs[i6 + 0] + (1.0 - frac_0) * uvs[i8 + 0];
+                                        u_y0 = frac_0 * uvs[i6 + 1] + (1.0 - frac_0) * uvs[i8 + 1];
+                                        
+                                        u_x1 = frac_1 * uvs[i7 + 0] + (1.0 - frac_1) * uvs[i8 + 0];
+                                        u_y1 = frac_1 * uvs[i7 + 1] + (1.0 - frac_1) * uvs[i8 + 1];
+                                                                    
+                                        u_x2 = frac_2 * uvs[i8 + 0] + (1.0 - frac_2) * uvs[i6 + 0];
+                                        u_y2 = frac_2 * uvs[i8 + 1] + (1.0 - frac_2) * uvs[i6 + 1];
+                                    }
+
                                     switch (show_buffer){
                                         case 0:{
                                             if (!(material_flags & RI_MATERIAL_HAS_TEXTURE)){
@@ -1664,6 +1694,13 @@ if (selected_triangle >= 0 && selected_triangle != i_triangle)continue;
                                             frame_pixel = 0xFF000000 | (r << 16) | (g << 8) | b;
                                             
                                             break;}
+
+                                        case RI_BUFFER_OVERDRAW:{
+                                            frame_pixel += 20;
+                                            
+                                            break;
+                                        }
+
                                         default:{
                                             frame_pixel = 0xFF00FFFF;
                                             
@@ -1777,17 +1814,27 @@ if (selected_triangle >= 0 && selected_triangle != i_triangle)continue;
                                     float n_x2 = transformed_normals[i5 + 0];
                                     float n_y2 = transformed_normals[i5 + 1];
                                     float n_z2 = transformed_normals[i5 + 2];
-                                    
 
-                                    float u_x0 = frac_2 * uvs[i6 + 0] + (1.0 - frac_2) * uvs[i7 + 0];
-                                    float u_y0 = frac_2 * uvs[i6 + 1] + (1.0 - frac_2) * uvs[i7 + 1];
+                                    float u_x0 = frac_0 * uvs[i6 + 0] + (1.0 - frac_0) * uvs[i7 + 0];
+                                    float u_y0 = frac_0 * uvs[i6 + 1] + (1.0 - frac_0) * uvs[i7 + 1];
 
-                                    float u_x1 = frac_2 * uvs[i7 + 0] + (1.0 - frac_2) * uvs[i8 + 0];
-                                    float u_y1 = frac_2 * uvs[i7 + 1] + (1.0 - frac_2) * uvs[i8 + 1];
+                                    float u_x1 = frac_1 * uvs[i6 + 0] + (1.0 - frac_1) * uvs[i7 + 0];
+                                    float u_y1 = frac_1 * uvs[i6 + 1] + (1.0 - frac_1) * uvs[i7 + 1];
                                                                 
-                                    float u_x2 = frac_2 * uvs[i8 + 0] + (1.0 - frac_2) * uvs[i6 + 0];
-                                    float u_y2 = frac_2 * uvs[i8 + 1] + (1.0 - frac_2) * uvs[i6 + 1];
+                                    float u_x2 = frac_2 * uvs[i7 + 0] + (1.0 - frac_2) * uvs[i8 + 0];
+                                    float u_y2 = frac_2 * uvs[i7 + 1] + (1.0 - frac_2) * uvs[i8 + 1];
                                     
+                                    if (split_triangles[i_triangle] == 1){
+                                        u_x2 = frac_0 * uvs[i7 + 0] + (1.0 - frac_0) * uvs[i8 + 0];
+                                        u_y2 = frac_0 * uvs[i7 + 1] + (1.0 - frac_0) * uvs[i8 + 1];
+                                        
+                                        u_x1 = frac_1 * uvs[i7 + 0] + (1.0 - frac_1) * uvs[i6 + 0];
+                                        u_y1 = frac_1 * uvs[i7 + 1] + (1.0 - frac_1) * uvs[i6 + 1];
+                                                                    
+                                        u_x2 = frac_2 * uvs[i7 + 0] + (1.0 - frac_2) * uvs[i6 + 0];
+                                        u_y2 = frac_2 * uvs[i7 + 1] + (1.0 - frac_2) * uvs[i6 + 1];
+                                    }
+
                                     switch (show_buffer){
                                         case 0:{
                                             if (!(material_flags & RI_MATERIAL_HAS_TEXTURE)){
@@ -1867,6 +1914,13 @@ if (selected_triangle >= 0 && selected_triangle != i_triangle)continue;
                                             frame_pixel = 0xFF000000 | (r << 16) | (g << 8) | b;
                                             
                                             break;}
+
+                                            case RI_BUFFER_OVERDRAW:{
+                                                frame_pixel += 20;
+                                                
+                                                break;
+                                            }
+
                                         default:{
                                             frame_pixel = 0xFF00FFFF;
                                             
