@@ -3,8 +3,8 @@
 #include <time.h>
 #include <stdlib.h>
 
-int width = 400;
-int height = 400;
+int width = 200;
+int height = 200;
 
 int main(){ 
     srand(time(NULL));                                                         

@@ -23,13 +23,14 @@ RI_polygons polygons = NULL;
 
 int object_count;
 RI_objects objects;
-RI_verticies verticies;
-RI_verticies split_verticies;
-RI_verticies transformed_verticies;
 RI_verticies normals;
 RI_verticies transformed_normals;
 RI_verticies uvs;
-RI_triangles triangles;
+Vec3 *temp_verticies;
+TriangleData *triangle_data;
+Triangle *triangle_positions;
+Triangle *transformed_triangles;
+Triangle *split_triangles;
 int *split_triangles;
 RI_textures textures;
 int textures_size;
@@ -102,9 +103,11 @@ cl_mem input_memory_buffer;
 cl_mem output_memory_buffer;
 
 cl_mem object_memory_buffer;
-cl_mem triangles_memory_buffer;
+cl_mem triangle_data_memory_buffer;
+cl_mem triangle_positions_memory_buffer;
+cl_mem transformed_triangles_memory_buffer;
+cl_mem split_triangles_memory_buffer;
 cl_mem verticies_memory_buffer;
-cl_mem transformed_verticies_memory_buffer;
 cl_mem normals_memory_buffer;
 cl_mem transformed_normals_memory_buffer;
 cl_mem uvs_memory_buffer;
@@ -470,10 +473,6 @@ int malloc_objects(int objects, char **file_names, char **allocated_file_names, 
     normal_count = malloc_normal_count;
     uv_count = malloc_uv_count;
 
-    if(verticies != NULL){
-        free(verticies);
-    } 
-
     if(normals != NULL){
         free(normals);
     } 
@@ -482,19 +481,13 @@ int malloc_objects(int objects, char **file_names, char **allocated_file_names, 
         free(uvs);
     } 
 
-    if(triangles != NULL){
-        free(triangles);
-    } 
+    temp_verticies = malloc(sizeof(float*) * vertex_count * 3);
 
     debug(RI_DEBUG_MEDIUM, "Allocated Vertecies: %d", vertex_count);
     debug(RI_DEBUG_MEDIUM, "Allocated Normals: %d", normal_count);
     debug(RI_DEBUG_MEDIUM, "Allocated UVs: %d", uv_count);
     debug(RI_DEBUG_MEDIUM, "Allocated Triangles: %d", face_count);
 
-    if (vertex_count > 0){
-        verticies = malloc(sizeof(RI_verticies) * vertex_count * vs);
-    }
-    
     if (normal_count > 0){
         normals = malloc(sizeof(RI_verticies) * normal_count * vs);
     }
@@ -504,7 +497,10 @@ int malloc_objects(int objects, char **file_names, char **allocated_file_names, 
     }
 
     if (face_count > 0){
-        triangles = malloc(sizeof(RI_triangles) * face_count * ts);
+        triangle_data = malloc(sizeof(int*) * face_count * 6);
+        triangle_positions = malloc(sizeof(Triangle) * face_count);
+        transformed_triangles = malloc(sizeof(Triangle) * face_count);
+        split_triangles = malloc(sizeof(Triangle) * face_count);
     }
 
     debug(RI_DEBUG_HIGH, "Left malloc_objects");
@@ -539,38 +535,38 @@ load_object_return load_object(char *object_path, int object_offset, int base){
         if (line[0] == 'f' && line[1] == ' ') {
 
             int matches = sscanf(line, "f %d/%d/%d %d/%d/%d %d/%d/%d/", 
-                &triangles[(ct + loading_object_current_faces_count) * ts + 0], &triangles[(ct + loading_object_current_faces_count) * ts + 6], &triangles[(ct + loading_object_current_faces_count) * ts + 3], 
-                &triangles[(ct + loading_object_current_faces_count) * ts + 1], &triangles[(ct + loading_object_current_faces_count) * ts + 7], &triangles[(ct + loading_object_current_faces_count) * ts + 4], 
-                &triangles[(ct + loading_object_current_faces_count) * ts + 2], &triangles[(ct + loading_object_current_faces_count) * ts + 8], &triangles[(ct + loading_object_current_faces_count) * ts + 5]);
+                &triangle_data[ct + loading_object_current_faces_count].vertex0, &triangle_data[ct + loading_object_current_faces_count].uv0, &triangle_data[ct + loading_object_current_faces_count].normal0, 
+                &triangle_data[ct + loading_object_current_faces_count].vertex1, &triangle_data[ct + loading_object_current_faces_count].uv1, &triangle_data[ct + loading_object_current_faces_count].normal1, 
+                &triangle_data[ct + loading_object_current_faces_count].vertex2, &triangle_data[ct + loading_object_current_faces_count].uv2, &triangle_data[ct + loading_object_current_faces_count].normal2);
 
             if (matches != 9){
-                triangles[(ct + loading_object_current_faces_count) * ts + 0] = -100;
-                triangles[(ct + loading_object_current_faces_count) * ts + 1] = -100;
-                triangles[(ct + loading_object_current_faces_count) * ts + 2] = -100;
+                triangle_data[ct + loading_object_current_faces_count].vertex0 = -100;
+                triangle_data[ct + loading_object_current_faces_count].vertex1 = -100;
+                triangle_data[ct + loading_object_current_faces_count].vertex2 = -100;
                 
-                triangles[(ct + loading_object_current_faces_count) * ts + 3] = -100;
-                triangles[(ct + loading_object_current_faces_count) * ts + 4] = -100;
-                triangles[(ct + loading_object_current_faces_count) * ts + 5] = -100;
+                triangle_data[ct + loading_object_current_faces_count].normal0 = -100;
+                triangle_data[ct + loading_object_current_faces_count].normal1 = -100;
+                triangle_data[ct + loading_object_current_faces_count].normal2 = -100;
                 
-                triangles[(ct + loading_object_current_faces_count) * ts + 6] = -100;
-                triangles[(ct + loading_object_current_faces_count) * ts + 7] = -100;
-                triangles[(ct + loading_object_current_faces_count) * ts + 8] = -100;
+                triangle_data[ct + loading_object_current_faces_count].uv0 = -100;
+                triangle_data[ct + loading_object_current_faces_count].uv1 = -100;
+                triangle_data[ct + loading_object_current_faces_count].uv2 = -100;
 
                 if (strchr(line, '/')){
                     obj_face_type = 1;
 
                     sscanf(line, "f %d//%d %d//%d %d//%d", 
-                        &triangles[(ct + loading_object_current_faces_count) * ts + 0], &triangles[(ct + loading_object_current_faces_count) * ts + 3], 
-                        &triangles[(ct + loading_object_current_faces_count) * ts + 1], &triangles[(ct + loading_object_current_faces_count) * ts + 4], 
-                        &triangles[(ct + loading_object_current_faces_count) * ts + 2], &triangles[(ct + loading_object_current_faces_count) * ts + 5]);
+                        &triangle_data[ct + loading_object_current_faces_count].vertex0, &triangle_data[ct + loading_object_current_faces_count].normal0, 
+                        &triangle_data[ct + loading_object_current_faces_count].vertex1, &triangle_data[ct + loading_object_current_faces_count].normal1, 
+                        &triangle_data[ct + loading_object_current_faces_count].vertex2, &triangle_data[ct + loading_object_current_faces_count].normal2);
                 }
                 else {
                     obj_face_type = 2;
 
                     sscanf(line, "f %d %d %d", 
-                        &triangles[(ct + loading_object_current_faces_count) * ts + 0], 
-                        &triangles[(ct + loading_object_current_faces_count) * ts + 1], 
-                        &triangles[(ct + loading_object_current_faces_count) * ts + 2]);
+                        &triangle_data[ct + loading_object_current_faces_count].vertex0, 
+                        &triangle_data[ct + loading_object_current_faces_count].vertex1, 
+                        &triangle_data[ct + loading_object_current_faces_count].vertex2);
                 }
             }
 
@@ -578,9 +574,9 @@ load_object_return load_object(char *object_path, int object_offset, int base){
         }
         else if (line[0] == 'v' && line[1] == ' ') {
             sscanf(line, "v %f %f %f", 
-                &verticies[(cv + loading_object_current_verticies_count) * vs + 0], 
-                &verticies[(cv + loading_object_current_verticies_count) * vs + 1], 
-                &verticies[(cv + loading_object_current_verticies_count) * vs + 2]);
+                &temp_verticies[cv + loading_object_current_verticies_count].x, 
+                &temp_verticies[cv + loading_object_current_verticies_count].y, 
+                &temp_verticies[cv + loading_object_current_verticies_count].z);
 
             cv++;
         } 
@@ -778,6 +774,22 @@ RI_objects RI_RequestObjects(RI_newObject *RI_ObjectBuffer, int RI_ObjectsToRequ
         transform_normal_offset_total += objects[base].modelInfo.normalCount;
     
         debug(0, "%d, %d", transform_vertex_offset_total, objects[base].modelInfo.vertexCount);
+    
+        for (int i_triangle = objects[base].modelInfo.triangleOffset; i_triangle < objects[base].modelInfo.triangleCount + objects[base].modelInfo.triangleOffset; i_triangle++){
+            triangle_data[i_triangle].vertex0--;
+            triangle_data[i_triangle].vertex1--;
+            triangle_data[i_triangle].vertex2--;
+            triangle_data[i_triangle].uv0--;
+            triangle_data[i_triangle].uv1--;
+            triangle_data[i_triangle].uv2--;
+            triangle_data[i_triangle].normal0--;
+            triangle_data[i_triangle].normal1--;
+            triangle_data[i_triangle].normal2--;
+
+            triangle_positions[i_triangle].point0 = temp_verticies[triangle_data[i_triangle].vertex0 + objects[base].modelInfo.vertexOffset];
+            triangle_positions[i_triangle].point1 = temp_verticies[triangle_data[i_triangle].vertex1 + objects[base].modelInfo.vertexOffset];
+            triangle_positions[i_triangle].point2 = temp_verticies[triangle_data[i_triangle].vertex2 + objects[base].modelInfo.vertexOffset];
+        }
     }
     
     free(object_file_offsets);
@@ -852,30 +864,32 @@ RI_objects RI_RequestObjects(RI_newObject *RI_ObjectBuffer, int RI_ObjectsToRequ
         debug(1, "Wrote Textures Buffer and Texture Info Buffer");
     }
 
-    for (int i = 0; i < face_count * 9; i++){
-        triangles[i]--;
-    }
     
+
     size_t texture_bytes   = sizeof(unsigned char) * textures_size * 4;
-    size_t triangle_bytes  = sizeof(RI_triangles) * face_count * ts;
-    size_t split_triangle_bytes  = sizeof(int) * face_count;
-    size_t vertex_bytes    = sizeof(RI_verticies) * vertex_count * vs;
-    size_t transformed_vertex_bytes    = sizeof(RI_verticies) * transform_vertex_offset_total * transformed_verticies_size * use_cpu;
-    size_t split_vertex_bytes    = sizeof(RI_verticies) * face_count * transformed_verticies_size * use_cpu;
+    size_t triangle_data_bytes  = sizeof(RI_triangles) * face_count * ts;
+    size_t split_triangles_bytes  = sizeof(int) * face_count;
+    size_t triangle_positions_bytes    = sizeof(RI_verticies) * transform_vertex_offset_total * transformed_verticies_size * use_cpu;
+    size_t transformed_triangles_bytes    = sizeof(RI_verticies) * transform_vertex_offset_total * transformed_verticies_size * use_cpu;
     size_t normal_bytes    = sizeof(RI_verticies) * normal_count * vs;
     size_t transformed_normal_bytes    = sizeof(RI_verticies) * transform_normal_offset_total * vs * use_cpu;
     size_t uv_bytes        = sizeof(RI_verticies) * uv_count * vs;
-    size_t total_bytes     = texture_bytes + triangle_bytes + vertex_bytes + transformed_vertex_bytes + split_vertex_bytes + normal_bytes + transformed_normal_bytes + uv_bytes + object_arary_size;
+    size_t total_bytes     = texture_bytes + triangle_data_bytes + transformed_triangles_bytes + split_triangles_bytes + normal_bytes + transformed_normal_bytes + uv_bytes + object_arary_size;
+
+    if (use_cpu){
+        transformed_triangles = malloc(transformed_triangles_bytes);
+        transformed_normals = malloc(transformed_normal_bytes);
+        split_triangles = malloc(split_triangles_bytes);
+    }
 
     debug(RI_DEBUG_MEDIUM,
         "Allocated %zu Bytes for Objects (%d Textures (%zu Bytes), "
-        "%d Triangles (%zu Original & %zu Split Bytes), %d Vertices (%zu Original, %zu Transformed, & %zu Split Bytes), "
+        "%d Triangles (%zu Data, %zu Original, %zu Transformed, & %zu Split Bytes), "
         "%d Normals (%zu Original & %zu Transformed Bytes), %d UVs (%zu Bytes), "
         "%d Objects (%zu Bytes))",
         total_bytes,
         texture_count, texture_bytes,
-        face_count, triangle_bytes, split_triangle_bytes,
-        vertex_count, vertex_bytes, transformed_vertex_bytes, split_vertex_bytes,
+        face_count, triangle_data_bytes, triangle_positions_bytes, transformed_triangles_bytes, split_triangles_bytes,
         normal_count, normal_bytes, transformed_normal_bytes,
         uv_count, uv_bytes,
         RI_ObjectsToRequest, object_arary_size);
@@ -892,14 +906,14 @@ RI_objects RI_RequestObjects(RI_newObject *RI_ObjectBuffer, int RI_ObjectsToRequ
     }
 
     if (!use_cpu && face_count > 0){
-        triangles_memory_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(RI_triangles) * face_count * ts, triangles, &error);
+        triangle_data_memory_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(RI_triangles) * face_count * ts, triangle_data, &error);
+        transformed_triangles_memory_buffer = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(Triangle*) * face_count, NULL, &error);
+        split_triangles_memory_buffer = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(Triangle*) * face_count, NULL, &error);
         erchk(error);
-    
-        if (triangles_memory_buffer == NULL){
-            debug(RI_DEBUG_LOW, "clCreateBuffer Failed for Triangles cl_mem Buffer");
-        }
 
-        erchk(clEnqueueWriteBuffer(queue, triangles_memory_buffer, CL_TRUE, 0, sizeof(int) * ts * face_count, triangles, 0, NULL, NULL));
+        // add checks for uninit buffers
+
+        erchk(clEnqueueWriteBuffer(queue, triangle_data_memory_buffer, CL_TRUE, 0, sizeof(int) * ts * face_count, triangle_data, 0, NULL, NULL));
         erchk(clFinish(queue));
 
         debug(1, "Wrote Triangles Buffer");
@@ -907,32 +921,6 @@ RI_objects RI_RequestObjects(RI_newObject *RI_ObjectBuffer, int RI_ObjectsToRequ
 
     float zero = 0.0f;
     
-    if (!use_cpu && vertex_count > 0){
-        debug(1, "transform_vertex_offset_total %d", transform_vertex_offset_total);
-
-        verticies_memory_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(RI_verticies) * vertex_count * vs, verticies, &error);
-        erchk(error);
-        transformed_verticies_memory_buffer = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(RI_verticies) * transform_vertex_offset_total * vs, NULL, &error);
-        erchk(error);
-    
-        if (verticies_memory_buffer == NULL){
-            debug(RI_DEBUG_LOW, "clCreateBuffer Failed for Verticies cl_mem Buffer");
-        }
-
-        if (transformed_verticies_memory_buffer == NULL){
-            debug(RI_DEBUG_LOW, "clCreateBuffer Failed for Verticies Transform cl_mem Buffer");
-        }   
-
-        erchk(clEnqueueWriteBuffer(queue, verticies_memory_buffer, CL_TRUE, 0, sizeof(float) * vs * vertex_count, verticies, 0, NULL, NULL));
-        erchk(clFinish(queue));
-
-
-        erchk(clEnqueueFillBuffer(queue, transformed_verticies_memory_buffer, &zero, sizeof(float), 0, sizeof(RI_verticies) * transform_vertex_offset_total * vs * 2, 0, NULL, NULL));
-        erchk(clFinish(queue));
-
-        debug(1, "Wrote Verticies Buffer");
-    }
-
     if (!use_cpu && normal_count > 0){
         debug(1, "transform_normal_offset_total %d", transform_normal_offset_total);
 
@@ -969,13 +957,6 @@ RI_objects RI_RequestObjects(RI_newObject *RI_ObjectBuffer, int RI_ObjectsToRequ
         erchk(clFinish(queue));
 
         debug(1, "Wrote UVS Buffer");
-    }
-
-    if (use_cpu){
-        transformed_verticies = malloc(transformed_vertex_bytes);
-        transformed_normals = malloc(transformed_normal_bytes);
-        split_verticies = malloc(split_vertex_bytes);
-        split_triangles = malloc(split_vertex_bytes);
     }
 
     debug(RI_DEBUG_MEDIUM, "Request for %d Objects Granted", RI_ObjectsToRequest);
@@ -1125,15 +1106,16 @@ void clip_tri_shrink(float x0, float y0, float z0, float x1, float y1, float z1,
     *frac_0 = 1.0 - percent_clipped_0;
     *frac_2 = percent_clipped_1;
 
-    Vec2 pos1 = {x0, y0};
-    Vec2 pos2 = {x1, y1};
+    Vec3 pos1 = {x0, y0, z0};
+    Vec3 pos2 = {x1, y1, z1};
 
-    Vec2 p1 = lerp(pos1, pos2, percent_clipped_0);
+    Vec3 p1 = lerp3(pos1, pos2, percent_clipped_0);
 
     pos2.x = x2;
     pos2.y = y2;
+    pos2.z = z2;
 
-    Vec2 p2 = lerp(pos1, pos2, percent_clipped_1);
+    Vec3 p2 = lerp3(pos1, pos2, percent_clipped_1);
 
     *nx1 = p1.x;
     *ny1 = p1.y;
@@ -1146,7 +1128,7 @@ void clip_tri_shrink(float x0, float y0, float z0, float x1, float y1, float z1,
 }
 
 // Refer to clip_tri_split.png in diagrams
-void clip_tri_split(Triangle original, Triangle a, Triangle b, float *frac_1, float *frac_2, float *tfrac_1){
+void clip_tri_split(Triangle original, Triangle a, Triangle b){
     float percent_clipped_0 = (near_clip - original.point2.z) / (original.point1.z - original.point2.z);
     float percent_clipped_1 = (near_clip - original.point2.z) / (original.point2.z - original.point2.z);
 
@@ -1211,23 +1193,19 @@ RI_result RI_Tick(){
     for (int i_triangle = 0; i_triangle < triangle_count; i_triangle++){
         int triangle_base = (i_triangle + triangle_index) * 9; 
         
-        int i0 = (vertex_index + triangles[triangle_base + 0]) * 3;
-        int i1 = (vertex_index + triangles[triangle_base + 1]) * 3;
-        int i2 = (vertex_index + triangles[triangle_base + 2]) * 3;
+        int i3 = (normal_index + triangle_data[i_triangle].normal0) * 3;
+        int i4 = (normal_index + triangle_data[i_triangle].normal1) * 3;
+        int i5 = (normal_index + triangle_data[i_triangle].normal2) * 3;
         
-        int i3 = (normal_index + triangles[triangle_base + 3]) * 3;
-        int i4 = (normal_index + triangles[triangle_base + 4]) * 3;
-        int i5 = (normal_index + triangles[triangle_base + 5]) * 3;
-        
-        float x0 = verticies[i0 + 0] * object_s_x;
-        float y0 = verticies[i0 + 1] * object_s_y;
-        float z0 = verticies[i0 + 2] * object_s_z;
-        float x1 = verticies[i1 + 0] * object_s_x;
-        float y1 = verticies[i1 + 1] * object_s_y;
-        float z1 = verticies[i1 + 2] * object_s_z;
-        float x2 = verticies[i2 + 0] * object_s_x;
-        float y2 = verticies[i2 + 1] * object_s_y;
-        float z2 = verticies[i2 + 2] * object_s_z;
+        float x0 = triangle_positions[i_triangle].point0.x * object_s_x;
+        float y0 = triangle_positions[i_triangle].point0.y * object_s_y;
+        float z0 = triangle_positions[i_triangle].point0.z * object_s_z;
+        float x1 = triangle_positions[i_triangle].point1.x * object_s_x;
+        float y1 = triangle_positions[i_triangle].point1.y * object_s_y;
+        float z1 = triangle_positions[i_triangle].point1.z * object_s_z;
+        float x2 = triangle_positions[i_triangle].point2.x * object_s_x;
+        float y2 = triangle_positions[i_triangle].point2.y * object_s_y;
+        float z2 = triangle_positions[i_triangle].point2.z * object_s_z;
         float n_x0 = normals[i3 + 0];
         float n_y0 = normals[i3 + 1];
         float n_z0 = normals[i3 + 2];
@@ -1281,12 +1259,10 @@ RI_result RI_Tick(){
                             
                             int clip_count = clip_z0 + clip_z1 + clip_z2;
 
-                            split_triangles[i_triangle] = -1;
 
-
-                            float *frac_0 = &transformed_verticies[i_triangle * transformed_verticies_size + 9]; // p0 to p1
-                            float *frac_1 = &transformed_verticies[i_triangle * transformed_verticies_size + 10]; // p1 to p2
-                            float *frac_2 = &transformed_verticies[i_triangle * transformed_verticies_size + 11]; // p2 to p0
+                            float *frac_0 = &transformed_triangles[i_triangle].frac_0; // p0 to p1
+                            float *frac_1 = &transformed_triangles[i_triangle].frac_1; // p1 to p2
+                            float *frac_2 = &transformed_triangles[i_triangle].frac_2; // p2 to p0
 
                             *frac_0 = 1;
                             *frac_1 = 1;
@@ -1300,18 +1276,18 @@ if (selected_triangle >= 0 && selected_triangle != i_triangle)continue;
                                     break;}
                                 
                                 case 1:{ // split triangle into 2
-                                    float *tx0 = &split_verticies[i_triangle * transformed_verticies_size + 0];
-                                    float *ty0 = &split_verticies[i_triangle * transformed_verticies_size + 1];
-                                    float *tz0 = &split_verticies[i_triangle * transformed_verticies_size + 2];
-                                    float *tx1 = &split_verticies[i_triangle * transformed_verticies_size + 3];
-                                    float *ty1 = &split_verticies[i_triangle * transformed_verticies_size + 4];
-                                    float *tz1 = &split_verticies[i_triangle * transformed_verticies_size + 5];
-                                    float *tx2 = &split_verticies[i_triangle * transformed_verticies_size + 6];
-                                    float *ty2 = &split_verticies[i_triangle * transformed_verticies_size + 7];
-                                    float *tz2 = &split_verticies[i_triangle * transformed_verticies_size + 8];
-                                    float *tfrac_0 = &split_verticies[i_triangle * transformed_verticies_size + 9];
-                                    float *tfrac_1 = &split_verticies[i_triangle * transformed_verticies_size + 10];
-                                    float *tfrac_2 = &split_verticies[i_triangle * transformed_verticies_size + 11];
+                                    float *tx0 = &split_triangles[i_triangle].point0.x;
+                                    float *ty0 = &split_triangles[i_triangle].point0.y;
+                                    float *tz0 = &split_triangles[i_triangle].point0.z;
+                                    float *tx1 = &split_triangles[i_triangle].point1.x;
+                                    float *ty1 = &split_triangles[i_triangle].point1.y;
+                                    float *tz1 = &split_triangles[i_triangle].point1.z;
+                                    float *tx2 = &split_triangles[i_triangle].point2.x;
+                                    float *ty2 = &split_triangles[i_triangle].point2.y;
+                                    float *tz2 = &split_triangles[i_triangle].point2.z;
+                                    float *tfrac_0 = &split_triangles[i_triangle].frac_0;
+                                    float *tfrac_1 = &split_triangles[i_triangle].frac_1;
+                                    float *tfrac_2 = &split_triangles[i_triangle].frac_2;
 
                                     *frac_0 = 1;
                                     *frac_1 = 1;
@@ -1321,18 +1297,17 @@ if (selected_triangle >= 0 && selected_triangle != i_triangle)continue;
                                     *tfrac_2 = 1;
                                     
                                     if (clip_z0){
-                                        clip_tri_split(x2, y2, z2,   x1, y1, z1,  x0, y0, z0, &clipped_x0, &clipped_y0, &clipped_z0,     tx1, ty1, tz1,     tx2, ty2, tz2,     tx0, ty0, tz0,   frac_0, tfrac_1,  tfrac_1);
-                                        split_triangles[i_triangle] = 1;
+                                        clip_tri_split(triangle_positions[i_triangle], transformed_triangles[i_triangle], split_triangles[i_triangle]);
                                     }
                                     
                                     if (clip_z1){
-                                        clip_tri_split(x2, y2, z2, x0, y0, z0, x1, y1, z1, &clipped_x1, &clipped_y1, &clipped_z1,     tx2, ty2, tz2,     tx0, ty0, tz0,     tx1, ty1, tz1,   frac_1, tfrac_1,   tfrac_2);
-                                        split_triangles[i_triangle] = 0;
+                                        clip_tri_split(triangle_positions[i_triangle], transformed_triangles[i_triangle], split_triangles[i_triangle]);
+                                    
                                     }
 
                                     if (clip_z2){
-                                        clip_tri_split(x0, y0, z0, x1, y1, z1, x2, y2, z2, &clipped_x2, &clipped_y2, &clipped_z2,     tx0, ty0, tz0,     tx1, ty1, tz1,     tx2, ty2, tz2,   frac_2, tfrac_2,  tfrac_0);
-                                    split_triangles[i_triangle] = 2;
+                                                                            clip_tri_split(triangle_positions[i_triangle], transformed_triangles[i_triangle], split_triangles[i_triangle]);
+
                                 }
 
                                     *tx0 = *tx0 / *tz0 * horizontal_fov_factor;
@@ -1353,8 +1328,6 @@ if (selected_triangle >= 0 && selected_triangle != i_triangle)continue;
                                     if (!clip_z0){ // z0 is fine
                                         clip_tri_shrink(x0, y0, z0, x1, y1, z1, x2, y2, z2, &clipped_x1, &clipped_y1, &clipped_z1, &clipped_x2, &clipped_y2, &clipped_z2,   frac_1, frac_2);
                                         *frac_0 = 1;
-                                        split_triangles[i_triangle] = -3;
-
                                         break;
                                     }
 
@@ -1362,8 +1335,6 @@ if (selected_triangle >= 0 && selected_triangle != i_triangle)continue;
  //                                                                                                                                                                           
                                         clip_tri_shrink(x1, y1, z1, x0, y0, z0, x2, y2, z2, &clipped_x0, &clipped_y0, &clipped_z0, &clipped_x2, &clipped_y2, &clipped_z2,   frac_2, frac_0);
                                         *frac_1 = 1;
-                                        split_triangles[i_triangle] = -4;
-                                    
                                         break;
                                     }
 
@@ -1372,7 +1343,6 @@ if (selected_triangle >= 0 && selected_triangle != i_triangle)continue;
                                         clip_tri_shrink(x2, y2, z2, x0, y0, z0, x1, y1, z1, &clipped_x0, &clipped_y0, &clipped_z0, &clipped_x1, &clipped_y1, &clipped_z1,   frac_0, frac_1);
                                         *frac_2 = 1;
                                     
-                                        split_triangles[i_triangle] = -5;
                                         break;
                                     }
 
@@ -1383,7 +1353,6 @@ if (selected_triangle >= 0 && selected_triangle != i_triangle)continue;
                                 case 3:{ // lost cause, exit
             // transformed_verticies[(triangles[triangle_base + 0] + transformed_vertex_index) * 3 + 0] = 10561923;
                                  
-                            split_triangles[i_triangle] = -2;
                                  
                                     continue;
                                 }
@@ -1406,25 +1375,25 @@ if (selected_triangle >= 0 && selected_triangle != i_triangle)continue;
             // transformed_verticies[(triangles[triangle_base + 0] + transformed_vertex_index) * 3 + 0] = 999999;
         // }
         // else{
-            transformed_verticies[(i_triangle + transformed_vertex_index) * transformed_verticies_size + 0] = clipped_x0;
-            transformed_verticies[(i_triangle + transformed_vertex_index) * transformed_verticies_size + 1] = clipped_y0;
-            transformed_verticies[(i_triangle + transformed_vertex_index) * transformed_verticies_size + 2] = clipped_z0;
-            transformed_verticies[(i_triangle + transformed_vertex_index) * transformed_verticies_size + 3] = clipped_x1;
-            transformed_verticies[(i_triangle + transformed_vertex_index) * transformed_verticies_size + 4] = clipped_y1;
-            transformed_verticies[(i_triangle + transformed_vertex_index) * transformed_verticies_size + 5] = clipped_z1;
-            transformed_verticies[(i_triangle + transformed_vertex_index) * transformed_verticies_size + 6] = clipped_x2;
-            transformed_verticies[(i_triangle + transformed_vertex_index) * transformed_verticies_size + 7] = clipped_y2;
-            transformed_verticies[(i_triangle + transformed_vertex_index) * transformed_verticies_size + 8] = clipped_z2;
+            transformed_triangles[i_triangle].point0.x = clipped_x0;
+            transformed_triangles[i_triangle].point0.y = clipped_y0;
+            transformed_triangles[i_triangle].point0.z = clipped_z0;
+            transformed_triangles[i_triangle].point1.x = clipped_x1;
+            transformed_triangles[i_triangle].point1.y = clipped_y1;
+            transformed_triangles[i_triangle].point1.z = clipped_z1;
+            transformed_triangles[i_triangle].point2.x = clipped_x2;
+            transformed_triangles[i_triangle].point2.y = clipped_y2;
+            transformed_triangles[i_triangle].point2.z = clipped_z2;
             
-            transformed_normals[(triangles[triangle_base + 0] + transformed_normal_index) * 3 + 0] = n_x0;
-            transformed_normals[(triangles[triangle_base + 0] + transformed_normal_index) * 3 + 1] = n_y0;
-            transformed_normals[(triangles[triangle_base + 0] + transformed_normal_index) * 3 + 2] = n_z0;
-            transformed_normals[(triangles[triangle_base + 1] + transformed_normal_index) * 3 + 0] = n_x1;
-            transformed_normals[(triangles[triangle_base + 1] + transformed_normal_index) * 3 + 1] = n_y1;
-            transformed_normals[(triangles[triangle_base + 1] + transformed_normal_index) * 3 + 2] = n_z1;
-            transformed_normals[(triangles[triangle_base + 2] + transformed_normal_index) * 3 + 0] = n_x2;
-            transformed_normals[(triangles[triangle_base + 2] + transformed_normal_index) * 3 + 1] = n_y2;
-            transformed_normals[(triangles[triangle_base + 2] + transformed_normal_index) * 3 + 2] = n_z2;
+            transformed_normals[triangle_data[i_triangle].normal0 * 3 + 0] = n_x0;
+            transformed_normals[triangle_data[i_triangle].normal0 * 3 + 1] = n_y0;
+            transformed_normals[triangle_data[i_triangle].normal0 * 3 + 2] = n_z0;
+            transformed_normals[triangle_data[i_triangle].normal1 * 3 + 0] = n_x1;
+            transformed_normals[triangle_data[i_triangle].normal1 * 3 + 1] = n_y1;
+            transformed_normals[triangle_data[i_triangle].normal1 * 3 + 2] = n_z1;
+            transformed_normals[triangle_data[i_triangle].normal2 * 3 + 0] = n_x2;
+            transformed_normals[triangle_data[i_triangle].normal2 * 3 + 1] = n_y2;
+            transformed_normals[triangle_data[i_triangle].normal2 * 3 + 2] = n_z2;
         // }
     }}
             for (int id_y = -ri_h_height; id_y < ri_h_height; id_y++){
@@ -1466,21 +1435,17 @@ if (selected_triangle >= 0 && selected_triangle != i_triangle)continue;
                                 continue;
                             }
 
-                            if (split_triangles[i_triangle] == -2){
-                                continue;
-                            }
-
                             int triangle_base = (i_triangle + triangle_index) * 9; 
 
                             int i0 = i_triangle * transformed_verticies_size;
 
-                            int i3 = (transformed_normal_index + triangles[triangle_base + 3]) * 3;
-                            int i4 = (transformed_normal_index + triangles[triangle_base + 4]) * 3;
-                            int i5 = (transformed_normal_index + triangles[triangle_base + 5]) * 3;
+                            int i3 = (transformed_normal_index + triangle_data[i_triangle].normal0) * 3;
+                            int i4 = (transformed_normal_index + triangle_data[i_triangle].normal1) * 3;
+                            int i5 = (transformed_normal_index + triangle_data[i_triangle].normal2) * 3;
 
-                            int i6 = (uv_index + triangles[triangle_base + 6]) * 3;
-                            int i7 = (uv_index + triangles[triangle_base + 7]) * 3;
-                            int i8 = (uv_index + triangles[triangle_base + 8]) * 3;
+                            int i6 = (uv_index + triangle_data[i_triangle].uv0) * 3;
+                            int i7 = (uv_index + triangle_data[i_triangle].uv1) * 3;
+                            int i8 = (uv_index + triangle_data[i_triangle].uv2) * 3;
                             
 
                         

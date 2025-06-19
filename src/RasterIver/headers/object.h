@@ -88,7 +88,22 @@ typedef struct {
     Vec3 point0;
     Vec3 point1;
     Vec3 point2;
+    cl_float frac_0;
+    cl_float frac_1;
+    cl_float frac_2;
+    cl_int should_render;
 } Triangle;
 
+typedef struct {
+    cl_int vertex0;
+    cl_int vertex1;
+    cl_int vertex2;
+    cl_int uv0;
+    cl_int uv1;
+    cl_int uv2;
+    cl_int normal0;
+    cl_int normal1;
+    cl_int normal2;
+} TriangleData;
 
 #endif
