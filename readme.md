@@ -90,3 +90,4 @@ Rasterizer + Iver = RasterIver
 - [ ] add overdraw "buffer"
 - [ ] fix spaghetti code
 - [ ] add polygon clipping to GPU
+- [ ] add command line arguments like to select desired GPU 
