@@ -23,17 +23,21 @@ typedef struct {
     // RasterIver
     RI_vertex *verticies; //data type that holds info about a vertex (positon, normal, UV coord)
 
-    RI_vector_3f *loaded_object_vetex_positions; // original vertex positions from a loaded object
-    RI_vector_3f *normals; // original normal vectors from a loaded object
-    RI_vector_2f *uvs; // UV coords from a loaded object
+    RI_vector_3f *loaded_mesh_vetex_positions; // original vertex positions from a loaded mesh
+    RI_vector_3f *normals; // original normal vectors from a loaded mesh
+    RI_vector_2f *uvs; // UV coords from a loaded mesh
     
-    RI_vector_3f *transformed_vertex_positions; // vertex positions after trasformations (object & camera rotation & position changes, scale, etc)
+    RI_vector_3f *transformed_vertex_positions; // vertex positions after trasformations (mesh & camera rotation & position changes, scale, etc)
     RI_vector_3f *transformed_normals; // normal vectors after rotation transformations (otherwise a normal's space would constantly be in local space instead of world space)
 
-    RI_object_data *loaded_objects;
+    RI_mesh *loaded_meshes;
+    RI_texture *loaded_textures;
+    RI_actor *actors;
 
     // miscellaneous
-    int loaded_object_count;
+    int loaded_mesh_count;
+    int loaded_texture_count;
+    int actor_count;
     int running;
     int frame;
     char* prefix;
