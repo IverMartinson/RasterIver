@@ -9,7 +9,7 @@
 
 typedef struct {
     // rendering (non SDL)
-    uint32_t *frame_buffer;
+    RI_texture *frame_buffer;
     float *z_buffer;
  
     int window_width;
@@ -36,14 +36,18 @@ typedef struct {
 
     RI_mesh *loaded_meshes;
     RI_texture *loaded_textures;
+    RI_material *materials;
     RI_actor *actors;
 
-    RI_texture default_texture;
-    RI_material default_material;
+    RI_texture error_texture;
+    RI_texture error_bump_map;
+    RI_texture error_normal_map;
+    RI_material error_material;
 
     // miscellaneous
     int loaded_mesh_count;
     int loaded_texture_count;
+    int material_count;
     int actor_count;
     int running;
     int frame;

@@ -45,9 +45,27 @@ typedef struct {
     RI_vector_3f scale;
 } RI_transform;
 
+typedef enum {
+    RI_MATERIAL_UNLIT = ((uint64_t)1 << 0), // should calculate lighting
+    RI_MATERIAL_DONT_CAST_SHADOW = ((uint64_t)1 << 1), // should cast shadow on other objects
+    RI_MATERIAL_HAS_TEXTURE = ((uint64_t)1 << 2), // has a texture
+    RI_MATERIAL_HAS_NORMAL_MAP = ((uint64_t)1 << 3), // has a normal map
+    RI_MATERIAL_HAS_BUMP_MAP = ((uint64_t)1 << 4), // has a bump map
+    RI_MATERIAL_TRANSPARENT = ((uint64_t)1 << 5), // has transparency
+    RI_MATERIAL_WIREFRAME = ((uint64_t)1 << 6), // render as wireframe
+    RI_MATERIAL_DONT_RECEIVE_SHADOW = ((uint64_t)1 << 7), // should shadows render on it
+    RI_MATERIAL_DONT_DEPTH_TEST = ((uint64_t)1 << 8), // should check Z buffer (if 1, render on top of everything)
+    RI_MATERIAL_DONT_DEPTH_WRITE = ((uint64_t)1 << 9), // should write to the Z buffer (if 1, render behind everything)
+    RI_MATERIAL_DOUBLE_SIDED = ((uint64_t)1 << 10), // ignore backface culling
+} RI_material_flags;
+
 typedef struct {
     RI_texture *texture_reference;
-    unsigned char albedo;
+    RI_texture *bump_map_reference;
+    RI_texture *normal_map_reference;
+    unsigned int albedo;
+    float wireframe_width;
+    uint64_t flags;
 } RI_material;
 
 typedef struct { // An entity that has an mesh, transform, materials, etc

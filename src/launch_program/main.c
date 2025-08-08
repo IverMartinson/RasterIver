@@ -11,7 +11,14 @@ int main(){
     RI_texture_creation_data texture_creation_info[2] = {{"textures/bill_mcdinner.png", {0, 0}}, {"textures/test_guy_texture.png", {0, 0}}};
     RI_texture* textures = RI_request_textures(2, texture_creation_info);
 
-    RI_actor_creation_data actor_creation_info[2] = {{&meshes[1], NULL}, {&meshes[1], NULL}};
+    RI_material* materials = RI_request_materials(2);
+
+    materials[0].flags = RI_MATERIAL_HAS_TEXTURE;
+    materials[0].texture_reference = &textures[0];
+    materials[1].flags = RI_MATERIAL_HAS_TEXTURE;
+    materials[1].texture_reference = &textures[1];
+
+    RI_actor_creation_data actor_creation_info[2] = {{&meshes[0], &materials[0]}, {&meshes[1], &materials[1]}};
     RI_actor* actors = RI_request_actors(2, actor_creation_info);
 
     RI_scene* scene = RI_request_scene();
@@ -25,9 +32,11 @@ int main(){
     RasterIver *ri = RI_get_ri();
     ri->FOV = 60;
 
+    materials[0].texture_reference = ri->frame_buffer;
+
     while (running){
         actors[1].transform.position = (RI_vector_3f){0, 0, sin(ri->frame * 0.1) * 50 + 200};
         
-        RI_render(scene);
+        RI_render(scene, ri->frame_buffer);
     }
 }

@@ -7,7 +7,7 @@
 #include "stdint.h"
 #include <math.h>
 
-RasterIver ri;
+RasterIver ri = {NULL};
 
 void debug(char *string, ...){
     va_list args;
@@ -67,13 +67,21 @@ RI_actor* RI_request_actors(int RI_number_of_requested_actors, RI_actor_creation
             new_actor.material_reference = actor_creation_data[i].material_reference;
         }
         else {
-            new_actor.material_reference = &ri.default_material;
+            new_actor.material_reference = &ri.error_material;
         }
 
         ri.actors[i + previous_actor_count] = new_actor;
     }
 
     return ri.actors;
+}
+
+RI_material* RI_request_materials(int RI_number_of_requested_materials){
+    ri.material_count += RI_number_of_requested_materials;
+
+    ri.materials = realloc(ri.materials, sizeof(RI_material) * ri.material_count);
+
+    return ri.materials;
 }
 
 RI_texture* RI_request_textures(int RI_number_of_requested_textures, RI_texture_creation_data *texture_creation_data){
@@ -91,19 +99,18 @@ RI_texture* RI_request_textures(int RI_number_of_requested_textures, RI_texture_
         unsigned char* temp_texture = stbi_load(current_texture_filename, &new_texture.resolution.x, &new_texture.resolution.y, NULL, 4);
         
         if(stbi_failure_reason()){
-            new_texture.resolution.x = 1;
-            new_texture.resolution.y = 1;
-            
-            new_texture.image_buffer[0] = 255;
-            new_texture.image_buffer[1] = 0;
-            new_texture.image_buffer[2] = 255;
-            new_texture.image_buffer[3] = 128;
+            new_texture = ri.error_texture;
         }
         else {
-            new_texture.image_buffer = malloc(sizeof(uint32_t) * 4 * new_texture.resolution.x * new_texture.resolution.y);
+            new_texture.image_buffer = malloc(sizeof(uint32_t) * new_texture.resolution.x * new_texture.resolution.y);
 
-            for (int i = 0; i < new_texture.resolution.x * new_texture.resolution.y * 4; i++){
-                new_texture.image_buffer[i] = temp_texture[i];
+            for (int i = 0; i < new_texture.resolution.x * new_texture.resolution.y; ++i){
+                unsigned char r = temp_texture[i * 4];
+                unsigned char g = temp_texture[i * 4 + 1];
+                unsigned char b = temp_texture[i * 4 + 2];
+                unsigned char a = temp_texture[i * 4 + 3];
+                
+                new_texture.image_buffer[i] = (a << 24 | r << 16 | g << 8 | b);
             }
         }
 
@@ -282,15 +289,11 @@ void quaternion_rotation(RI_vector_3f *position, RI_vector_4f rotation){
     return;
 }
 
-void color_pixel(int x, int y, uint32_t color){
-    ri.frame_buffer[(x + ri.window_height / 2) * ri.window_width + (y + ri.window_width / 2)] = color;
-}
-
-int RI_render(RI_scene *scene){
+int RI_render(RI_scene *scene, RI_texture *target_texture){
     // do rendering stuff
     if (ri.running){
-        float horizontal_fov_factor = ri.window_width / tanf(0.5 * ri.FOV);
-        float vertical_fov_factor = ri.window_height / tanf(0.5 * ri.FOV);
+        float horizontal_fov_factor = target_texture->resolution.x / tanf(0.5 * ri.FOV);
+        float vertical_fov_factor = target_texture->resolution.y / tanf(0.5 * ri.FOV);
 
         for (int actor_index = 0; actor_index < scene->actor_count; ++actor_index){
             RI_actor *current_actor = scene->actors[actor_index];
@@ -323,13 +326,13 @@ int RI_render(RI_scene *scene){
             }
         }
 
-        for (int pixel_index = 0; pixel_index < ri.window_width * ri.window_height; ++pixel_index){
-            ri.frame_buffer[pixel_index] = 0x0;
+        for (int pixel_index = 0; pixel_index < target_texture->resolution.x * target_texture->resolution.y; ++pixel_index){
+            target_texture->image_buffer[pixel_index] = 0x0;
             ri.z_buffer[pixel_index] = 99999;
         }
 
-        for (int pixel_y_index = -ri.window_height / 2; pixel_y_index < ri.window_height / 2; ++pixel_y_index){
-            for (int pixel_x_index = -ri.window_width / 2; pixel_x_index < ri.window_height / 2; ++pixel_x_index){
+        for (int pixel_y_index = -target_texture->resolution.y / 2; pixel_y_index < target_texture->resolution.y / 2; ++pixel_y_index){
+            for (int pixel_x_index = -target_texture->resolution.x / 2; pixel_x_index < target_texture->resolution.x / 2; ++pixel_x_index){
                 for (int actor_index = 0; actor_index < scene->actor_count; ++actor_index){
                     RI_actor *current_actor = scene->actors[actor_index];
 
@@ -338,6 +341,28 @@ int RI_render(RI_scene *scene){
                         RI_vector_3f *pos_1 = &current_actor->mesh_reference->faces[polygon_index].vertex_1->transformed_position;
                         RI_vector_3f *pos_2 = &current_actor->mesh_reference->faces[polygon_index].vertex_2->transformed_position;
                         
+                        RI_material *mat = current_actor->material_reference;
+
+                        RI_vector_2f *uv_0;
+                        RI_vector_2f *uv_1;
+                        RI_vector_2f *uv_2;
+
+                        if (mat == NULL){
+                            mat = &ri.error_material;
+                        }
+
+                        if(mat->flags & RI_MATERIAL_HAS_TEXTURE && mat->texture_reference == NULL){
+                            mat->texture_reference = &ri.error_texture;
+                        }
+
+                        if(mat->flags & RI_MATERIAL_HAS_BUMP_MAP && mat->bump_map_reference == NULL){
+                            mat->bump_map_reference = &ri.error_bump_map;
+                        }
+
+                        if(mat->flags & RI_MATERIAL_HAS_NORMAL_MAP && mat->normal_map_reference == NULL){
+                            mat->normal_map_reference = &ri.error_normal_map;
+                        }
+
                         int vertex_0_out_of_bounds = pos_0->x < 0 || pos_0->x >= ri.window_width || pos_0->y < 0 || pos_0->y >= ri.window_height;
                         int vertex_1_out_of_bounds = pos_1->x < 0 || pos_1->x >= ri.window_width || pos_1->y < 0 || pos_1->y >= ri.window_height;
                         int vertex_2_out_of_bounds = pos_2->x < 0 || pos_2->x >= ri.window_width || pos_2->y < 0 || pos_2->y >= ri.window_height;
@@ -356,23 +381,48 @@ int RI_render(RI_scene *scene){
                         float w_over_z = (w0 / pos_0->z + w1 / pos_1->z + w2 / pos_2->z); 
                         float interpolated_z = 1.0 / w_over_z;
 
-                        if (!(w0 >= 0 && w1 >= 0 && w2 >= 0)){
+                        if (!(w0 >= 0 && w1 >= 0 && w2 >= 0) || (mat->flags & RI_MATERIAL_WIREFRAME && (w0 >= mat->wireframe_width && w1 >= mat->wireframe_width && w2 >= mat->wireframe_width))){
                             continue;
                         }
                         
-                        if (interpolated_z >= ri.z_buffer[(pixel_x_index + ri.window_height / 2) * ri.window_width + (pixel_y_index + ri.window_width / 2)]){
+                        if (!(mat->flags & RI_MATERIAL_DONT_DEPTH_TEST) && interpolated_z >= ri.z_buffer[(pixel_x_index + target_texture->resolution.y / 2) * target_texture->resolution.x + (pixel_y_index + target_texture->resolution.x / 2)]){
                             continue;
                         }   
 
-                        ri.z_buffer[(pixel_x_index + ri.window_height / 2) * ri.window_width + (pixel_y_index + ri.window_width / 2)] = interpolated_z;
+                        if (!(mat->flags & RI_MATERIAL_DONT_DEPTH_WRITE)){
+                            ri.z_buffer[(pixel_x_index + target_texture->resolution.y / 2) * target_texture->resolution.x + (pixel_y_index + target_texture->resolution.x / 2)] = interpolated_z;
+                        }
                         
-                        color_pixel(pixel_y_index, pixel_x_index, 0x01010101 * polygon_index);
+                        uint32_t pixel_color = 0xFF000000;
+
+                        if (mat->flags & RI_MATERIAL_HAS_TEXTURE){
+                            uv_0 = &current_actor->mesh_reference->faces[polygon_index].vertex_0->uv;
+                            uv_1 = &current_actor->mesh_reference->faces[polygon_index].vertex_1->uv;
+                            uv_2 = &current_actor->mesh_reference->faces[polygon_index].vertex_2->uv;
+
+                            double ux = (w0 * (uv_0->x / pos_0->z) + w1 * (uv_1->x / pos_1->z) + w2 * (uv_2->x / pos_2->z)) / w_over_z;
+                            double uy = (w0 * (uv_0->y / pos_0->z) + w1 * (uv_1->y / pos_1->z) + w2 * (uv_2->y / pos_2->z)) / w_over_z;                
+                        
+                            RI_vector_2 texel_position = {mat->texture_reference->resolution.x * ux, mat->texture_reference->resolution.y * uy};
+                        
+                            pixel_color = mat->texture_reference->image_buffer[texel_position.y * mat->texture_reference->resolution.x + texel_position.x];
+                        }
+
+                        int y = pixel_x_index;
+                        int x = pixel_y_index;
+                        
+                        x += target_texture->resolution.x / 2;
+                        y += target_texture->resolution.y / 2;
+
+                        if (x >= 0 && y >= 0 && x < target_texture->resolution.x && y < target_texture->resolution.y){
+                            target_texture->image_buffer[x * target_texture->resolution.y + y] = pixel_color;
+                        }   
                     }
                 }
             }
         }
 
-        SDL_UpdateTexture(ri.texture, NULL, ri.frame_buffer, ri.window_width * sizeof(uint32_t));
+        SDL_UpdateTexture(ri.texture, NULL, ri.frame_buffer->image_buffer, ri.window_width * sizeof(uint32_t));
 
         SDL_RenderClear(ri.renderer);
         SDL_RenderCopy(ri.renderer, ri.texture, NULL, NULL);
@@ -405,7 +455,11 @@ int sdl_init(int RI_window_width, int RI_window_height, char *RI_window_title){
     ri.window_height = RI_window_height;
     ri.window_title = RI_window_title;
 
-    ri.frame_buffer = malloc(sizeof(uint32_t) * ri.window_width * ri.window_height);
+    ri.frame_buffer = malloc(sizeof(RI_texture));
+
+    ri.frame_buffer->image_buffer = malloc(sizeof(uint32_t) * ri.window_width * ri.window_height);
+    ri.frame_buffer->resolution = (RI_vector_2){ri.window_width, ri.window_height};
+    
     ri.z_buffer = malloc(sizeof(float) * ri.window_width * ri.window_height);
 
     SDL_Init(SDL_INIT_VIDEO);
@@ -431,6 +485,15 @@ int RI_init(int RI_window_width, int RI_window_height, char *RI_window_title){
     ri.actor_count = 0;
 
     ri.prefix = "[RasterIver] ";
+
+    ri.error_texture.image_buffer = malloc(sizeof(uint32_t));
+
+    ri.error_texture.image_buffer[0] = 0xFFFF00FF;
+    ri.error_texture.resolution = (RI_vector_2){1, 1};
+
+    ri.error_material.texture_reference = &ri.error_texture;
+    ri.error_material.albedo = 0xFF5522CC;
+    ri.error_material.flags = RI_MATERIAL_UNLIT | RI_MATERIAL_DONT_DEPTH_TEST | RI_MATERIAL_DONT_RECEIVE_SHADOW | RI_MATERIAL_HAS_TEXTURE | RI_MATERIAL_DOUBLE_SIDED;
 
     return 0;
 }
