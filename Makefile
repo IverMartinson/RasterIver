@@ -1,7 +1,7 @@
 COMPILER=gcc
-FLAGS_ALL=-g -Wall -Wextra -Wno-unused-variable -Wno-unused-parameter
+FLAGS_ALL=-fsanitize=address -g -Wall -Wextra -Wno-unused-variable -Wno-unused-parameter
 FLAGS_EXAMPLE=-Lbuild/ -lrasteriver -Wl,-rpath=build/ -lm -lSDL2
-FLAGS_LIB=-D CL_TARGET_OPENCL_VERSION=120 -fPIC -shared -lc -lSDL2 -lSDL2_ttf -lm -lOpenCL
+FLAGS_LIB=-D CL_TARGET_OPENCL_VERSION=120 -fPIC -shared -lc -lSDL2 -lm -lOpenCL
 
 main.bin: rasteriver.so
 	$(COMPILER) $(FLAGS_ALL) src/launch_program/main.c -o build/main.bin $(FLAGS_EXAMPLE) 

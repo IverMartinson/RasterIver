@@ -9,12 +9,16 @@
 
 typedef struct {
     // rendering (non SDL)
+    uint32_t *frame_buffer;
+    float *z_buffer;
+ 
     int window_width;
     int window_height;
     char *window_title;
 
+    float FOV;
+
     // SDL specific
-    uint32_t *frame_buffer;
     SDL_Window *window;
     SDL_Renderer *renderer;
     SDL_Texture *texture;
@@ -34,6 +38,9 @@ typedef struct {
     RI_texture *loaded_textures;
     RI_actor *actors;
 
+    RI_texture default_texture;
+    RI_material default_material;
+
     // miscellaneous
     int loaded_mesh_count;
     int loaded_texture_count;
@@ -42,5 +49,7 @@ typedef struct {
     int frame;
     char* prefix;
 } RasterIver;
+
+RasterIver* RI_get_ri();
 
 #endif

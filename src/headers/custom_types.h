@@ -3,12 +3,13 @@
 
 #include "math.h"
 
-// ----- Meshs -----
-
+// ----- Meshes -----
 typedef struct {
-    RI_vector_3f position;
-    RI_vector_3f *normal;
-    RI_vector_2f *uv;
+    RI_vector_3f original_position;
+    RI_vector_3f transformed_position;
+    RI_vector_3f original_normal;
+    RI_vector_3f transformed_normal;
+    RI_vector_2f uv;
 } RI_vertex;
 
 typedef struct {
@@ -20,8 +21,6 @@ typedef struct {
 typedef struct { // A loaded mesh file (NOT an actor; doesn't store transformations or textures, ONLY mesh file data)
     RI_face *faces;
     RI_vertex *vertecies;
-    RI_vector_3f *normals;
-    RI_vector_2f *uvs;
     int face_count;
     int vertex_count;
     int normal_count;
@@ -36,17 +35,36 @@ typedef struct { // A loaded texture file
 
 typedef struct {
     char* filename;
-    RI_vector_2 resolution; // The resolution the texture will be AFTER importing (only if you want to change an image's scale. Setting NULL is equal to providing the image's actual resolution)
+    RI_vector_2 resolution; // The resolution the texture will be AFTER importing (only if you want to change an image's scale. >=0 is equal to providing the image's actual resolution)
 } RI_texture_creation_data;
 
 // ----- Actors -----
-typedef struct { // An entity that has an mesh,
-    RI_mesh *mesh_data;
+typedef struct { 
+    RI_vector_3f position;
+    RI_vector_4f rotation;
+    RI_vector_3f scale;
+} RI_transform;
+
+typedef struct {
+    RI_texture *texture_reference;
+    unsigned char albedo;
+} RI_material;
+
+typedef struct { // An entity that has an mesh, transform, materials, etc
+    RI_mesh *mesh_reference;
+    RI_material *material_reference;
+    RI_transform transform;
 } RI_actor;
 
 typedef struct {
     RI_mesh *mesh_reference;
-    RI_texture *texture_reference;
+    RI_material *material_reference;
 } RI_actor_creation_data;
+
+// ----- Scene -----
+typedef struct {
+    RI_actor **actors;
+    int actor_count;
+} RI_scene;
 
 #endif
