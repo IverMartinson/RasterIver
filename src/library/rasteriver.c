@@ -273,6 +273,9 @@ RI_mesh* RI_request_meshes(int RI_number_of_requested_meshes, char **filenames, 
         
         if (!has_normals || !has_uvs) debug("Notice! Mesh \"%s\" is missing %s", filenames[i], loading_mesh_notice_string);
         
+        new_mesh_data_struct.has_normals = has_normals;
+        new_mesh_data_struct.has_uvs = has_uvs;
+
         // fclose(file_again);
 
         if (!RI_return_just_mesh) {
@@ -365,10 +368,12 @@ int RI_render(RI_scene *scene, RI_texture *target_texture){
                 cur_r_face->position_1 = current_actor->mesh_reference->vertex_positions[vert_pos_1_index];
                 cur_r_face->position_2 = current_actor->mesh_reference->vertex_positions[vert_pos_2_index];
 
-                cur_r_face->uv_0 = current_actor->mesh_reference->uvs[uv_0_index];
-                cur_r_face->uv_1 = current_actor->mesh_reference->uvs[uv_1_index];
-                cur_r_face->uv_2 = current_actor->mesh_reference->uvs[uv_2_index];
-                
+                if (current_actor->mesh_reference->has_uvs){
+                    cur_r_face->uv_0 = current_actor->mesh_reference->uvs[uv_0_index];
+                    cur_r_face->uv_1 = current_actor->mesh_reference->uvs[uv_1_index];
+                    cur_r_face->uv_2 = current_actor->mesh_reference->uvs[uv_2_index];
+                }
+
                 // scale
                 vector_3f_hadamard(&cur_r_face->position_0, current_actor->transform.scale);
                 vector_3f_hadamard(&cur_r_face->position_1, current_actor->transform.scale);
@@ -450,9 +455,9 @@ int RI_render(RI_scene *scene, RI_texture *target_texture){
             
             RI_material *mat = current_face->material_reference;
         
-            RI_vector_2f *uv_0;
-            RI_vector_2f *uv_1;
-            RI_vector_2f *uv_2;
+            RI_vector_2f *uv_0 = &current_face->uv_0;;
+            RI_vector_2f *uv_1 = &current_face->uv_1;;
+            RI_vector_2f *uv_2 = &current_face->uv_2;;
         
             if (mat == NULL){
                 mat = &ri.error_material;
@@ -505,19 +510,16 @@ int RI_render(RI_scene *scene, RI_texture *target_texture){
                     
                     uint32_t pixel_color = 0xFF000000;
                     
-                    if (mat->flags & RI_MATERIAL_HAS_TEXTURE){
-                        uv_0 = &current_face->uv_0;
-                        uv_1 = &current_face->uv_1;
-                        uv_2 = &current_face->uv_2;
-                
+                    if (mat->flags & RI_MATERIAL_HAS_TEXTURE || !uv_0 || !uv_1 || !uv_2){                
                         double ux = (w0 * (uv_0->x / pos_0->z) + w1 * (uv_1->x / pos_1->z) + w2 * (uv_2->x / pos_2->z)) / w_over_z;
                         double uy = (w0 * (uv_0->y / pos_0->z) + w1 * (uv_1->y / pos_1->z) + w2 * (uv_2->y / pos_2->z)) / w_over_z;                
                     
                         RI_vector_2 texel_position = {mat->texture_reference->resolution.x * ux, mat->texture_reference->resolution.y * uy};
                         
-                        if (texel_position.y * mat->texture_reference->resolution.x + texel_position.x > mat->texture_reference->resolution.x * mat->texture_reference->resolution.y) continue;
-
-                        pixel_color = mat->texture_reference->image_buffer[texel_position.y * mat->texture_reference->resolution.x + texel_position.x];
+                        if (texel_position.y * mat->texture_reference->resolution.x + texel_position.x < 0 || texel_position.y * mat->texture_reference->resolution.x + texel_position.x >= mat->texture_reference->resolution.x * mat->texture_reference->resolution.y) 
+                            pixel_color = 0xFFFF00FF;
+                        else 
+                            pixel_color = mat->texture_reference->image_buffer[texel_position.y * mat->texture_reference->resolution.x + texel_position.x];
                     }
                     else { // must be only an albedo
                         if (mat->albedo) pixel_color = mat->albedo;

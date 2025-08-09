@@ -25,10 +25,8 @@ typedef struct { // A loaded mesh file (NOT an actor; doesn't store transformati
     RI_vector_3f *vertex_positions;
     RI_vector_3f *normals;
     RI_vector_2f *uvs;
-    int face_count;
-    int vertex_count;
-    int normal_count;
-    int uv_count;
+    int face_count, vertex_count, normal_count, uv_count;
+    int has_normals, has_uvs;
 } RI_mesh; 
 
 // ----- Textures -----

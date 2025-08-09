@@ -1,7 +1,7 @@
 #include "../headers/rasteriver.h"
 
 int main(){
-    RI_init(800, 800, "This is RasterIver 2.0!!");
+    RI_init(1000, 1000, "This is RasterIver 2.0!!");
 
     int running = 1;
 
@@ -31,6 +31,7 @@ int main(){
     RI_material* floor_material = &materials[0];
     floor_material->flags = RI_MATERIAL_HAS_TEXTURE;
     floor_material->texture_reference = floor_texture;
+    floor_material->albedo = 0xFFFFFFFF;
     
     RI_material* wall_material = &materials[1];
     wall_material->flags = 0;
@@ -39,10 +40,12 @@ int main(){
     RI_material* bill_cube_material = &materials[2];
     bill_cube_material->flags = RI_MATERIAL_HAS_TEXTURE;
     bill_cube_material->texture_reference = bill_cube_texture;
+    bill_cube_material->albedo = 0xFFFFFFFF;
 
     RI_material* screen_material = &materials[3];
     screen_material->flags = RI_MATERIAL_HAS_TEXTURE;
     screen_material->texture_reference = ri->frame_buffer;
+    screen_material->albedo = 0xFFFFFFFF;
 
     // actors
     RI_actor* floor = &actors[0];
@@ -73,8 +76,6 @@ int main(){
     screen->transform.position = (RI_vector_3f){0, 0, 250};
     screen->transform.rotation = (RI_vector_4f){0, 1, 0, 0};
 
-    RI_euler_rotation_to_quaternion(&screen->transform.rotation, (RI_vector_3f){-3.14159 / 2, 0, 0});
-
     RI_add_actors_to_scene(4, actors, scene);
 
     scene->FOV = 1.5; // 90 degrees in radians
@@ -84,8 +85,10 @@ int main(){
 
     while (running){
         bill_cube->transform.position = (RI_vector_3f){sin(ri->frame * 0.1) * 50 - 100, sin(ri->frame * 0.2 + 0.4) * 50, sin(ri->frame * 0.1) * 10 + 200};
-        
-        scene->camera_position = (RI_vector_3f){cos(ri->frame * 0.07) * 50 * sin(ri->frame * 0.2), sin(ri->frame * 0.07) * 50 * sin(ri->frame * 0.2), -200};
+
+        RI_euler_rotation_to_quaternion(&screen->transform.rotation, (RI_vector_3f){-3.14159 / 2, 0, ri->frame * 0.03});
+
+        scene->camera_position = (RI_vector_3f){cos(ri->frame * 0.07) * 10 * sin(ri->frame * 0.2), sin(ri->frame * 0.07) * 10 * sin(ri->frame * 0.2), -200};
         scene->camera_rotation = (RI_vector_4f){0, 1, 0, 0};
 
         RI_euler_rotation_to_quaternion(&floor->transform.rotation, (RI_vector_3f){0, y_rotation, 0});
