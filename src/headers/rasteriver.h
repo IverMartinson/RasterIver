@@ -16,8 +16,6 @@ typedef struct {
     int window_height;
     char *window_title;
 
-    float FOV;
-
     // SDL specific
     SDL_Window *window;
     SDL_Renderer *renderer;
@@ -25,8 +23,6 @@ typedef struct {
     SDL_Event event;
     
     // RasterIver
-    RI_vertex *verticies; //data type that holds info about a vertex (positon, normal, UV coord)
-
     RI_vector_3f *loaded_mesh_vetex_positions; // original vertex positions from a loaded mesh
     RI_vector_3f *normals; // original normal vectors from a loaded mesh
     RI_vector_2f *uvs; // UV coords from a loaded mesh

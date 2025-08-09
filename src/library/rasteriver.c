@@ -160,10 +160,9 @@ RI_mesh* RI_request_meshes(int RI_number_of_requested_meshes, char **filenames, 
         fclose(file);
         
         new_mesh_data_struct.faces = malloc(sizeof(RI_face) * new_mesh_data_struct.face_count);
-        new_mesh_data_struct.vertecies = malloc(sizeof(RI_vertex) * new_mesh_data_struct.vertex_count);
-
-        RI_vector_3f *normals = malloc(sizeof(RI_vector_3f) * new_mesh_data_struct.normal_count);
-        RI_vector_2f *uvs = malloc(sizeof(RI_vector_2f) * new_mesh_data_struct.uv_count);
+        new_mesh_data_struct.vertex_positions = malloc(sizeof(RI_vector_3f) * new_mesh_data_struct.vertex_count);
+        new_mesh_data_struct.normals = malloc(sizeof(RI_vector_3f) * new_mesh_data_struct.normal_count);
+        new_mesh_data_struct.uvs = malloc(sizeof(RI_vector_2f) * new_mesh_data_struct.uv_count);
 
         FILE *file_again = fopen(filenames[i], "r");
 
@@ -216,17 +215,17 @@ RI_mesh* RI_request_meshes(int RI_number_of_requested_meshes, char **filenames, 
                     has_normals = has_uvs = 1;
                 }
 
-                new_mesh_data_struct.faces[current_face_index].vertex_0_index = vertex_0_index - 1;
-                new_mesh_data_struct.faces[current_face_index].vertex_1_index = vertex_1_index - 1;
-                new_mesh_data_struct.faces[current_face_index].vertex_2_index = vertex_2_index - 1;
+                new_mesh_data_struct.faces[current_face_index].position_0_index = vertex_0_index - 1;
+                new_mesh_data_struct.faces[current_face_index].position_1_index = vertex_1_index - 1;
+                new_mesh_data_struct.faces[current_face_index].position_2_index = vertex_2_index - 1;
 
-                new_mesh_data_struct.vertecies[vertex_0_index - 1].normal = normals[normal_0_index - 1];
-                new_mesh_data_struct.vertecies[vertex_1_index - 1].normal = normals[normal_1_index - 1];
-                new_mesh_data_struct.vertecies[vertex_2_index - 1].normal = normals[normal_2_index - 1];
-
-                new_mesh_data_struct.vertecies[vertex_0_index - 1].uv = uvs[uv_0_index - 1];
-                new_mesh_data_struct.vertecies[vertex_1_index - 1].uv = uvs[uv_1_index - 1];
-                new_mesh_data_struct.vertecies[vertex_2_index - 1].uv = uvs[uv_2_index - 1];
+                new_mesh_data_struct.faces[current_face_index].normal_0_index = normal_0_index - 1;
+                new_mesh_data_struct.faces[current_face_index].normal_1_index = normal_1_index - 1;
+                new_mesh_data_struct.faces[current_face_index].normal_2_index = normal_2_index - 1;
+                
+                new_mesh_data_struct.faces[current_face_index].uv_0_index = uv_0_index - 1;
+                new_mesh_data_struct.faces[current_face_index].uv_1_index = uv_1_index - 1;
+                new_mesh_data_struct.faces[current_face_index].uv_2_index = uv_2_index - 1;
 
                 ++current_face_index;
             }
@@ -235,9 +234,9 @@ RI_mesh* RI_request_meshes(int RI_number_of_requested_meshes, char **filenames, 
                 
                 sscanf(line, "v %f %f %f", &x, &y, &z);
 
-                new_mesh_data_struct.vertecies[current_vertex_index].position.x = x;
-                new_mesh_data_struct.vertecies[current_vertex_index].position.y = y;
-                new_mesh_data_struct.vertecies[current_vertex_index].position.z = z;
+                new_mesh_data_struct.vertex_positions[current_vertex_index].x = x;
+                new_mesh_data_struct.vertex_positions[current_vertex_index].y = y;
+                new_mesh_data_struct.vertex_positions[current_vertex_index].z = z;
 
                 ++current_vertex_index;
             } 
@@ -246,9 +245,9 @@ RI_mesh* RI_request_meshes(int RI_number_of_requested_meshes, char **filenames, 
                 
                 sscanf(line, "vn %f %f %f", &x, &y, &z);
 
-                normals[current_normal_index].x = x;
-                normals[current_normal_index].y = y;
-                normals[current_normal_index].z = z;
+                new_mesh_data_struct.normals[current_normal_index].x = x;
+                new_mesh_data_struct.normals[current_normal_index].y = y;
+                new_mesh_data_struct.normals[current_normal_index].z = z;
 
                 ++current_normal_index;
             }
@@ -257,16 +256,13 @@ RI_mesh* RI_request_meshes(int RI_number_of_requested_meshes, char **filenames, 
 
                 sscanf(line, "vt %f %f %f", &x, &y, &z);
 
-                uvs[current_uv_index].x = x;
-                uvs[current_uv_index].y = y;
+                new_mesh_data_struct.uvs[current_uv_index].x = x;
+                new_mesh_data_struct.uvs[current_uv_index].y = y;
                 // UVS are almost always 2D so we don't need Z (the type itself is a vector 2f, not 3f) 
 
                 ++current_uv_index;
             } 
         }
-
-        free(normals);
-        free(uvs);
 
         char* loading_mesh_notice_string;
 
@@ -322,54 +318,9 @@ void RI_euler_rotation_to_quaternion(RI_vector_4f *quaternion, RI_vector_3f eule
 int RI_render(RI_scene *scene, RI_texture *target_texture){
     // do rendering stuff
     if (ri.running){
-        float horizontal_fov_factor = target_texture->resolution.x / tanf(0.5 * ri.FOV);
-        float vertical_fov_factor = target_texture->resolution.y / tanf(0.5 * ri.FOV);
-
-        for (int actor_index = 0; actor_index < scene->actor_count; ++actor_index){
-            RI_actor *current_actor = scene->actors[actor_index];
-
-            if (!current_actor->transformed_verticies){
-                current_actor->transformed_verticies = malloc(sizeof(RI_vertex) * current_actor->mesh_reference->vertex_count);
-            }
-
-            for (int polygon_index = 0; polygon_index < current_actor->mesh_reference->face_count; ++polygon_index){
-                current_actor->transformed_verticies[current_actor->mesh_reference->faces[polygon_index].vertex_0_index].position = current_actor->mesh_reference->vertecies[current_actor->mesh_reference->faces[polygon_index].vertex_0_index].position;
-                current_actor->transformed_verticies[current_actor->mesh_reference->faces[polygon_index].vertex_0_index].uv = current_actor->mesh_reference->vertecies[current_actor->mesh_reference->faces[polygon_index].vertex_0_index].uv;
-
-                current_actor->transformed_verticies[current_actor->mesh_reference->faces[polygon_index].vertex_1_index].position = current_actor->mesh_reference->vertecies[current_actor->mesh_reference->faces[polygon_index].vertex_1_index].position;
-                current_actor->transformed_verticies[current_actor->mesh_reference->faces[polygon_index].vertex_1_index].uv = current_actor->mesh_reference->vertecies[current_actor->mesh_reference->faces[polygon_index].vertex_1_index].uv;
-
-                current_actor->transformed_verticies[current_actor->mesh_reference->faces[polygon_index].vertex_2_index].position = current_actor->mesh_reference->vertecies[current_actor->mesh_reference->faces[polygon_index].vertex_2_index].position;
-                current_actor->transformed_verticies[current_actor->mesh_reference->faces[polygon_index].vertex_2_index].uv = current_actor->mesh_reference->vertecies[current_actor->mesh_reference->faces[polygon_index].vertex_2_index].uv;
-
-
-                quaternion_rotate(&current_actor->transformed_verticies[current_actor->mesh_reference->faces[polygon_index].vertex_0_index].position, current_actor->transform.rotation);
-                quaternion_rotate(&current_actor->transformed_verticies[current_actor->mesh_reference->faces[polygon_index].vertex_1_index].position, current_actor->transform.rotation);
-                quaternion_rotate(&current_actor->transformed_verticies[current_actor->mesh_reference->faces[polygon_index].vertex_2_index].position, current_actor->transform.rotation);
-
-                vector_3f_hadamard(&current_actor->transformed_verticies[current_actor->mesh_reference->faces[polygon_index].vertex_0_index].position, current_actor->transform.scale);
-                vector_3f_hadamard(&current_actor->transformed_verticies[current_actor->mesh_reference->faces[polygon_index].vertex_1_index].position, current_actor->transform.scale);
-                vector_3f_hadamard(&current_actor->transformed_verticies[current_actor->mesh_reference->faces[polygon_index].vertex_2_index].position, current_actor->transform.scale);
-            
-                vector_3f_element_wise_add(&current_actor->transformed_verticies[current_actor->mesh_reference->faces[polygon_index].vertex_0_index].position, current_actor->transform.position);
-                vector_3f_element_wise_add(&current_actor->transformed_verticies[current_actor->mesh_reference->faces[polygon_index].vertex_1_index].position, current_actor->transform.position);
-                vector_3f_element_wise_add(&current_actor->transformed_verticies[current_actor->mesh_reference->faces[polygon_index].vertex_2_index].position, current_actor->transform.position);
-            
-                vector_3f_element_wise_subtract(&current_actor->transformed_verticies[current_actor->mesh_reference->faces[polygon_index].vertex_0_index].position, scene->camera_position);
-                vector_3f_element_wise_subtract(&current_actor->transformed_verticies[current_actor->mesh_reference->faces[polygon_index].vertex_1_index].position, scene->camera_position);
-                vector_3f_element_wise_subtract(&current_actor->transformed_verticies[current_actor->mesh_reference->faces[polygon_index].vertex_2_index].position, scene->camera_position);
-
-                current_actor->transformed_verticies[current_actor->mesh_reference->faces[polygon_index].vertex_0_index].position.x = current_actor->transformed_verticies[current_actor->mesh_reference->faces[polygon_index].vertex_0_index].position.x / current_actor->transformed_verticies[current_actor->mesh_reference->faces[polygon_index].vertex_0_index].position.z * horizontal_fov_factor;
-                current_actor->transformed_verticies[current_actor->mesh_reference->faces[polygon_index].vertex_0_index].position.y = current_actor->transformed_verticies[current_actor->mesh_reference->faces[polygon_index].vertex_0_index].position.y / current_actor->transformed_verticies[current_actor->mesh_reference->faces[polygon_index].vertex_0_index].position.z * vertical_fov_factor;
-                
-                current_actor->transformed_verticies[current_actor->mesh_reference->faces[polygon_index].vertex_1_index].position.x = current_actor->transformed_verticies[current_actor->mesh_reference->faces[polygon_index].vertex_1_index].position.x / current_actor->transformed_verticies[current_actor->mesh_reference->faces[polygon_index].vertex_1_index].position.z * horizontal_fov_factor;
-                current_actor->transformed_verticies[current_actor->mesh_reference->faces[polygon_index].vertex_1_index].position.y = current_actor->transformed_verticies[current_actor->mesh_reference->faces[polygon_index].vertex_1_index].position.y / current_actor->transformed_verticies[current_actor->mesh_reference->faces[polygon_index].vertex_1_index].position.z * vertical_fov_factor;
-
-                current_actor->transformed_verticies[current_actor->mesh_reference->faces[polygon_index].vertex_2_index].position.x = current_actor->transformed_verticies[current_actor->mesh_reference->faces[polygon_index].vertex_2_index].position.x / current_actor->transformed_verticies[current_actor->mesh_reference->faces[polygon_index].vertex_2_index].position.z * horizontal_fov_factor;
-                current_actor->transformed_verticies[current_actor->mesh_reference->faces[polygon_index].vertex_2_index].position.y = current_actor->transformed_verticies[current_actor->mesh_reference->faces[polygon_index].vertex_2_index].position.y / current_actor->transformed_verticies[current_actor->mesh_reference->faces[polygon_index].vertex_2_index].position.z * vertical_fov_factor;
-            }
-        }
-
+        float horizontal_fov_factor = target_texture->resolution.x / tanf(0.5 * scene->FOV);
+        float vertical_fov_factor = target_texture->resolution.y / tanf(0.5 * scene->FOV);
+        
         for (int pixel_index = 0; pixel_index < target_texture->resolution.x * target_texture->resolution.y; ++pixel_index){
             target_texture->image_buffer[pixel_index] = 0x0;
             ri.z_buffer[pixel_index] = 99999;
@@ -380,10 +331,67 @@ int RI_render(RI_scene *scene, RI_texture *target_texture){
                 for (int actor_index = 0; actor_index < scene->actor_count; ++actor_index){
                     RI_actor *current_actor = scene->actors[actor_index];
 
+                    if (!current_actor->transformed_vertex_positions){
+                        current_actor->transformed_vertex_positions = malloc(sizeof(RI_vector_3f) * current_actor->mesh_reference->vertex_count);
+                    }
+
                     for (int polygon_index = 0; polygon_index < current_actor->mesh_reference->face_count; ++polygon_index){
-                        RI_vector_3f *pos_0 = &current_actor->transformed_verticies[current_actor->mesh_reference->faces[polygon_index].vertex_0_index].position;
-                        RI_vector_3f *pos_1 = &current_actor->transformed_verticies[current_actor->mesh_reference->faces[polygon_index].vertex_1_index].position;
-                        RI_vector_3f *pos_2 = &current_actor->transformed_verticies[current_actor->mesh_reference->faces[polygon_index].vertex_2_index].position;
+                        int vert_pos_0_index = current_actor->mesh_reference->faces[polygon_index].position_0_index;
+                        int vert_pos_1_index = current_actor->mesh_reference->faces[polygon_index].position_1_index;
+                        int vert_pos_2_index = current_actor->mesh_reference->faces[polygon_index].position_2_index;
+                        
+                        int normal_0_index = current_actor->mesh_reference->faces[polygon_index].normal_0_index;
+                        int normal_1_index = current_actor->mesh_reference->faces[polygon_index].normal_1_index;
+                        int normal_2_index = current_actor->mesh_reference->faces[polygon_index].normal_2_index;
+
+                        int uv_0_index = current_actor->mesh_reference->faces[polygon_index].uv_0_index;
+                        int uv_1_index = current_actor->mesh_reference->faces[polygon_index].uv_1_index;
+                        int uv_2_index = current_actor->mesh_reference->faces[polygon_index].uv_2_index;
+
+                        current_actor->transformed_vertex_positions[vert_pos_0_index] = current_actor->mesh_reference->vertex_positions[vert_pos_0_index];
+                        current_actor->transformed_vertex_positions[vert_pos_1_index] = current_actor->mesh_reference->vertex_positions[vert_pos_1_index];
+                        current_actor->transformed_vertex_positions[vert_pos_2_index] = current_actor->mesh_reference->vertex_positions[vert_pos_2_index];
+                        
+                        // scale
+                        vector_3f_hadamard(&current_actor->transformed_vertex_positions[vert_pos_0_index], current_actor->transform.scale);
+                        vector_3f_hadamard(&current_actor->transformed_vertex_positions[vert_pos_1_index], current_actor->transform.scale);
+                        vector_3f_hadamard(&current_actor->transformed_vertex_positions[vert_pos_2_index], current_actor->transform.scale);
+
+                        // combine camera and object rotation
+                        RI_vector_4f combined_rotation = current_actor->transform.rotation;
+                        RI_vector_4f camera_rotation = scene->camera_rotation;
+                    
+                        quaternion_conjugate(&camera_rotation);
+                        
+                        quaternion_multiply(&combined_rotation, camera_rotation);
+
+                        // rotate
+                        quaternion_rotate(&current_actor->transformed_vertex_positions[vert_pos_0_index], combined_rotation);
+                        quaternion_rotate(&current_actor->transformed_vertex_positions[vert_pos_1_index], combined_rotation);
+                        quaternion_rotate(&current_actor->transformed_vertex_positions[vert_pos_2_index], combined_rotation);
+                        
+                        // object position
+                        vector_3f_element_wise_add(&current_actor->transformed_vertex_positions[vert_pos_0_index], current_actor->transform.position);
+                        vector_3f_element_wise_add(&current_actor->transformed_vertex_positions[vert_pos_1_index], current_actor->transform.position);
+                        vector_3f_element_wise_add(&current_actor->transformed_vertex_positions[vert_pos_2_index], current_actor->transform.position);
+                    
+                        // camera position
+                        vector_3f_element_wise_subtract(&current_actor->transformed_vertex_positions[vert_pos_0_index], scene->camera_position);
+                        vector_3f_element_wise_subtract(&current_actor->transformed_vertex_positions[vert_pos_1_index], scene->camera_position);
+                        vector_3f_element_wise_subtract(&current_actor->transformed_vertex_positions[vert_pos_2_index], scene->camera_position);
+
+                        current_actor->transformed_vertex_positions[vert_pos_0_index].x = current_actor->transformed_vertex_positions[vert_pos_0_index].x / current_actor->transformed_vertex_positions[vert_pos_0_index].z * horizontal_fov_factor;
+                        current_actor->transformed_vertex_positions[vert_pos_0_index].y = current_actor->transformed_vertex_positions[vert_pos_0_index].y / current_actor->transformed_vertex_positions[vert_pos_0_index].z * vertical_fov_factor;
+                        
+                        current_actor->transformed_vertex_positions[vert_pos_1_index].x = current_actor->transformed_vertex_positions[vert_pos_1_index].x / current_actor->transformed_vertex_positions[vert_pos_1_index].z * horizontal_fov_factor;
+                        current_actor->transformed_vertex_positions[vert_pos_1_index].y = current_actor->transformed_vertex_positions[vert_pos_1_index].y / current_actor->transformed_vertex_positions[vert_pos_1_index].z * vertical_fov_factor;
+
+                        current_actor->transformed_vertex_positions[vert_pos_2_index].x = current_actor->transformed_vertex_positions[vert_pos_2_index].x / current_actor->transformed_vertex_positions[vert_pos_2_index].z * horizontal_fov_factor;
+                        current_actor->transformed_vertex_positions[vert_pos_2_index].y = current_actor->transformed_vertex_positions[vert_pos_2_index].y / current_actor->transformed_vertex_positions[vert_pos_2_index].z * vertical_fov_factor;
+
+                        RI_vector_3f *pos_0 = &current_actor->transformed_vertex_positions[vert_pos_0_index];
+                        RI_vector_3f *pos_1 = &current_actor->transformed_vertex_positions[vert_pos_1_index];
+                        RI_vector_3f *pos_2 = &current_actor->transformed_vertex_positions[vert_pos_2_index];
                         
                         RI_material *mat = current_actor->material_reference;
 
@@ -414,7 +422,7 @@ int RI_render(RI_scene *scene, RI_texture *target_texture){
                         if (vertex_0_out_of_bounds && vertex_1_out_of_bounds && vertex_2_out_of_bounds){
                             // continue;
                         }
-                        
+                                                    
                         float denominator, w0, w1, w2;
 
                         denominator = (pos_1->y - pos_2->y) * (pos_0->x - pos_2->x) + (pos_2->x - pos_1->x) * (pos_0->y - pos_2->y);
@@ -440,9 +448,9 @@ int RI_render(RI_scene *scene, RI_texture *target_texture){
                         uint32_t pixel_color = 0xFF000000;
                         
                         if (mat->flags & RI_MATERIAL_HAS_TEXTURE){
-                            uv_0 = &current_actor->transformed_verticies[current_actor->mesh_reference->faces[polygon_index].vertex_0_index].uv;
-                            uv_1 = &current_actor->transformed_verticies[current_actor->mesh_reference->faces[polygon_index].vertex_1_index].uv;
-                            uv_2 = &current_actor->transformed_verticies[current_actor->mesh_reference->faces[polygon_index].vertex_2_index].uv;
+                            uv_0 = &current_actor->mesh_reference->uvs[uv_0_index];
+                            uv_1 = &current_actor->mesh_reference->uvs[uv_1_index];
+                            uv_2 = &current_actor->mesh_reference->uvs[uv_2_index];
 
                             double ux = (w0 * (uv_0->x / pos_0->z) + w1 * (uv_1->x / pos_1->z) + w2 * (uv_2->x / pos_2->z)) / w_over_z;
                             double uy = (w0 * (uv_0->y / pos_0->z) + w1 * (uv_1->y / pos_1->z) + w2 * (uv_2->y / pos_2->z)) / w_over_z;                
@@ -564,7 +572,6 @@ int RI_stop(int result){
     
     for (int mesh_index = 0; mesh_index < ri.loaded_mesh_count; ++mesh_index){
         free(ri.loaded_meshes[mesh_index].faces); // free face array
-        free(ri.loaded_meshes[mesh_index].vertecies); // free vertex array
     }
 
     for (int texture_index = 0; texture_index < ri.loaded_texture_count; ++texture_index){

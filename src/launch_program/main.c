@@ -10,7 +10,7 @@ int main(){
 
     // data for loading files
     char *filenames[] = {"objects/unit_cube.obj", "objects/test_guy.obj", "objects/unit_plane.obj"};
-    RI_texture_creation_data texture_creation_info[2] = {{"textures/bill_mcdinner.png", {0, 0}}, {"textures/test_guy_texture.png", {0, 0}}};
+    RI_texture_creation_data texture_creation_info[2] = {{"textures/bill_mcdinner.png", {0, 0}}, {"textures/this is the floor.png", {0, 0}}};
     
     // requesting assets
     RI_mesh* meshes = RI_request_meshes(3, filenames, 0);
@@ -25,11 +25,12 @@ int main(){
 
     // textures
     RI_texture* bill_cube_texture = &textures[0];
+    RI_texture* floor_texture = &textures[1];
 
     // materials
     RI_material* floor_material = &materials[0];
-    floor_material->flags = 0;
-    floor_material->albedo = 0xFF77FF77;
+    floor_material->flags = RI_MATERIAL_HAS_TEXTURE;
+    floor_material->texture_reference = floor_texture;
     
     RI_material* wall_material = &materials[1];
     wall_material->flags = 0;
@@ -70,11 +71,13 @@ int main(){
     screen->mesh_reference = unit_plane_mesh;
     screen->transform.scale = (RI_vector_3f){50, 50, 50};
     screen->transform.position = (RI_vector_3f){0, 0, 250};
-    screen->transform.rotation = (RI_vector_4f){0.70710678, 0.70710678, 0, 0};
+    screen->transform.rotation = (RI_vector_4f){0, 1, 0, 0};
+
+    RI_euler_rotation_to_quaternion(&screen->transform.rotation, (RI_vector_3f){-3.14159 / 2, 0, 0});
 
     RI_add_actors_to_scene(4, actors, scene);
 
-    ri->FOV = 1.5; // 90 degrees in radians
+    scene->FOV = 1.5; // 90 degrees in radians
 
     float y_rotation = 0;
 
@@ -82,6 +85,7 @@ int main(){
         bill_cube->transform.position = (RI_vector_3f){sin(ri->frame * 0.1) * 50 - 100, sin(ri->frame * 0.2 + 0.4) * 50, sin(ri->frame * 0.1) * 10 + 200};
         
         scene->camera_position = (RI_vector_3f){cos(ri->frame * 0.07) * 50 * sin(ri->frame * 0.2), sin(ri->frame * 0.07) * 50 * sin(ri->frame * 0.2), -150};
+        scene->camera_rotation = (RI_vector_4f){0, 1, 0, 0};
 
         RI_euler_rotation_to_quaternion(&floor->transform.rotation, (RI_vector_3f){0, y_rotation, 0});
         

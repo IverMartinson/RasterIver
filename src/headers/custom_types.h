@@ -4,21 +4,26 @@
 #include "math.h"
 
 // ----- Meshes -----
-typedef struct {
-    RI_vector_3f position;
-    RI_vector_3f normal;
-    RI_vector_2f uv;
-} RI_vertex;
 
 typedef struct {
-    int vertex_0_index;
-    int vertex_1_index;
-    int vertex_2_index;
+    int position_0_index;
+    int position_1_index;
+    int position_2_index;
+
+    int normal_0_index;
+    int normal_1_index;
+    int normal_2_index;
+
+    int uv_0_index;
+    int uv_1_index;
+    int uv_2_index;
 } RI_face;
 
 typedef struct { // A loaded mesh file (NOT an actor; doesn't store transformations or textures, ONLY mesh file data)
     RI_face *faces;
-    RI_vertex *vertecies;
+    RI_vector_3f *vertex_positions;
+    RI_vector_3f *normals;
+    RI_vector_2f *uvs;
     int face_count;
     int vertex_count;
     int normal_count;
@@ -69,7 +74,8 @@ typedef struct {
 typedef struct { // An entity that has an mesh, transform, materials, etc
     RI_mesh *mesh_reference;
     RI_material *material_reference;
-    RI_vertex *transformed_verticies;
+    RI_vector_3f *transformed_vertex_positions;
+    RI_vector_3f *transformed_normals;
     RI_transform transform;
 } RI_actor;
 
@@ -82,6 +88,7 @@ typedef struct {
 typedef struct {
     RI_actor **actors;
     int actor_count;
+    float FOV;
     RI_vector_3f camera_position;
     RI_vector_4f camera_rotation;
 } RI_scene;
