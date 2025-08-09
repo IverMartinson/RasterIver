@@ -4,7 +4,6 @@
 #include "math.h"
 
 // ----- Meshes -----
-
 typedef struct {
     int position_0_index;
     int position_1_index;
@@ -17,6 +16,8 @@ typedef struct {
     int uv_0_index;
     int uv_1_index;
     int uv_2_index;
+
+    int should_render;
 } RI_face;
 
 typedef struct { // A loaded mesh file (NOT an actor; doesn't store transformations or textures, ONLY mesh file data)
@@ -86,11 +87,23 @@ typedef struct {
 
 // ----- Scene -----
 typedef struct {
+    RI_vector_3f position_0, position_1, position_2;
+    RI_vector_3f normal_0, normal_1, normal_2;
+    RI_vector_2f uv_0, uv_1, uv_2;
+    RI_material* material_reference;
+    int min_screen_x, max_screen_x, min_screen_y, max_screen_y;
+    int should_render;
+} RI_renderable_face;
+
+typedef struct {
     RI_actor **actors;
     int actor_count;
     float FOV;
+    float min_clip;
     RI_vector_3f camera_position;
     RI_vector_4f camera_rotation;
+    RI_renderable_face *faces_to_render;
+    int face_count;
 } RI_scene;
 
 #endif

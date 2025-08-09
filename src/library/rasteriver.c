@@ -48,6 +48,7 @@ RI_scene* RI_request_scene(){
 
     new_scene->actor_count = 0;
     new_scene->actors = NULL;
+    new_scene->faces_to_render = NULL;
     
     return new_scene;
 }
@@ -320,162 +321,215 @@ int RI_render(RI_scene *scene, RI_texture *target_texture){
     if (ri.running){
         float horizontal_fov_factor = target_texture->resolution.x / tanf(0.5 * scene->FOV);
         float vertical_fov_factor = target_texture->resolution.y / tanf(0.5 * scene->FOV);
-        
+
+        if (!scene->faces_to_render){
+            int total_faces = 0;
+            
+            for (int actor_index = 0; actor_index < scene->actor_count; ++actor_index){
+                total_faces += scene->actors[actor_index]->mesh_reference->face_count;
+            }
+
+            scene->faces_to_render = malloc(sizeof(RI_renderable_face) * total_faces * 2); // x2 because faces can be split
+            scene->face_count = total_faces;
+        }
+
+        int current_renderable_face_index = 0;
+
+        for (int actor_index = 0; actor_index < scene->actor_count; ++actor_index){
+            RI_actor *current_actor = scene->actors[actor_index];
+
+            for (int face_index = 0; face_index < current_actor->mesh_reference->face_count; ++face_index){
+                RI_face *cur_face = &current_actor->mesh_reference->faces[face_index];
+                
+                if (!cur_face->should_render){
+                    continue;
+                }
+
+                int vert_pos_0_index = cur_face->position_0_index;
+                int vert_pos_1_index = cur_face->position_1_index;
+                int vert_pos_2_index = cur_face->position_2_index;
+                
+                int normal_0_index = cur_face->normal_0_index;
+                int normal_1_index = cur_face->normal_1_index;
+                int normal_2_index = cur_face->normal_2_index;
+
+                int uv_0_index = cur_face->uv_0_index;
+                int uv_1_index = cur_face->uv_1_index;
+                int uv_2_index = cur_face->uv_2_index;
+
+                RI_renderable_face *cur_r_face = &scene->faces_to_render[current_renderable_face_index];
+
+                cur_r_face->material_reference = current_actor->material_reference;
+
+                cur_r_face->position_0 = current_actor->mesh_reference->vertex_positions[vert_pos_0_index];
+                cur_r_face->position_1 = current_actor->mesh_reference->vertex_positions[vert_pos_1_index];
+                cur_r_face->position_2 = current_actor->mesh_reference->vertex_positions[vert_pos_2_index];
+
+                cur_r_face->uv_0 = current_actor->mesh_reference->uvs[uv_0_index];
+                cur_r_face->uv_1 = current_actor->mesh_reference->uvs[uv_1_index];
+                cur_r_face->uv_2 = current_actor->mesh_reference->uvs[uv_2_index];
+                
+                // scale
+                vector_3f_hadamard(&cur_r_face->position_0, current_actor->transform.scale);
+                vector_3f_hadamard(&cur_r_face->position_1, current_actor->transform.scale);
+                vector_3f_hadamard(&cur_r_face->position_2, current_actor->transform.scale);
+
+                // combine camera and object rotation
+                RI_vector_4f combined_rotation = current_actor->transform.rotation;
+                RI_vector_4f camera_rotation = scene->camera_rotation;
+
+                quaternion_conjugate(&camera_rotation);
+                
+                quaternion_multiply(&combined_rotation, camera_rotation);
+
+                // rotate
+                quaternion_rotate(&cur_r_face->position_0, combined_rotation);
+                quaternion_rotate(&cur_r_face->position_1, combined_rotation);
+                quaternion_rotate(&cur_r_face->position_2, combined_rotation);
+                
+                // object position
+                vector_3f_element_wise_add(&cur_r_face->position_0, current_actor->transform.position);
+                vector_3f_element_wise_add(&cur_r_face->position_1, current_actor->transform.position);
+                vector_3f_element_wise_add(&cur_r_face->position_2, current_actor->transform.position);
+
+                // camera position
+                vector_3f_element_wise_subtract(&cur_r_face->position_0, scene->camera_position);
+                vector_3f_element_wise_subtract(&cur_r_face->position_1, scene->camera_position);
+                vector_3f_element_wise_subtract(&cur_r_face->position_2, scene->camera_position);
+
+                cur_r_face->position_0.x = cur_r_face->position_0.x / cur_r_face->position_0.z * horizontal_fov_factor;
+                cur_r_face->position_0.y = cur_r_face->position_0.y / cur_r_face->position_0.z * vertical_fov_factor;
+                
+                cur_r_face->position_1.x = cur_r_face->position_1.x / cur_r_face->position_1.z * horizontal_fov_factor;
+                cur_r_face->position_1.y = cur_r_face->position_1.y / cur_r_face->position_1.z * vertical_fov_factor;
+
+                cur_r_face->position_2.x = cur_r_face->position_2.x / cur_r_face->position_2.z * horizontal_fov_factor;
+                cur_r_face->position_2.y = cur_r_face->position_2.y / cur_r_face->position_2.z * vertical_fov_factor;
+
+                RI_vector_3f *pos_0 = &cur_r_face->position_0;
+                RI_vector_3f *pos_1 = &cur_r_face->position_1;
+                RI_vector_3f *pos_2 = &cur_r_face->position_2;
+
+                if (pos_0->z < scene->min_clip || pos_1->z < scene->min_clip || pos_2->z < scene->min_clip){
+                    if (pos_0->z < scene->min_clip && pos_1->z < scene->min_clip && pos_2->z < scene->min_clip){
+                        continue;
+                    }
+
+                    // triangle culling code
+                }            
+            
+                cur_r_face->min_screen_x = pos_0->x; 
+                if (pos_1->x < cur_r_face->min_screen_x) cur_r_face->min_screen_x = pos_1->x;
+                if (pos_2->x < cur_r_face->min_screen_x) cur_r_face->min_screen_x = pos_2->x;
+
+                cur_r_face->max_screen_x = pos_0->x; 
+                if (pos_1->x > cur_r_face->max_screen_x) cur_r_face->max_screen_x = pos_1->x;
+                if (pos_2->x > cur_r_face->max_screen_x) cur_r_face->max_screen_x = pos_2->x;
+
+                cur_r_face->min_screen_y = pos_0->y; 
+                if (pos_1->y < cur_r_face->min_screen_y) cur_r_face->min_screen_y = pos_1->y;
+                if (pos_2->y < cur_r_face->min_screen_y) cur_r_face->min_screen_y = pos_2->y;
+
+                cur_r_face->max_screen_y = pos_0->y; 
+                if (pos_1->y > cur_r_face->max_screen_y) cur_r_face->max_screen_y = pos_1->y;
+                if (pos_2->y > cur_r_face->max_screen_y) cur_r_face->max_screen_y = pos_2->y;
+
+                ++current_renderable_face_index;
+            }
+        }
+
+        scene->face_count = current_renderable_face_index;
+
         for (int pixel_index = 0; pixel_index < target_texture->resolution.x * target_texture->resolution.y; ++pixel_index){
-            target_texture->image_buffer[pixel_index] = 0x0;
+            target_texture->image_buffer[pixel_index] = 0xFF333333;
             ri.z_buffer[pixel_index] = 99999;
         }
 
-        for (int pixel_y_index = -target_texture->resolution.y / 2; pixel_y_index < target_texture->resolution.y / 2; ++pixel_y_index){
-            for (int pixel_x_index = -target_texture->resolution.x / 2; pixel_x_index < target_texture->resolution.x / 2; ++pixel_x_index){
-                for (int actor_index = 0; actor_index < scene->actor_count; ++actor_index){
-                    RI_actor *current_actor = scene->actors[actor_index];
+        for (int face_index = 0; face_index < scene->face_count; ++face_index){
+            RI_renderable_face *current_face = &scene->faces_to_render[face_index];
+            
+            RI_material *mat = current_face->material_reference;
+        
+            RI_vector_2f *uv_0;
+            RI_vector_2f *uv_1;
+            RI_vector_2f *uv_2;
+        
+            if (mat == NULL){
+                mat = &ri.error_material;
+            }
+        
+            if(mat->flags & RI_MATERIAL_HAS_TEXTURE && mat->texture_reference == NULL){
+                mat->texture_reference = &ri.error_texture;
+            }
+        
+            if(mat->flags & RI_MATERIAL_HAS_BUMP_MAP && mat->bump_map_reference == NULL){
+                mat->bump_map_reference = &ri.error_bump_map;
+            }
+        
+            if(mat->flags & RI_MATERIAL_HAS_NORMAL_MAP && mat->normal_map_reference == NULL){
+                mat->normal_map_reference = &ri.error_normal_map;
+            }
+        
+            RI_vector_3f *pos_0 = &current_face->position_0;
+            RI_vector_3f *pos_1 = &current_face->position_1;
+            RI_vector_3f *pos_2 = &current_face->position_2;
 
-                    if (!current_actor->transformed_vertex_positions){
-                        current_actor->transformed_vertex_positions = malloc(sizeof(RI_vector_3f) * current_actor->mesh_reference->vertex_count);
+            for (int pixel_y_index = current_face->min_screen_y; pixel_y_index < current_face->max_screen_y; ++pixel_y_index){    
+                for (int pixel_x_index = current_face->min_screen_x; pixel_x_index < current_face->max_screen_x; ++pixel_x_index){                   
+                    int x = pixel_x_index + target_texture->resolution.x / 2;
+                    int y = pixel_y_index + target_texture->resolution.y / 2;
+
+                    if (x < 0 || x >= target_texture->resolution.x || y < 0 || y >= target_texture->resolution.y) continue;
+
+                    float denominator, w0, w1, w2;
+                
+                    denominator = (pos_1->y - pos_2->y) * (pos_0->x - pos_2->x) + (pos_2->x - pos_1->x) * (pos_0->y - pos_2->y);
+                    w0 = ((pos_1->y - pos_2->y) * (pixel_x_index - pos_2->x) + (pos_2->x - pos_1->x) * (pixel_y_index - pos_2->y)) / denominator;
+                    w1 = ((pos_2->y - pos_0->y) * (pixel_x_index - pos_0->x) + (pos_0->x - pos_2->x) * (pixel_y_index - pos_0->y)) / denominator; 
+                    w2 = 1.0 - w0 - w1; 
+                
+                    float w_over_z = (w0 / pos_0->z + w1 / pos_1->z + w2 / pos_2->z); 
+                    float interpolated_z = 1.0 / w_over_z;
+                
+                    if (!(w0 >= 0 && w1 >= 0 && w2 >= 0) || (mat->flags & RI_MATERIAL_WIREFRAME && (w0 >= mat->wireframe_width && w1 >= mat->wireframe_width && w2 >= mat->wireframe_width))){
+                        continue;
                     }
-
-                    for (int polygon_index = 0; polygon_index < current_actor->mesh_reference->face_count; ++polygon_index){
-                        int vert_pos_0_index = current_actor->mesh_reference->faces[polygon_index].position_0_index;
-                        int vert_pos_1_index = current_actor->mesh_reference->faces[polygon_index].position_1_index;
-                        int vert_pos_2_index = current_actor->mesh_reference->faces[polygon_index].position_2_index;
-                        
-                        int normal_0_index = current_actor->mesh_reference->faces[polygon_index].normal_0_index;
-                        int normal_1_index = current_actor->mesh_reference->faces[polygon_index].normal_1_index;
-                        int normal_2_index = current_actor->mesh_reference->faces[polygon_index].normal_2_index;
-
-                        int uv_0_index = current_actor->mesh_reference->faces[polygon_index].uv_0_index;
-                        int uv_1_index = current_actor->mesh_reference->faces[polygon_index].uv_1_index;
-                        int uv_2_index = current_actor->mesh_reference->faces[polygon_index].uv_2_index;
-
-                        current_actor->transformed_vertex_positions[vert_pos_0_index] = current_actor->mesh_reference->vertex_positions[vert_pos_0_index];
-                        current_actor->transformed_vertex_positions[vert_pos_1_index] = current_actor->mesh_reference->vertex_positions[vert_pos_1_index];
-                        current_actor->transformed_vertex_positions[vert_pos_2_index] = current_actor->mesh_reference->vertex_positions[vert_pos_2_index];
-                        
-                        // scale
-                        vector_3f_hadamard(&current_actor->transformed_vertex_positions[vert_pos_0_index], current_actor->transform.scale);
-                        vector_3f_hadamard(&current_actor->transformed_vertex_positions[vert_pos_1_index], current_actor->transform.scale);
-                        vector_3f_hadamard(&current_actor->transformed_vertex_positions[vert_pos_2_index], current_actor->transform.scale);
-
-                        // combine camera and object rotation
-                        RI_vector_4f combined_rotation = current_actor->transform.rotation;
-                        RI_vector_4f camera_rotation = scene->camera_rotation;
                     
-                        quaternion_conjugate(&camera_rotation);
-                        
-                        quaternion_multiply(&combined_rotation, camera_rotation);
-
-                        // rotate
-                        quaternion_rotate(&current_actor->transformed_vertex_positions[vert_pos_0_index], combined_rotation);
-                        quaternion_rotate(&current_actor->transformed_vertex_positions[vert_pos_1_index], combined_rotation);
-                        quaternion_rotate(&current_actor->transformed_vertex_positions[vert_pos_2_index], combined_rotation);
-                        
-                        // object position
-                        vector_3f_element_wise_add(&current_actor->transformed_vertex_positions[vert_pos_0_index], current_actor->transform.position);
-                        vector_3f_element_wise_add(&current_actor->transformed_vertex_positions[vert_pos_1_index], current_actor->transform.position);
-                        vector_3f_element_wise_add(&current_actor->transformed_vertex_positions[vert_pos_2_index], current_actor->transform.position);
+                    if (!(mat->flags & RI_MATERIAL_DONT_DEPTH_TEST) && interpolated_z >= ri.z_buffer[y * target_texture->resolution.x + x]){
+                        continue;
+                    }   
+                
+                    if (!(mat->flags & RI_MATERIAL_DONT_DEPTH_WRITE)){
+                        ri.z_buffer[y * target_texture->resolution.x + x] = interpolated_z;
+                    }
                     
-                        // camera position
-                        vector_3f_element_wise_subtract(&current_actor->transformed_vertex_positions[vert_pos_0_index], scene->camera_position);
-                        vector_3f_element_wise_subtract(&current_actor->transformed_vertex_positions[vert_pos_1_index], scene->camera_position);
-                        vector_3f_element_wise_subtract(&current_actor->transformed_vertex_positions[vert_pos_2_index], scene->camera_position);
-
-                        current_actor->transformed_vertex_positions[vert_pos_0_index].x = current_actor->transformed_vertex_positions[vert_pos_0_index].x / current_actor->transformed_vertex_positions[vert_pos_0_index].z * horizontal_fov_factor;
-                        current_actor->transformed_vertex_positions[vert_pos_0_index].y = current_actor->transformed_vertex_positions[vert_pos_0_index].y / current_actor->transformed_vertex_positions[vert_pos_0_index].z * vertical_fov_factor;
+                    uint32_t pixel_color = 0xFF000000;
+                    
+                    if (mat->flags & RI_MATERIAL_HAS_TEXTURE){
+                        uv_0 = &current_face->uv_0;
+                        uv_1 = &current_face->uv_1;
+                        uv_2 = &current_face->uv_2;
+                
+                        double ux = (w0 * (uv_0->x / pos_0->z) + w1 * (uv_1->x / pos_1->z) + w2 * (uv_2->x / pos_2->z)) / w_over_z;
+                        double uy = (w0 * (uv_0->y / pos_0->z) + w1 * (uv_1->y / pos_1->z) + w2 * (uv_2->y / pos_2->z)) / w_over_z;                
+                    
+                        RI_vector_2 texel_position = {mat->texture_reference->resolution.x * ux, mat->texture_reference->resolution.y * uy};
                         
-                        current_actor->transformed_vertex_positions[vert_pos_1_index].x = current_actor->transformed_vertex_positions[vert_pos_1_index].x / current_actor->transformed_vertex_positions[vert_pos_1_index].z * horizontal_fov_factor;
-                        current_actor->transformed_vertex_positions[vert_pos_1_index].y = current_actor->transformed_vertex_positions[vert_pos_1_index].y / current_actor->transformed_vertex_positions[vert_pos_1_index].z * vertical_fov_factor;
+                        if (texel_position.y * mat->texture_reference->resolution.x + texel_position.x > mat->texture_reference->resolution.x * mat->texture_reference->resolution.y) continue;
 
-                        current_actor->transformed_vertex_positions[vert_pos_2_index].x = current_actor->transformed_vertex_positions[vert_pos_2_index].x / current_actor->transformed_vertex_positions[vert_pos_2_index].z * horizontal_fov_factor;
-                        current_actor->transformed_vertex_positions[vert_pos_2_index].y = current_actor->transformed_vertex_positions[vert_pos_2_index].y / current_actor->transformed_vertex_positions[vert_pos_2_index].z * vertical_fov_factor;
-
-                        RI_vector_3f *pos_0 = &current_actor->transformed_vertex_positions[vert_pos_0_index];
-                        RI_vector_3f *pos_1 = &current_actor->transformed_vertex_positions[vert_pos_1_index];
-                        RI_vector_3f *pos_2 = &current_actor->transformed_vertex_positions[vert_pos_2_index];
-                        
-                        RI_material *mat = current_actor->material_reference;
-
-                        RI_vector_2f *uv_0;
-                        RI_vector_2f *uv_1;
-                        RI_vector_2f *uv_2;
-
-                        if (mat == NULL){
-                            mat = &ri.error_material;
-                        }
-
-                        if(mat->flags & RI_MATERIAL_HAS_TEXTURE && mat->texture_reference == NULL){
-                            mat->texture_reference = &ri.error_texture;
-                        }
-
-                        if(mat->flags & RI_MATERIAL_HAS_BUMP_MAP && mat->bump_map_reference == NULL){
-                            mat->bump_map_reference = &ri.error_bump_map;
-                        }
-
-                        if(mat->flags & RI_MATERIAL_HAS_NORMAL_MAP && mat->normal_map_reference == NULL){
-                            mat->normal_map_reference = &ri.error_normal_map;
-                        }
-
-                        int vertex_0_out_of_bounds = pos_0->x < 0 || pos_0->x >= ri.window_width || pos_0->y < 0 || pos_0->y >= ri.window_height;
-                        int vertex_1_out_of_bounds = pos_1->x < 0 || pos_1->x >= ri.window_width || pos_1->y < 0 || pos_1->y >= ri.window_height;
-                        int vertex_2_out_of_bounds = pos_2->x < 0 || pos_2->x >= ri.window_width || pos_2->y < 0 || pos_2->y >= ri.window_height;
-                        
-                        if (vertex_0_out_of_bounds && vertex_1_out_of_bounds && vertex_2_out_of_bounds){
-                            // continue;
-                        }
-                                                    
-                        float denominator, w0, w1, w2;
-
-                        denominator = (pos_1->y - pos_2->y) * (pos_0->x - pos_2->x) + (pos_2->x - pos_1->x) * (pos_0->y - pos_2->y);
-                        w0 = ((pos_1->y - pos_2->y) * (pixel_x_index - pos_2->x) + (pos_2->x - pos_1->x) * (pixel_y_index - pos_2->y)) / denominator;
-                        w1 = ((pos_2->y - pos_0->y) * (pixel_x_index - pos_0->x) + (pos_0->x - pos_2->x) * (pixel_y_index - pos_0->y)) / denominator; 
-                        w2 = 1.0 - w0 - w1; 
-
-                        float w_over_z = (w0 / pos_0->z + w1 / pos_1->z + w2 / pos_2->z); 
-                        float interpolated_z = 1.0 / w_over_z;
-
-                        if (!(w0 >= 0 && w1 >= 0 && w2 >= 0) || (mat->flags & RI_MATERIAL_WIREFRAME && (w0 >= mat->wireframe_width && w1 >= mat->wireframe_width && w2 >= mat->wireframe_width))){
-                            continue;
-                        }
-                        
-                        if (!(mat->flags & RI_MATERIAL_DONT_DEPTH_TEST) && interpolated_z >= ri.z_buffer[(pixel_x_index + target_texture->resolution.y / 2) * target_texture->resolution.x + (pixel_y_index + target_texture->resolution.x / 2)]){
-                            continue;
-                        }   
-
-                        if (!(mat->flags & RI_MATERIAL_DONT_DEPTH_WRITE)){
-                            ri.z_buffer[(pixel_x_index + target_texture->resolution.y / 2) * target_texture->resolution.x + (pixel_y_index + target_texture->resolution.x / 2)] = interpolated_z;
-                        }
-                        
-                        uint32_t pixel_color = 0xFF000000;
-                        
-                        if (mat->flags & RI_MATERIAL_HAS_TEXTURE){
-                            uv_0 = &current_actor->mesh_reference->uvs[uv_0_index];
-                            uv_1 = &current_actor->mesh_reference->uvs[uv_1_index];
-                            uv_2 = &current_actor->mesh_reference->uvs[uv_2_index];
-
-                            double ux = (w0 * (uv_0->x / pos_0->z) + w1 * (uv_1->x / pos_1->z) + w2 * (uv_2->x / pos_2->z)) / w_over_z;
-                            double uy = (w0 * (uv_0->y / pos_0->z) + w1 * (uv_1->y / pos_1->z) + w2 * (uv_2->y / pos_2->z)) / w_over_z;                
-                        
-                            RI_vector_2 texel_position = {mat->texture_reference->resolution.x * ux, mat->texture_reference->resolution.y * uy};
-                            
-                            pixel_color = mat->texture_reference->image_buffer[texel_position.y * mat->texture_reference->resolution.x + texel_position.x];
-                        }
-                        else { // must be only an albedo
-                            if (mat->albedo) pixel_color = mat->albedo;
-                            else pixel_color = 0xFFFF77FF;
-                        }
-
-                        int x = pixel_x_index;
-                        int y = pixel_y_index;
-                        
-                        x += target_texture->resolution.x / 2;
-                        y += target_texture->resolution.y / 2;
-
-                        // x = target_texture->resolution.x - 1 - x;
-                        // y = target_texture->resolution.y - 1 - y;
-
-                        if (x >= 0 && y >= 0 && x < target_texture->resolution.x && y < target_texture->resolution.y){
-                            target_texture->image_buffer[y * target_texture->resolution.y + x] = pixel_color;
-                        }   
+                        pixel_color = mat->texture_reference->image_buffer[texel_position.y * mat->texture_reference->resolution.x + texel_position.x];
+                    }
+                    else { // must be only an albedo
+                        if (mat->albedo) pixel_color = mat->albedo;
+                        else pixel_color = 0xFFFF77FF;
+                    }
+                
+                    // flip the texture
+                    // x = target_texture->resolution.x - 1 - x;
+                    // y = target_texture->resolution.y - 1 - y;
+                
+                    if (x >= 0 && y >= 0 && x < target_texture->resolution.x && y < target_texture->resolution.y){
+                        target_texture->image_buffer[y * target_texture->resolution.y + x] = pixel_color;
                     }
                 }
             }

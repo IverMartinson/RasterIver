@@ -1,7 +1,7 @@
 #include "../headers/rasteriver.h"
 
 int main(){
-    RI_init(400, 400, "This is RasterIver 2.0!!");
+    RI_init(800, 800, "This is RasterIver 2.0!!");
 
     int running = 1;
 
@@ -78,13 +78,14 @@ int main(){
     RI_add_actors_to_scene(4, actors, scene);
 
     scene->FOV = 1.5; // 90 degrees in radians
+    scene->min_clip = 100;
 
     float y_rotation = 0;
 
     while (running){
         bill_cube->transform.position = (RI_vector_3f){sin(ri->frame * 0.1) * 50 - 100, sin(ri->frame * 0.2 + 0.4) * 50, sin(ri->frame * 0.1) * 10 + 200};
         
-        scene->camera_position = (RI_vector_3f){cos(ri->frame * 0.07) * 50 * sin(ri->frame * 0.2), sin(ri->frame * 0.07) * 50 * sin(ri->frame * 0.2), -150};
+        scene->camera_position = (RI_vector_3f){cos(ri->frame * 0.07) * 50 * sin(ri->frame * 0.2), sin(ri->frame * 0.07) * 50 * sin(ri->frame * 0.2), -200};
         scene->camera_rotation = (RI_vector_4f){0, 1, 0, 0};
 
         RI_euler_rotation_to_quaternion(&floor->transform.rotation, (RI_vector_3f){0, y_rotation, 0});
