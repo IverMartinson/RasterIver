@@ -12,5 +12,6 @@ int RI_init(int RI_window_width, int RI_window_height, char *RI_window_title); /
 int RI_stop(int result); // Stop RasterIver safely and free memory
 int RI_render(RI_scene *scene, RI_texture *target_texture); // Render a scene to a texture
 int RI_add_actors_to_scene(int RI_number_of_actors_to_add_to_scene, RI_actor *actors, RI_scene *scene);
+void RI_euler_rotation_to_quaternion(RI_vector_4f* quaternion, RI_vector_3f euler_rotation);
 
 #endif

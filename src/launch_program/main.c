@@ -70,16 +70,24 @@ int main(){
     screen->mesh_reference = unit_plane_mesh;
     screen->transform.scale = (RI_vector_3f){50, 50, 50};
     screen->transform.position = (RI_vector_3f){0, 0, 250};
-    screen->transform.rotation = (RI_vector_4f){0.70710678, 0.70710678};
+    screen->transform.rotation = (RI_vector_4f){0.70710678, 0.70710678, 0, 0};
 
     RI_add_actors_to_scene(4, actors, scene);
 
     ri->FOV = 1.5; // 90 degrees in radians
 
+    float y_rotation = 0;
+
     while (running){
         bill_cube->transform.position = (RI_vector_3f){sin(ri->frame * 0.1) * 50 - 100, sin(ri->frame * 0.2 + 0.4) * 50, sin(ri->frame * 0.1) * 10 + 200};
         
         scene->camera_position = (RI_vector_3f){cos(ri->frame * 0.07) * 50 * sin(ri->frame * 0.2), sin(ri->frame * 0.07) * 50 * sin(ri->frame * 0.2), -150};
+
+        RI_euler_rotation_to_quaternion(&floor->transform.rotation, (RI_vector_3f){0, y_rotation, 0});
+        
+        RI_euler_rotation_to_quaternion(&bill_cube->transform.rotation, (RI_vector_3f){y_rotation, y_rotation, y_rotation});
+
+        y_rotation += 0.1;
 
         RI_render(scene, ri->frame_buffer);
     }

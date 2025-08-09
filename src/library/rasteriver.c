@@ -292,7 +292,7 @@ RI_mesh* RI_request_meshes(int RI_number_of_requested_meshes, char **filenames, 
     else return mesh;
 }
 
-void quaternion_rotation(RI_vector_3f *position, RI_vector_4f rotation){
+void quaternion_rotate(RI_vector_3f *position, RI_vector_4f rotation){
     RI_vector_4f pos_quat = {0, position->x, position->y, position->z};
 
     RI_vector_4f rotation_conjugation = rotation;
@@ -303,6 +303,20 @@ void quaternion_rotation(RI_vector_3f *position, RI_vector_4f rotation){
     quaternion_multiply(&rotation, rotation_conjugation);
 
     *position = (RI_vector_3f){rotation.x, rotation.y, rotation.z};
+}
+
+void RI_euler_rotation_to_quaternion(RI_vector_4f *quaternion, RI_vector_3f euler_rotation){
+    float cx = cosf(euler_rotation.x * 0.5f);
+    float sx = sinf(euler_rotation.x * 0.5f);
+    float cy = cosf(euler_rotation.y * 0.5f);
+    float sy = sinf(euler_rotation.y * 0.5f);
+    float cz = cosf(euler_rotation.z * 0.5f);
+    float sz = sinf(euler_rotation.z * 0.5f);
+
+    quaternion->w = cx * cy * cz + sx * sy * sz;
+    quaternion->x = sx * cy * cz - cx * sy * sz;
+    quaternion->y = cx * sy * cz + sx * cy * sz;
+    quaternion->z = cx * cy * sz - sx * sy * cz;
 }
 
 int RI_render(RI_scene *scene, RI_texture *target_texture){
@@ -329,9 +343,9 @@ int RI_render(RI_scene *scene, RI_texture *target_texture){
                 current_actor->transformed_verticies[current_actor->mesh_reference->faces[polygon_index].vertex_2_index].uv = current_actor->mesh_reference->vertecies[current_actor->mesh_reference->faces[polygon_index].vertex_2_index].uv;
 
 
-                quaternion_rotation(&current_actor->transformed_verticies[current_actor->mesh_reference->faces[polygon_index].vertex_0_index].position, current_actor->transform.rotation);
-                quaternion_rotation(&current_actor->transformed_verticies[current_actor->mesh_reference->faces[polygon_index].vertex_1_index].position, current_actor->transform.rotation);
-                quaternion_rotation(&current_actor->transformed_verticies[current_actor->mesh_reference->faces[polygon_index].vertex_2_index].position, current_actor->transform.rotation);
+                quaternion_rotate(&current_actor->transformed_verticies[current_actor->mesh_reference->faces[polygon_index].vertex_0_index].position, current_actor->transform.rotation);
+                quaternion_rotate(&current_actor->transformed_verticies[current_actor->mesh_reference->faces[polygon_index].vertex_1_index].position, current_actor->transform.rotation);
+                quaternion_rotate(&current_actor->transformed_verticies[current_actor->mesh_reference->faces[polygon_index].vertex_2_index].position, current_actor->transform.rotation);
 
                 vector_3f_hadamard(&current_actor->transformed_verticies[current_actor->mesh_reference->faces[polygon_index].vertex_0_index].position, current_actor->transform.scale);
                 vector_3f_hadamard(&current_actor->transformed_verticies[current_actor->mesh_reference->faces[polygon_index].vertex_1_index].position, current_actor->transform.scale);
