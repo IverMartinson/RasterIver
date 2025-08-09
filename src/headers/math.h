@@ -44,10 +44,34 @@ void vector_3f_element_wise_add(RI_vector_3f *addend_a, RI_vector_3f addend_b){
     addend_a->z += addend_b.z;
 }
 
+void vector_3f_element_wise_subtract(RI_vector_3f *minuend, RI_vector_3f subtrahend){
+    minuend->x -= subtrahend.x;
+    minuend->y -= subtrahend.y;
+    minuend->z -= subtrahend.z;
+}
+
 void vector_3f_divide_float(RI_vector_3f *dividend, float divisor){
     dividend->x /= divisor;
     dividend->y /= divisor;
     dividend->z /= divisor;
+}
+
+void quaternion_conjugate(RI_vector_4f* quaternion){
+    quaternion->x *= -1;
+    quaternion->y *= -1;
+    quaternion->z *= -1;
+}
+
+void quaternion_multiply(RI_vector_4f* a, RI_vector_4f b){
+    float w1 = a->w; float x1 = a->x; float y1 = a->y; float z1 = a->z;
+    float w2 = b.w; float x2 = b.x; float y2 = b.y; float z2 = b.z;
+
+    float w = w1*w2 - x1*x2 - y1*y2 - z1*z2;
+    float x = w1*x2 + x1*w2 + y1*z2 - z1*y2;
+    float y = w1*y2 - x1*z2 + y1*w2 + z1*x2;
+    float z = w1*z2 + x1*y2 - y1*x2 + z1*w2;
+
+    *a = (RI_vector_4f){w, x, y, z};
 }
 
 #endif

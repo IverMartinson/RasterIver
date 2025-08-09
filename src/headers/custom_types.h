@@ -5,17 +5,15 @@
 
 // ----- Meshes -----
 typedef struct {
-    RI_vector_3f original_position;
-    RI_vector_3f transformed_position;
-    RI_vector_3f original_normal;
-    RI_vector_3f transformed_normal;
+    RI_vector_3f position;
+    RI_vector_3f normal;
     RI_vector_2f uv;
 } RI_vertex;
 
 typedef struct {
-    RI_vertex *vertex_0;
-    RI_vertex *vertex_1;
-    RI_vertex *vertex_2;
+    int vertex_0_index;
+    int vertex_1_index;
+    int vertex_2_index;
 } RI_face;
 
 typedef struct { // A loaded mesh file (NOT an actor; doesn't store transformations or textures, ONLY mesh file data)
@@ -71,6 +69,7 @@ typedef struct {
 typedef struct { // An entity that has an mesh, transform, materials, etc
     RI_mesh *mesh_reference;
     RI_material *material_reference;
+    RI_vertex *transformed_verticies;
     RI_transform transform;
 } RI_actor;
 
@@ -83,6 +82,8 @@ typedef struct {
 typedef struct {
     RI_actor **actors;
     int actor_count;
+    RI_vector_3f camera_position;
+    RI_vector_4f camera_rotation;
 } RI_scene;
 
 #endif

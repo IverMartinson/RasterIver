@@ -3,8 +3,8 @@
 
 #include "custom_types.h"
 
-RI_mesh* RI_request_meshes(int RI_number_of_requested_objects, char **filenames); // Load object file(s)
-RI_actor* RI_request_actors(int RI_number_of_requested_actors, RI_actor_creation_data *actor_creation_data); // Load texture file(s)
+RI_mesh* RI_request_meshes(int RI_number_of_requested_objects, char **filenames, int RI_request_just_mesh); // Load object file(s)
+RI_actor* RI_request_actors(int RI_number_of_requested_actors); // Load texture file(s)
 RI_material* RI_request_materials(int RI_number_of_requested_materials); // Create materials
 RI_texture* RI_request_textures(int RI_number_of_requested_textures, RI_texture_creation_data *texture_creation_data); // Create new actor(s)
 RI_scene* RI_request_scene();

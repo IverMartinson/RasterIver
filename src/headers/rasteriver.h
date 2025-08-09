@@ -43,6 +43,7 @@ typedef struct {
     RI_texture error_bump_map;
     RI_texture error_normal_map;
     RI_material error_material;
+    RI_mesh error_mesh;
 
     // miscellaneous
     int loaded_mesh_count;
