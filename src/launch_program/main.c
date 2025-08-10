@@ -9,7 +9,7 @@ int main(){
     RasterIver *ri = RI_get_ri();
 
     // data for loading files
-    char *filenames[] = {"objects/unit_cube.obj", "objects/teapot.obj", "objects/test_guy.obj", "objects/unit_plane.obj"};
+    char *filenames[] = {"objects/unit_cube.obj", "objects/cow-nonormals.obj", "objects/test_guy.obj", "objects/unit_plane.obj"};
     RI_texture_creation_data texture_creation_info[3] = {{"textures/bill_mcdinner.png", {0, 0}}, {"textures/this is the floor.png", {0, 0}}, {"textures/test_guy_texture.png", {0, 0}}};
     
     // requesting assets
@@ -38,7 +38,7 @@ int main(){
     wall_material->albedo = 0xFF7777FF;
 
     RI_material* test_object_material = &materials[2];
-    test_object_material->flags = RI_MATERIAL_HAS_TEXTURE | RI_MATERIAL_WIREFRAME;
+    test_object_material->flags = RI_MATERIAL_HAS_TEXTURE;
     test_object_material->texture_reference = test_object_texture;
     test_object_material->albedo = 0xFFFFFFF;
     test_object_material->wireframe_width = 0.1;
