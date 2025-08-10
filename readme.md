@@ -50,4 +50,9 @@ To run the binary, it needs to be in the same folder as librasteriver.so (if you
 - [ ] flip texture function
 - [ ] multiple texture filetypes
 - [ ] texture resizing when passing in a different resolution than the texture is
-- [ ] add built in meshes (cubes, sphere, torus, capsule, cylinder)
+- [ ] built in meshes (cubes, sphere, torus, capsule, cylinder)
+- [ ] descriptions to variables and functions
+- [ ] normal map shading
+- [ ] bump maps
+- [ ] normal maps
+- [x] memory tracker

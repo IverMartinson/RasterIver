@@ -29,12 +29,140 @@ RasterIver* RI_get_ri(){
     return &ri;
 }
 
+#define RI_realloc(__ptr, __size) written_RI_realloc(__ptr, __size, __func__, __LINE__)
+#define RI_malloc(__size) written_RI_malloc(__size, __func__, __LINE__)
+#define RI_calloc(__nmemb, __size) written_RI_calloc(__nmemb, __size, __func__, __LINE__)
+#define RI_free(__ptr) written_RI_free(__ptr, __func__, __LINE__)
+
+void* written_RI_realloc(void *__ptr, size_t __size, const char *caller, int line){
+    void *pointer = realloc(__ptr, __size);
+
+    if (ri.debug_memory) {
+        int current_allocation_index = 0;
+        int checking = 1;
+
+        while (checking){
+            if (!ri.allocation_table[current_allocation_index].reallocated_free && ri.allocation_table[current_allocation_index].pointer == __ptr){
+                ri.allocation_table[current_allocation_index].reallocated_free = 1;
+                
+                checking = 0;
+            }
+
+            current_allocation_index++;
+            
+            if (current_allocation_index >= ri.allocation_search_limit){
+                checking = 0;
+            }
+        }
+
+        debug("[Memory Manager] Allocated (realloc) %zu bytes (func \"%s\":%d)", __size, caller, line);
+
+        if (ri.current_allocation_index >= ri.allocation_table_length){
+            ri.allocation_table_length += 50;
+            ri.allocation_search_limit += 50;
+            
+            ri.allocation_table = RI_realloc(ri.allocation_table, sizeof(RI_memory_allocation) * ri.allocation_table_length);
+        }
+
+        ri.allocation_table[ri.current_allocation_index].allocated = 1;
+        ri.allocation_table[ri.current_allocation_index].reallocated_alloc = 1;
+        ri.allocation_table[ri.current_allocation_index].reallocated_free = 0;
+        ri.allocation_table[ri.current_allocation_index].freed = 0;
+        ri.allocation_table[ri.current_allocation_index].pointer = pointer;        
+        ri.allocation_table[ri.current_allocation_index].size = __size;
+
+        ri.current_allocation_index++;
+    }
+
+    return pointer;
+}
+
+void* written_RI_malloc(size_t __size, const char *caller, int line){
+    void *pointer = malloc(__size);
+    
+    if (ri.debug_memory) {
+        debug("[Memory Manager] Allocated (malloc) %zu bytes (func \"%s\":%d)", __size, caller, line);
+
+        if (ri.current_allocation_index >= ri.allocation_table_length){
+            ri.allocation_table_length += 50;
+            ri.allocation_search_limit += 50;
+            
+            ri.allocation_table = RI_realloc(ri.allocation_table, sizeof(RI_memory_allocation) * ri.allocation_table_length);
+        }
+
+        ri.allocation_table[ri.current_allocation_index].allocated = 1;
+        ri.allocation_table[ri.current_allocation_index].reallocated_free = 0;
+        ri.allocation_table[ri.current_allocation_index].reallocated_alloc = 0;
+        ri.allocation_table[ri.current_allocation_index].freed = 0;
+        ri.allocation_table[ri.current_allocation_index].pointer = pointer;        
+        ri.allocation_table[ri.current_allocation_index].size = __size;
+
+        ri.current_allocation_index++;
+    }
+
+    return pointer;
+}
+
+void* written_RI_calloc(size_t __nmemb, size_t __size, const char *caller, int line){
+    void *pointer = calloc(__nmemb, __size);
+    
+    if (ri.debug_memory) {
+        debug("[Memory Manager] Allocated (calloc) %zu bytes (func \"%s\":%d)", __size * __nmemb, caller, line);
+
+        if (ri.current_allocation_index >= ri.allocation_table_length){
+            ri.allocation_table_length += 50;
+            ri.allocation_search_limit += 50;
+            
+            ri.allocation_table = RI_realloc(ri.allocation_table, sizeof(RI_memory_allocation) * ri.allocation_table_length);
+        }
+
+        ri.allocation_table[ri.current_allocation_index].allocated = 1;
+        ri.allocation_table[ri.current_allocation_index].reallocated_free = 0;
+        ri.allocation_table[ri.current_allocation_index].reallocated_alloc = 0;
+        ri.allocation_table[ri.current_allocation_index].freed = 0;
+        ri.allocation_table[ri.current_allocation_index].pointer = pointer;        
+        ri.allocation_table[ri.current_allocation_index].size = __size * __nmemb;
+            
+        ri.current_allocation_index++;
+    }
+
+    return pointer;
+}
+
+void written_RI_free(void *__ptr, const char *caller, int line){
+    if (ri.debug_memory) {
+        size_t size = 0;
+        
+        int current_allocation_index = 0;
+        int checking = 1;
+        
+        while (checking){
+            if (!ri.allocation_table[current_allocation_index].reallocated_free && ri.allocation_table[current_allocation_index].pointer == __ptr){
+                size = ri.allocation_table[current_allocation_index].size;
+                ri.allocation_table[current_allocation_index].freed = 1;
+                
+                checking = 0;
+            }
+            
+            current_allocation_index++;
+            
+            if (current_allocation_index >= ri.allocation_search_limit){
+                checking = 0;
+            }
+        }
+        
+        debug("[Memory Manager] Freed %zu bytes  (func \"%s\":%d)", size, caller, line);
+    }
+ 
+    free(__ptr);
+}
+
 int RI_add_actors_to_scene(int RI_number_of_actors_to_add_to_scene, RI_actor *actors, RI_scene *scene){
     int previous_actor_count = scene->actor_count;
 
     scene->actor_count += RI_number_of_actors_to_add_to_scene;
 
-    scene->actors = realloc(scene->actors, sizeof(RI_actor *) * scene->actor_count);
+    scene->actors = RI_realloc(scene->actors, sizeof(RI_actor *) * scene->actor_count);
 
     for (int i = 0; i < RI_number_of_actors_to_add_to_scene; ++i){
         scene->actors[i + previous_actor_count] = &actors[i];
@@ -44,7 +172,7 @@ int RI_add_actors_to_scene(int RI_number_of_actors_to_add_to_scene, RI_actor *ac
 }
 
 RI_scene* RI_request_scene(){
-    RI_scene* new_scene = malloc(sizeof(RI_scene));
+    RI_scene* new_scene = RI_malloc(sizeof(RI_scene));
 
     new_scene->actor_count = 0;
     new_scene->actors = NULL;
@@ -57,7 +185,7 @@ RI_actor* RI_request_actors(int RI_number_of_requested_actors){
     int previous_actor_count = ri.actor_count;
     ri.actor_count += RI_number_of_requested_actors;
     
-    ri.actors = realloc(ri.actors, sizeof(RI_actor) * ri.actor_count);
+    ri.actors = RI_realloc(ri.actors, sizeof(RI_actor) * ri.actor_count);
 
     for (int i = 0; i < RI_number_of_requested_actors; ++i){
         RI_actor new_actor = {0};
@@ -74,7 +202,7 @@ RI_actor* RI_request_actors(int RI_number_of_requested_actors){
 RI_material* RI_request_materials(int RI_number_of_requested_materials){
     ri.material_count += RI_number_of_requested_materials;
 
-    ri.materials = realloc(ri.materials, sizeof(RI_material) * ri.material_count);
+    ri.materials = RI_realloc(ri.materials, sizeof(RI_material) * ri.material_count);
 
     return ri.materials;
 }
@@ -84,7 +212,7 @@ RI_texture* RI_request_textures(int RI_number_of_requested_textures, RI_texture_
 
     ri.loaded_texture_count += RI_number_of_requested_textures;
 
-    ri.loaded_textures = realloc(ri.loaded_textures, sizeof(RI_texture) * ri.loaded_texture_count);
+    ri.loaded_textures = RI_realloc(ri.loaded_textures, sizeof(RI_texture) * ri.loaded_texture_count);
     
     for (int i = 0; i < RI_number_of_requested_textures; i++){
         RI_texture new_texture = {0};
@@ -97,7 +225,7 @@ RI_texture* RI_request_textures(int RI_number_of_requested_textures, RI_texture_
             new_texture = ri.error_texture;
         }
         else {
-            new_texture.image_buffer = malloc(sizeof(uint32_t) * new_texture.resolution.x * new_texture.resolution.y);
+            new_texture.image_buffer = RI_malloc(sizeof(uint32_t) * new_texture.resolution.x * new_texture.resolution.y);
 
             for (int i = 0; i < new_texture.resolution.x * new_texture.resolution.y; ++i){
                 unsigned char r = temp_texture[i * 4];
@@ -125,10 +253,10 @@ RI_mesh* RI_request_meshes(int RI_number_of_requested_meshes, char **filenames, 
     if (!RI_return_just_mesh) {
         ri.loaded_mesh_count += RI_number_of_requested_meshes;
 
-        ri.loaded_meshes = realloc(ri.loaded_meshes, sizeof(RI_mesh) * ri.loaded_mesh_count);
+        ri.loaded_meshes = RI_realloc(ri.loaded_meshes, sizeof(RI_mesh) * ri.loaded_mesh_count);
     }
     else {
-        mesh = malloc(sizeof(RI_mesh));
+        mesh = RI_malloc(sizeof(RI_mesh));
     }
 
     for (int i = 0; i < RI_number_of_requested_meshes; i++){
@@ -160,10 +288,10 @@ RI_mesh* RI_request_meshes(int RI_number_of_requested_meshes, char **filenames, 
         
         fclose(file);
         
-        new_mesh_data_struct.faces = malloc(sizeof(RI_face) * new_mesh_data_struct.face_count);
-        new_mesh_data_struct.vertex_positions = malloc(sizeof(RI_vector_3f) * new_mesh_data_struct.vertex_count);
-        new_mesh_data_struct.normals = malloc(sizeof(RI_vector_3f) * new_mesh_data_struct.normal_count);
-        new_mesh_data_struct.uvs = malloc(sizeof(RI_vector_2f) * new_mesh_data_struct.uv_count);
+        new_mesh_data_struct.faces = RI_malloc(sizeof(RI_face) * new_mesh_data_struct.face_count);
+        new_mesh_data_struct.vertex_positions = RI_malloc(sizeof(RI_vector_3f) * new_mesh_data_struct.vertex_count);
+        new_mesh_data_struct.normals = RI_malloc(sizeof(RI_vector_3f) * new_mesh_data_struct.normal_count);
+        new_mesh_data_struct.uvs = RI_malloc(sizeof(RI_vector_2f) * new_mesh_data_struct.uv_count);
 
         FILE *file_again = fopen(filenames[i], "r");
 
@@ -336,7 +464,7 @@ int RI_render(RI_scene *scene, RI_texture *target_texture){
                 total_faces += scene->actors[actor_index]->mesh_reference->face_count;
             }
 
-            scene->faces_to_render = malloc(sizeof(RI_renderable_face) * total_faces * 2); // x2 because faces can be split
+            scene->faces_to_render = RI_malloc(sizeof(RI_renderable_face) * total_faces * 2); // x2 because faces can be split
             scene->face_count = total_faces;
         }
 
@@ -787,12 +915,12 @@ int sdl_init(int RI_window_width, int RI_window_height, char *RI_window_title){
     ri.window_height = RI_window_height;
     ri.window_title = RI_window_title;
 
-    ri.frame_buffer = malloc(sizeof(RI_texture));
+    ri.frame_buffer = RI_malloc(sizeof(RI_texture));
 
-    ri.frame_buffer->image_buffer = malloc(sizeof(uint32_t) * ri.window_width * ri.window_height);
+    ri.frame_buffer->image_buffer = RI_malloc(sizeof(uint32_t) * ri.window_width * ri.window_height);
     ri.frame_buffer->resolution = (RI_vector_2){ri.window_width, ri.window_height};
     
-    ri.z_buffer = malloc(sizeof(double) * ri.window_width * ri.window_height);
+    ri.z_buffer = RI_malloc(sizeof(double) * ri.window_width * ri.window_height);
 
     SDL_Init(SDL_INIT_VIDEO);
 
@@ -808,6 +936,29 @@ int sdl_init(int RI_window_width, int RI_window_height, char *RI_window_title){
 int RI_init(int RI_window_width, int RI_window_height, char *RI_window_title){
     ri.running = 1;
 
+    ri.prefix = "[RasterIver] ";
+
+    if (ri.debug_memory){
+        ri.current_allocation_index = 0;
+        ri.allocation_search_limit = 100;
+        ri.allocation_table_length = 100;
+        
+        size_t __size = sizeof(RI_memory_allocation) * ri.allocation_table_length;
+
+        ri.allocation_table = malloc(__size);
+    
+        debug("[Memory Manager] Allocated (malloc) %zu bytes", __size);
+
+        ri.allocation_table[ri.current_allocation_index].allocated = 1;
+        ri.allocation_table[ri.current_allocation_index].freed = 0;
+        ri.allocation_table[ri.current_allocation_index].reallocated_alloc = 0;
+        ri.allocation_table[ri.current_allocation_index].reallocated_free = 0;
+        ri.allocation_table[ri.current_allocation_index].pointer = ri.allocation_table;        
+        ri.allocation_table[ri.current_allocation_index].size = __size;
+
+        ri.current_allocation_index++;
+    }
+
     opencl_init();
 
     sdl_init(RI_window_width, RI_window_height, RI_window_title);
@@ -816,19 +967,17 @@ int RI_init(int RI_window_width, int RI_window_height, char *RI_window_title){
     ri.loaded_texture_count = 0;
     ri.actor_count = 0;
 
-    ri.prefix = "[RasterIver] ";
-
-    char **error_cube_file = malloc(sizeof(char *));
+    char **error_cube_file = RI_malloc(sizeof(char *));
     error_cube_file[0] = "objects/unit_cube.obj";
 
     RI_mesh* error_mesh = RI_request_meshes(1, error_cube_file, 1);
 
     ri.error_mesh = *error_mesh;
 
-    free(error_mesh);
-    free(error_cube_file);
+    RI_free(error_mesh);
+    RI_free(error_cube_file);
 
-    ri.error_texture.image_buffer = malloc(sizeof(uint32_t));
+    ri.error_texture.image_buffer = RI_malloc(sizeof(uint32_t));
 
     ri.error_texture.image_buffer[0] = 0xFFFF00FF;
     ri.error_texture.resolution = (RI_vector_2){1, 1};
@@ -844,11 +993,47 @@ int RI_stop(int result){
     debug("Stopping...");
     
     for (int mesh_index = 0; mesh_index < ri.loaded_mesh_count; ++mesh_index){
-        free(ri.loaded_meshes[mesh_index].faces); // free face array
+        RI_free(ri.loaded_meshes[mesh_index].faces); // free face array
     }
 
     for (int texture_index = 0; texture_index < ri.loaded_texture_count; ++texture_index){
-        free(ri.loaded_textures[texture_index].image_buffer);
+        RI_free(ri.loaded_textures[texture_index].image_buffer);
+    }
+
+    if (ri.debug_memory){
+        size_t total_allocated = 0;
+        size_t allocated = 0;
+        size_t alloc_realloc = 0;
+        size_t total_freed = 0;
+        size_t freed = 0;
+        size_t reallocated = 0;
+
+        for (int i = 1; i < ri.allocation_table_length; ++i) {
+            if (ri.allocation_table[i].allocated != 1) continue;
+            
+            if (!ri.allocation_table[i].reallocated_free && !ri.allocation_table[i].freed && !ri.allocation_table[i].reallocated_alloc)
+                allocated += ri.allocation_table[i].size;
+            else if (ri.allocation_table[i].reallocated_alloc)
+                alloc_realloc += ri.allocation_table[i].size;
+            else if (ri.allocation_table[i].freed)
+                freed += ri.allocation_table[i].size;
+            else if (ri.allocation_table[i].reallocated_free)
+                reallocated += ri.allocation_table[i].size;
+        }
+
+        total_allocated = allocated + alloc_realloc;
+        total_freed = freed + reallocated;
+
+        debug("[Memory Manager] [Total Bytes Allocated] M(c)alloc & Realloc(): %zu -- M(c)alloc(): %zu -- Realloc(): %zu: %zu", total_allocated, allocated, alloc_realloc);
+        debug("[Memory Manager] [Total Bytes Freed] Free() & Realloc(): %zu -- Free(): %zu -- Realloc(): %zu", total_freed, freed, reallocated);
+
+        if (allocated != freed){
+            debug("[Memory Manager] %zu bytes not freed", (allocated + alloc_realloc) - freed);
+        }
+    
+        debug("[Memory Manager] Freeing allocation table...");
+    
+        RI_free(ri.allocation_table);
     }
 
     exit(result);

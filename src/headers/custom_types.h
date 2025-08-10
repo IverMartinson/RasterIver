@@ -2,6 +2,7 @@
 #define CUSTOM_TYPES_H
 
 #include "math.h"
+#include <stddef.h>
 
 // ----- Meshes -----
 typedef struct {
@@ -104,5 +105,15 @@ typedef struct {
     RI_renderable_face *faces_to_render;
     int face_count;
 } RI_scene;
+
+// ----- Memory Manager -----
+typedef struct {
+    size_t size;
+    void *pointer;
+    int reallocated_free;
+    int reallocated_alloc;
+    int freed;
+    int allocated;
+} RI_memory_allocation;
 
 #endif

@@ -1,12 +1,14 @@
 #include "../headers/rasteriver.h"
 
 int main(){
+    // get RasterIver context
+    RasterIver *ri = RI_get_ri();
+
+    ri->debug_memory = 1;
+
     RI_init(1000, 1000, "This is RasterIver 2.0!!");
 
     int running = 1;
-
-    // get RasterIver context
-    RasterIver *ri = RI_get_ri();
 
     // data for loading files
     char *filenames[] = {"objects/unit_cube.obj", "objects/cow-nonormals.obj", "objects/test_guy.obj", "objects/unit_plane.obj"};
@@ -21,10 +23,10 @@ int main(){
 
     // meshes
     RI_mesh* unit_plane_mesh = &meshes[3];
-    RI_mesh* test_object_mesh = &meshes[1];
+    RI_mesh* test_object_mesh = &meshes[0];
 
     // textures
-    RI_texture* test_object_texture = &textures[2];
+    RI_texture* test_object_texture = &textures[0];
     RI_texture* floor_texture = &textures[1];
 
     // materials
@@ -52,7 +54,7 @@ int main(){
     RI_actor* floor = &actors[0];
     floor->material_reference = floor_material;
     floor->mesh_reference = unit_plane_mesh;
-    floor->transform.scale = (RI_vector_3f){10000, 100, 10000};
+    floor->transform.scale = (RI_vector_3f){1000, 100, 1000};
     floor->transform.position = (RI_vector_3f){0, -100, 200};
     floor->transform.rotation = (RI_vector_4f){0, 1, 0, 0};
 
@@ -85,11 +87,11 @@ int main(){
     double y_rotation = 0;
 
     while (running){
-        // test_object->transform.position = (RI_vector_3f){sin(ri->frame * 0.1) * 50 - 100, sin(ri->frame * 0.2 + 0.4) * 50, sin(ri->frame * 0.1) * 10 + 200};
+        test_object->transform.position = (RI_vector_3f){sin(ri->frame * 0.1) * 50 - 100, sin(ri->frame * 0.2 + 0.4) * 50, sin(ri->frame * 0.1) * 10 + 200};
 
         RI_euler_rotation_to_quaternion(&screen->transform.rotation, (RI_vector_3f){-3.14159 / 2, 0, ri->frame * 0.03});
 
-        // scene->camera_position = (RI_vector_3f){cos(ri->frame * 0.07) * 10 * sin(ri->frame * 0.2), sin(ri->frame * 0.07) * 10 * sin(ri->frame * 0.2), -300};
+        scene->camera_position = (RI_vector_3f){cos(ri->frame * 0.07) * 10 * sin(ri->frame * 0.2), sin(ri->frame * 0.07) * 10 * sin(ri->frame * 0.2), -300};
         scene->camera_position = (RI_vector_3f){0, 0, -300};
         scene->camera_rotation = (RI_vector_4f){0, 1, 0, 0};
 

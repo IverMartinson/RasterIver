@@ -49,6 +49,13 @@ typedef struct {
     int running;
     int frame;
     char* prefix;
+
+    // memory manager
+    RI_memory_allocation* allocation_table;
+    int debug_memory;
+    int allocation_search_limit;
+    int current_allocation_index;
+    int allocation_table_length;
 } RasterIver;
 
 RasterIver* RI_get_ri();
