@@ -751,16 +751,21 @@ int RI_render(RI_scene *scene, RI_texture *target_texture){
             }
         }
 
-        SDL_UpdateTexture(ri.texture, NULL, ri.frame_buffer->image_buffer, ri.window_width * sizeof(uint32_t));
-
-        SDL_RenderClear(ri.renderer);
-        SDL_RenderCopyEx(ri.renderer, ri.texture, NULL, NULL, 0, NULL, SDL_FLIP_VERTICAL);
-    
-        SDL_RenderPresent(ri.renderer);
     }
     else{
         RI_stop(0);
     }
+
+    return 0;
+}
+
+void RI_tick(){
+    SDL_UpdateTexture(ri.texture, NULL, ri.frame_buffer->image_buffer, ri.window_width * sizeof(uint32_t));
+
+    SDL_RenderClear(ri.renderer);
+    SDL_RenderCopyEx(ri.renderer, ri.texture, NULL, NULL, 0, NULL, SDL_FLIP_VERTICAL);
+
+    SDL_RenderPresent(ri.renderer);
 
     // handle SDL events
     while (SDL_PollEvent(&ri.event)){
@@ -771,8 +776,6 @@ int RI_render(RI_scene *scene, RI_texture *target_texture){
     }
 
     ++ri.frame;
-
-    return 0;
 }
 
 int opencl_init(){

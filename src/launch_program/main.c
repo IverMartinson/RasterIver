@@ -101,5 +101,7 @@ int main(){
         y_rotation += 0.1;
 
         RI_render(scene, ri->frame_buffer);
+
+        RI_tick();
     }
 }
