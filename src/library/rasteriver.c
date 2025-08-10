@@ -228,12 +228,14 @@ RI_mesh* RI_request_meshes(int RI_number_of_requested_meshes, char **filenames, 
                 new_mesh_data_struct.faces[current_face_index].uv_1_index = uv_1_index - 1;
                 new_mesh_data_struct.faces[current_face_index].uv_2_index = uv_2_index - 1;
 
+                new_mesh_data_struct.faces[current_face_index].should_render = 1;
+
                 ++current_face_index;
             }
             else if (line[0] == 'v' && line[1] == ' ') {
-                float x, y, z;
+                double x, y, z;
                 
-                sscanf(line, "v %f %f %f", &x, &y, &z);
+                sscanf(line, "v %lf %lf %lf", &x, &y, &z);
 
                 new_mesh_data_struct.vertex_positions[current_vertex_index].x = x;
                 new_mesh_data_struct.vertex_positions[current_vertex_index].y = y;
@@ -242,9 +244,9 @@ RI_mesh* RI_request_meshes(int RI_number_of_requested_meshes, char **filenames, 
                 ++current_vertex_index;
             } 
             else if (line[0] == 'v' && line[1] == 'n') {
-                float x, y, z;
+                double x, y, z;
                 
-                sscanf(line, "vn %f %f %f", &x, &y, &z);
+                sscanf(line, "vn %lf %lf %lf", &x, &y, &z);
 
                 new_mesh_data_struct.normals[current_normal_index].x = x;
                 new_mesh_data_struct.normals[current_normal_index].y = y;
@@ -253,9 +255,9 @@ RI_mesh* RI_request_meshes(int RI_number_of_requested_meshes, char **filenames, 
                 ++current_normal_index;
             }
             else if (line[0] == 'v' && line[1] == 't') {
-                float x, y, z;
+                double x, y, z;
 
-                sscanf(line, "vt %f %f %f", &x, &y, &z);
+                sscanf(line, "vt %lf %lf %lf", &x, &y, &z);
 
                 new_mesh_data_struct.uvs[current_uv_index].x = x;
                 new_mesh_data_struct.uvs[current_uv_index].y = y;
@@ -306,12 +308,12 @@ void quaternion_rotate(RI_vector_3f *position, RI_vector_4f rotation){
 }
 
 void RI_euler_rotation_to_quaternion(RI_vector_4f *quaternion, RI_vector_3f euler_rotation){
-    float cx = cosf(euler_rotation.x * 0.5f);
-    float sx = sinf(euler_rotation.x * 0.5f);
-    float cy = cosf(euler_rotation.y * 0.5f);
-    float sy = sinf(euler_rotation.y * 0.5f);
-    float cz = cosf(euler_rotation.z * 0.5f);
-    float sz = sinf(euler_rotation.z * 0.5f);
+    double cx = cosf(euler_rotation.x * 0.5f);
+    double sx = sinf(euler_rotation.x * 0.5f);
+    double cy = cosf(euler_rotation.y * 0.5f);
+    double sy = sinf(euler_rotation.y * 0.5f);
+    double cz = cosf(euler_rotation.z * 0.5f);
+    double sz = sinf(euler_rotation.z * 0.5f);
 
     quaternion->w = cx * cy * cz + sx * sy * sz;
     quaternion->x = sx * cy * cz - cx * sy * sz;
@@ -322,8 +324,8 @@ void RI_euler_rotation_to_quaternion(RI_vector_4f *quaternion, RI_vector_3f eule
 int RI_render(RI_scene *scene, RI_texture *target_texture){
     // do rendering stuff
     if (ri.running){
-        float horizontal_fov_factor = target_texture->resolution.x / tanf(0.5 * scene->FOV);
-        float vertical_fov_factor = target_texture->resolution.y / tanf(0.5 * scene->FOV);
+        double horizontal_fov_factor = target_texture->resolution.x / tanf(0.5 * scene->FOV);
+        double vertical_fov_factor = target_texture->resolution.y / tanf(0.5 * scene->FOV);
 
         scene->min_clip = scene->minimum_clip_distance;
 
@@ -469,8 +471,8 @@ int RI_render(RI_scene *scene, RI_texture *target_texture){
                             uv_b = &cur_r_face->uv_1;
                         }
                     
-                        float fraction_a_to_unclip = (scene->min_clip - unclipped_point->z) / (point_a->z - unclipped_point->z);                          
-                        float fraction_b_to_unclip = (scene->min_clip - unclipped_point->z) / (point_b->z - unclipped_point->z);  
+                        double fraction_a_to_unclip = (scene->min_clip - unclipped_point->z) / (point_a->z - unclipped_point->z);                          
+                        double fraction_b_to_unclip = (scene->min_clip - unclipped_point->z) / (point_b->z - unclipped_point->z);  
 
                         vector_3f_lerp(*unclipped_point, *point_a, point_a, fraction_a_to_unclip);
                         vector_3f_lerp(*unclipped_point, *point_b, point_b, fraction_b_to_unclip);
@@ -528,8 +530,8 @@ int RI_render(RI_scene *scene, RI_texture *target_texture){
                             uv_b = cur_r_face->uv_1;
                         }
 
-                        float fraction_a_to_clip = (scene->min_clip - clipped_point.z) / (point_a.z - clipped_point.z);                        
-                        float fraction_b_to_clip = (scene->min_clip - clipped_point.z) / (point_b.z - clipped_point.z);                        
+                        double fraction_a_to_clip = (scene->min_clip - clipped_point.z) / (point_a.z - clipped_point.z);                        
+                        double fraction_b_to_clip = (scene->min_clip - clipped_point.z) / (point_b.z - clipped_point.z);                        
 
                         RI_vector_3f new_point_a, new_point_b;  // the new points that move along the polygon's edge to match the z value of min_clip.
                         RI_vector_3f new_normal_a, new_normal_b;  // they come from the clipped point which was originally only 1
@@ -647,14 +649,12 @@ int RI_render(RI_scene *scene, RI_texture *target_texture){
             }
         }
 
-        scene->face_count = current_renderable_face_index;
-
         for (int pixel_index = 0; pixel_index < target_texture->resolution.x * target_texture->resolution.y; ++pixel_index){
             target_texture->image_buffer[pixel_index] = 0xFF333333;
             ri.z_buffer[pixel_index] = 999999999;
         }
 
-        for (int face_index = 0; face_index < scene->face_count * 2; ++face_index){
+        for (int face_index = 0; face_index < current_renderable_face_index * 2; ++face_index){
             RI_renderable_face *current_face = &scene->faces_to_render[face_index];
             
             if (!current_face->should_render) continue;
@@ -692,7 +692,7 @@ int RI_render(RI_scene *scene, RI_texture *target_texture){
 
                     if (x < 0 || x >= target_texture->resolution.x || y < 0 || y >= target_texture->resolution.y) continue;
 
-                    float denominator, w0, w1, w2;
+                    double denominator, w0, w1, w2;
                 
                     denominator = (pos_1->y - pos_2->y) * (pos_0->x - pos_2->x) + (pos_2->x - pos_1->x) * (pos_0->y - pos_2->y);
                     w0 = ((pos_1->y - pos_2->y) * (pixel_x_index - pos_2->x) + (pos_2->x - pos_1->x) * (pixel_y_index - pos_2->y)) / denominator;
@@ -703,8 +703,8 @@ int RI_render(RI_scene *scene, RI_texture *target_texture){
                         continue;
                     }
 
-                    float w_over_z = (w0 / pos_0->z + w1 / pos_1->z + w2 / pos_2->z); 
-                    float interpolated_z = 1.0 / w_over_z;
+                    double w_over_z = (w0 / pos_0->z + w1 / pos_1->z + w2 / pos_2->z); 
+                    double interpolated_z = 1.0 / w_over_z;
                 
                     if (!(w0 >= 0 && w1 >= 0 && w2 >= 0) || (mat->flags & RI_MATERIAL_WIREFRAME && (w0 >= mat->wireframe_width && w1 >= mat->wireframe_width && w2 >= mat->wireframe_width))){
                         continue;
@@ -737,7 +737,7 @@ int RI_render(RI_scene *scene, RI_texture *target_texture){
                     }
 
                     // tri culling debug
-                    if (face_index >= scene->face_count) pixel_color = 0xFF7777FF;
+                    // if (face_index >= current_renderable_face_index) pixel_color = 0xFF7777FF;
                     // if (face_index < scene->face_count) pixel_color = 0xFF77FF77;
                 
                     // flip the texture
@@ -789,7 +789,7 @@ int sdl_init(int RI_window_width, int RI_window_height, char *RI_window_title){
     ri.frame_buffer->image_buffer = malloc(sizeof(uint32_t) * ri.window_width * ri.window_height);
     ri.frame_buffer->resolution = (RI_vector_2){ri.window_width, ri.window_height};
     
-    ri.z_buffer = malloc(sizeof(float) * ri.window_width * ri.window_height);
+    ri.z_buffer = malloc(sizeof(double) * ri.window_width * ri.window_height);
 
     SDL_Init(SDL_INIT_VIDEO);
 

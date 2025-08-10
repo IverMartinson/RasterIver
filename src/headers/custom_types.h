@@ -66,7 +66,7 @@ typedef struct {
     RI_texture *bump_map_reference;
     RI_texture *normal_map_reference;
     unsigned int albedo;
-    float wireframe_width;
+    double wireframe_width;
     uint64_t flags;
 } RI_material;
 
@@ -96,9 +96,9 @@ typedef struct {
 typedef struct {
     RI_actor **actors;
     int actor_count;
-    float FOV;
-    float minimum_clip_distance;
-    float min_clip;
+    double FOV;
+    double minimum_clip_distance;
+    double min_clip;
     RI_vector_3f camera_position;
     RI_vector_4f camera_rotation;
     RI_renderable_face *faces_to_render;

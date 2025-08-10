@@ -10,7 +10,7 @@
 typedef struct {
     // rendering (non SDL)
     RI_texture *frame_buffer;
-    float *z_buffer;
+    double *z_buffer;
  
     int window_width;
     int window_height;
