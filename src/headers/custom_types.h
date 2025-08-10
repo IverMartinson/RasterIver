@@ -97,6 +97,7 @@ typedef struct {
     RI_actor **actors;
     int actor_count;
     float FOV;
+    float minimum_clip_distance;
     float min_clip;
     RI_vector_3f camera_position;
     RI_vector_4f camera_rotation;

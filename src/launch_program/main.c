@@ -29,12 +29,12 @@ int main(){
 
     // materials
     RI_material* floor_material = &materials[0];
-    floor_material->flags = RI_MATERIAL_HAS_TEXTURE;
+    floor_material->flags = RI_MATERIAL_HAS_TEXTURE | RI_MATERIAL_DOUBLE_SIDED;
     floor_material->texture_reference = floor_texture;
     floor_material->albedo = 0xFFFFFFFF;
     
     RI_material* wall_material = &materials[1];
-    wall_material->flags = 0;
+    wall_material->flags = RI_MATERIAL_DOUBLE_SIDED;
     wall_material->albedo = 0xFF7777FF;
 
     RI_material* bill_cube_material = &materials[2];
@@ -43,7 +43,7 @@ int main(){
     bill_cube_material->albedo = 0xFFFFFFFF;
 
     RI_material* screen_material = &materials[3];
-    screen_material->flags = RI_MATERIAL_HAS_TEXTURE;
+    screen_material->flags = RI_MATERIAL_HAS_TEXTURE | RI_MATERIAL_DOUBLE_SIDED;
     screen_material->texture_reference = ri->frame_buffer;
     screen_material->albedo = 0xFFFFFFFF;
 
@@ -51,7 +51,7 @@ int main(){
     RI_actor* floor = &actors[0];
     floor->material_reference = floor_material;
     floor->mesh_reference = unit_plane_mesh;
-    floor->transform.scale = (RI_vector_3f){100, 100, 100};
+    floor->transform.scale = (RI_vector_3f){100, 100, 500};
     floor->transform.position = (RI_vector_3f){0, -100, 200};
     floor->transform.rotation = (RI_vector_4f){0, 1, 0, 0};
 
@@ -79,7 +79,7 @@ int main(){
     RI_add_actors_to_scene(4, actors, scene);
 
     scene->FOV = 1.5; // 90 degrees in radians
-    scene->min_clip = 100;
+    scene->minimum_clip_distance = 0.1;
 
     float y_rotation = 0;
 
@@ -88,7 +88,7 @@ int main(){
 
         RI_euler_rotation_to_quaternion(&screen->transform.rotation, (RI_vector_3f){-3.14159 / 2, 0, ri->frame * 0.03});
 
-        scene->camera_position = (RI_vector_3f){cos(ri->frame * 0.07) * 10 * sin(ri->frame * 0.2), sin(ri->frame * 0.07) * 10 * sin(ri->frame * 0.2), -200};
+        scene->camera_position = (RI_vector_3f){cos(ri->frame * 0.07) * 10 * sin(ri->frame * 0.2), sin(ri->frame * 0.07) * 10 * sin(ri->frame * 0.2), -300};
         scene->camera_rotation = (RI_vector_4f){0, 1, 0, 0};
 
         RI_euler_rotation_to_quaternion(&floor->transform.rotation, (RI_vector_3f){0, y_rotation, 0});

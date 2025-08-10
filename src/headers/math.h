@@ -26,6 +26,11 @@ typedef struct {
     float z; 
 } RI_vector_4f;
 
+void vector_2f_times_float(RI_vector_2f *vector, float value){
+    vector->x *= value;
+    vector->y *= value;
+}
+
 void vector_3f_times_float(RI_vector_3f *vector, float value){
     vector->x *= value;
     vector->y *= value;
@@ -36,6 +41,11 @@ void vector_3f_hadamard(RI_vector_3f *multiplicand, RI_vector_3f multiplicator){
     multiplicand->x *= multiplicator.x;
     multiplicand->y *= multiplicator.y;
     multiplicand->z *= multiplicator.z;
+}
+
+void vector_2f_element_wise_add(RI_vector_2f *addend_a, RI_vector_2f addend_b){
+    addend_a->x += addend_b.x;
+    addend_a->y += addend_b.y;
 }
 
 void vector_3f_element_wise_add(RI_vector_3f *addend_a, RI_vector_3f addend_b){
@@ -73,5 +83,30 @@ void quaternion_multiply(RI_vector_4f* a, RI_vector_4f b){
 
     *a = (RI_vector_4f){w, x, y, z};
 }
+
+void vector_2f_lerp(RI_vector_2f vector_a, RI_vector_2f vector_b, RI_vector_2f *result, float w1){
+    float w0 = 1.0 - w1;
+
+    vector_2f_times_float(result, 0);
+
+    vector_2f_times_float(&vector_a, w0);
+    vector_2f_times_float(&vector_b, w1);
+
+    vector_2f_element_wise_add(result, vector_a);
+    vector_2f_element_wise_add(result, vector_b);
+}
+
+void vector_3f_lerp(RI_vector_3f vector_a, RI_vector_3f vector_b, RI_vector_3f *result, float w1){
+    float w0 = 1.0 - w1;
+
+    vector_3f_times_float(result, 0);
+
+    vector_3f_times_float(&vector_a, w0);
+    vector_3f_times_float(&vector_b, w1);
+
+    vector_3f_element_wise_add(result, vector_a);
+    vector_3f_element_wise_add(result, vector_b);
+}
+
 
 #endif

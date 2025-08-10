@@ -325,6 +325,8 @@ int RI_render(RI_scene *scene, RI_texture *target_texture){
         float horizontal_fov_factor = target_texture->resolution.x / tanf(0.5 * scene->FOV);
         float vertical_fov_factor = target_texture->resolution.y / tanf(0.5 * scene->FOV);
 
+        scene->min_clip = scene->minimum_clip_distance;
+
         if (!scene->faces_to_render){
             int total_faces = 0;
             
@@ -336,7 +338,10 @@ int RI_render(RI_scene *scene, RI_texture *target_texture){
             scene->face_count = total_faces;
         }
 
+        memset(scene->faces_to_render, 0, sizeof(RI_renderable_face) * scene->face_count * 2);
+
         int current_renderable_face_index = 0;
+        int current_split_renderable_face_index = 0;
 
         for (int actor_index = 0; actor_index < scene->actor_count; ++actor_index){
             RI_actor *current_actor = scene->actors[actor_index];
@@ -402,6 +407,213 @@ int RI_render(RI_scene *scene, RI_texture *target_texture){
                 vector_3f_element_wise_subtract(&cur_r_face->position_1, scene->camera_position);
                 vector_3f_element_wise_subtract(&cur_r_face->position_2, scene->camera_position);
 
+                RI_vector_3f *pos_0 = &cur_r_face->position_0;
+                RI_vector_3f *pos_1 = &cur_r_face->position_1;
+                RI_vector_3f *pos_2 = &cur_r_face->position_2;
+
+                int is_0_clipped = pos_0->z < scene->min_clip;
+                int is_1_clipped = pos_1->z < scene->min_clip;
+                int is_2_clipped = pos_2->z < scene->min_clip;
+
+                int clip_count = is_0_clipped + is_1_clipped + is_2_clipped;
+
+                cur_r_face->should_render = 1;
+
+                switch(clip_count){
+                    case 3: // ignore polygon, it's behind the camera
+                        continue;
+                        break;
+                    
+                    case 2:{ // shrink poylgon
+                        RI_vector_3f *unclipped_point, *point_a, *point_b;
+                        RI_vector_3f *unclipped_normal, *normal_a, *normal_b;
+                        RI_vector_2f *unclipped_uv, *uv_a, *uv_b;
+
+                        if (!is_0_clipped){ 
+                            unclipped_point = &cur_r_face->position_0;
+                            point_a = &cur_r_face->position_1;
+                            point_b = &cur_r_face->position_2;
+                            
+                            unclipped_normal = &cur_r_face->normal_0;
+                            normal_a = &cur_r_face->normal_1;
+                            normal_b = &cur_r_face->normal_2;
+                        
+                            unclipped_uv = &cur_r_face->uv_0;
+                            uv_a = &cur_r_face->uv_1;
+                            uv_b = &cur_r_face->uv_2;
+                        }
+                        else if (!is_1_clipped){ 
+                            unclipped_point = &cur_r_face->position_1;
+                            point_a = &cur_r_face->position_2;
+                            point_b = &cur_r_face->position_0;
+                            
+                            unclipped_normal = &cur_r_face->normal_1;
+                            normal_a = &cur_r_face->normal_2;
+                            normal_b = &cur_r_face->normal_0;
+                        
+                            unclipped_uv = &cur_r_face->uv_1;
+                            uv_a = &cur_r_face->uv_2;
+                            uv_b = &cur_r_face->uv_0;
+                        }
+                        else if (!is_2_clipped){ 
+                            unclipped_point = &cur_r_face->position_2;
+                            point_a = &cur_r_face->position_0;
+                            point_b = &cur_r_face->position_1;
+                            
+                            unclipped_normal = &cur_r_face->normal_2;
+                            normal_a = &cur_r_face->normal_0;
+                            normal_b = &cur_r_face->normal_1;
+                        
+                            unclipped_uv = &cur_r_face->uv_2;
+                            uv_a = &cur_r_face->uv_0;
+                            uv_b = &cur_r_face->uv_1;
+                        }
+                    
+                        float fraction_a_to_unclip = (scene->min_clip - unclipped_point->z) / (point_a->z - unclipped_point->z);                          
+                        float fraction_b_to_unclip = (scene->min_clip - unclipped_point->z) / (point_b->z - unclipped_point->z);  
+
+                        vector_3f_lerp(*unclipped_point, *point_a, point_a, fraction_a_to_unclip);
+                        vector_3f_lerp(*unclipped_point, *point_b, point_b, fraction_b_to_unclip);
+
+                        vector_3f_lerp(*unclipped_normal, *normal_a, normal_a, fraction_a_to_unclip);
+                        vector_3f_lerp(*unclipped_normal, *normal_b, normal_b, fraction_b_to_unclip);
+
+                        vector_2f_lerp(*unclipped_uv, *uv_a, uv_a, fraction_a_to_unclip);
+                        vector_2f_lerp(*unclipped_uv, *uv_b, uv_b, fraction_b_to_unclip);
+
+                        break;}
+
+                    case 1: // split polygon
+                        RI_vector_3f clipped_point, point_a, point_b;
+                        RI_vector_3f clipped_normal, normal_a, normal_b;
+                        RI_vector_2f clipped_uv, uv_a, uv_b;
+
+                        if (is_0_clipped){ 
+                            clipped_point = cur_r_face->position_0;
+                            point_a = cur_r_face->position_1;
+                            point_b = cur_r_face->position_2;
+                            
+                            clipped_normal = cur_r_face->normal_0;
+                            normal_a = cur_r_face->normal_1;
+                            normal_b = cur_r_face->normal_2;
+                        
+                            clipped_uv = cur_r_face->uv_0;
+                            uv_a = cur_r_face->uv_1;
+                            uv_b = cur_r_face->uv_2;
+                        }
+                        else if (is_1_clipped){ 
+                            clipped_point = cur_r_face->position_1;
+                            point_a = cur_r_face->position_2;
+                            point_b = cur_r_face->position_0;
+                            
+                            clipped_normal = cur_r_face->normal_1;
+                            normal_a = cur_r_face->normal_2;
+                            normal_b = cur_r_face->normal_0;
+                        
+                            clipped_uv = cur_r_face->uv_1;
+                            uv_a = cur_r_face->uv_2;
+                            uv_b = cur_r_face->uv_0;
+                        }
+                        else if (is_2_clipped){ 
+                            clipped_point = cur_r_face->position_2;
+                            point_a = cur_r_face->position_0;
+                            point_b = cur_r_face->position_1;
+                            
+                            clipped_normal = cur_r_face->normal_2;
+                            normal_a = cur_r_face->normal_0;
+                            normal_b = cur_r_face->normal_1;
+                        
+                            clipped_uv = cur_r_face->uv_2;
+                            uv_a = cur_r_face->uv_0;
+                            uv_b = cur_r_face->uv_1;
+                        }
+
+                        float fraction_a_to_clip = (scene->min_clip - clipped_point.z) / (point_a.z - clipped_point.z);                        
+                        float fraction_b_to_clip = (scene->min_clip - clipped_point.z) / (point_b.z - clipped_point.z);                        
+
+                        RI_vector_3f new_point_a, new_point_b;  // the new points that move along the polygon's edge to match the z value of min_clip.
+                        RI_vector_3f new_normal_a, new_normal_b;  // they come from the clipped point which was originally only 1
+                        RI_vector_2f new_uv_a, new_uv_b;
+                        
+                        vector_3f_lerp(clipped_point, point_a, &new_point_a, fraction_a_to_clip);
+                        vector_3f_lerp(clipped_point, point_b, &new_point_b, fraction_b_to_clip);
+                        
+                        vector_3f_lerp(clipped_normal, normal_a, &new_normal_a, fraction_a_to_clip);
+                        vector_3f_lerp(clipped_normal, normal_b, &new_normal_b, fraction_b_to_clip);
+                        
+                        vector_2f_lerp(clipped_uv, uv_a, &new_uv_a, fraction_a_to_clip);
+                        vector_2f_lerp(clipped_uv, uv_b, &new_uv_b, fraction_b_to_clip);
+
+                        // okay, now we have a quad (in clockwise order, point a, point b, new point b, new point a)
+                        // quads are easy to turn into tris >w<
+
+                        RI_renderable_face *cur_r_split_face = &scene->faces_to_render[scene->face_count + current_split_renderable_face_index];
+
+                        cur_r_split_face->should_render = 1;
+
+                        cur_r_split_face->material_reference = cur_r_face->material_reference;
+
+                        cur_r_face->position_0 = point_a;
+                        cur_r_face->position_1 = point_b;
+                        cur_r_face->position_2 = new_point_a;
+
+                        cur_r_face->normal_0 = normal_a;
+                        cur_r_face->normal_1 = normal_b;
+                        cur_r_face->normal_2 = new_normal_a;
+
+                        cur_r_face->uv_0 = uv_a;
+                        cur_r_face->uv_1 = uv_b;
+                        cur_r_face->uv_2 = new_uv_a;
+
+                        cur_r_split_face->position_0 = point_b;
+                        cur_r_split_face->position_1 = new_point_b;
+                        cur_r_split_face->position_2 = new_point_a;
+
+                        cur_r_split_face->normal_0 = normal_b;
+                        cur_r_split_face->normal_1 = new_normal_b;
+                        cur_r_split_face->normal_2 = new_normal_a;
+
+                        cur_r_split_face->uv_0 = uv_b;
+                        cur_r_split_face->uv_1 = new_uv_b;
+                        cur_r_split_face->uv_2 = new_uv_a;
+
+                        cur_r_split_face->position_0.x = cur_r_split_face->position_0.x / cur_r_split_face->position_0.z * horizontal_fov_factor;
+                        cur_r_split_face->position_0.y = cur_r_split_face->position_0.y / cur_r_split_face->position_0.z * vertical_fov_factor;
+                        
+                        cur_r_split_face->position_1.x = cur_r_split_face->position_1.x / cur_r_split_face->position_1.z * horizontal_fov_factor;
+                        cur_r_split_face->position_1.y = cur_r_split_face->position_1.y / cur_r_split_face->position_1.z * vertical_fov_factor;
+
+                        cur_r_split_face->position_2.x = cur_r_split_face->position_2.x / cur_r_split_face->position_2.z * horizontal_fov_factor;
+                        cur_r_split_face->position_2.y = cur_r_split_face->position_2.y / cur_r_split_face->position_2.z * vertical_fov_factor;
+
+                        cur_r_split_face->min_screen_x = cur_r_split_face->position_0.x; 
+                        if (cur_r_split_face->position_1.x < cur_r_split_face->min_screen_x) cur_r_split_face->min_screen_x = cur_r_split_face->position_1.x;
+                        if (cur_r_split_face->position_2.x < cur_r_split_face->min_screen_x) cur_r_split_face->min_screen_x = cur_r_split_face->position_2.x;
+                        cur_r_split_face->min_screen_x = fmax(cur_r_split_face->min_screen_x, -target_texture->resolution.x / 2); 
+
+                        cur_r_split_face->max_screen_x = cur_r_split_face->position_0.x; 
+                        if (cur_r_split_face->position_1.x > cur_r_split_face->max_screen_x) cur_r_split_face->max_screen_x = cur_r_split_face->position_1.x;
+                        if (cur_r_split_face->position_2.x > cur_r_split_face->max_screen_x) cur_r_split_face->max_screen_x = cur_r_split_face->position_2.x;
+                        cur_r_split_face->max_screen_x = fmin(cur_r_split_face->max_screen_x, target_texture->resolution.x / 2); 
+
+                        cur_r_split_face->min_screen_y = cur_r_split_face->position_0.y; 
+                        if (cur_r_split_face->position_1.y < cur_r_split_face->min_screen_y) cur_r_split_face->min_screen_y = cur_r_split_face->position_1.y;
+                        if (cur_r_split_face->position_2.y < cur_r_split_face->min_screen_y) cur_r_split_face->min_screen_y = cur_r_split_face->position_2.y;
+                        cur_r_split_face->min_screen_y = fmax(cur_r_split_face->min_screen_y, -target_texture->resolution.y / 2); 
+
+                        cur_r_split_face->max_screen_y = cur_r_split_face->position_0.y; 
+                        if (cur_r_split_face->position_1.y > cur_r_split_face->max_screen_y) cur_r_split_face->max_screen_y = cur_r_split_face->position_1.y;
+                        if (cur_r_split_face->position_2.y > cur_r_split_face->max_screen_y) cur_r_split_face->max_screen_y = cur_r_split_face->position_2.y;
+                        cur_r_split_face->max_screen_y = fmin(cur_r_split_face->max_screen_y, target_texture->resolution.y / 2); 
+
+                        ++current_split_renderable_face_index;
+                        
+                        break;
+                    
+                    case 0: // no issues, ignore
+                        break;
+                }
+
                 cur_r_face->position_0.x = cur_r_face->position_0.x / cur_r_face->position_0.z * horizontal_fov_factor;
                 cur_r_face->position_0.y = cur_r_face->position_0.y / cur_r_face->position_0.z * vertical_fov_factor;
                 
@@ -411,33 +623,25 @@ int RI_render(RI_scene *scene, RI_texture *target_texture){
                 cur_r_face->position_2.x = cur_r_face->position_2.x / cur_r_face->position_2.z * horizontal_fov_factor;
                 cur_r_face->position_2.y = cur_r_face->position_2.y / cur_r_face->position_2.z * vertical_fov_factor;
 
-                RI_vector_3f *pos_0 = &cur_r_face->position_0;
-                RI_vector_3f *pos_1 = &cur_r_face->position_1;
-                RI_vector_3f *pos_2 = &cur_r_face->position_2;
-
-                if (pos_0->z < scene->min_clip || pos_1->z < scene->min_clip || pos_2->z < scene->min_clip){
-                    if (pos_0->z < scene->min_clip && pos_1->z < scene->min_clip && pos_2->z < scene->min_clip){
-                        continue;
-                    }
-
-                    // triangle culling code
-                }            
-            
                 cur_r_face->min_screen_x = pos_0->x; 
                 if (pos_1->x < cur_r_face->min_screen_x) cur_r_face->min_screen_x = pos_1->x;
                 if (pos_2->x < cur_r_face->min_screen_x) cur_r_face->min_screen_x = pos_2->x;
+                cur_r_face->min_screen_x = fmax(cur_r_face->min_screen_x, -target_texture->resolution.x / 2); 
 
                 cur_r_face->max_screen_x = pos_0->x; 
                 if (pos_1->x > cur_r_face->max_screen_x) cur_r_face->max_screen_x = pos_1->x;
                 if (pos_2->x > cur_r_face->max_screen_x) cur_r_face->max_screen_x = pos_2->x;
+                cur_r_face->max_screen_x = fmin(cur_r_face->max_screen_x, target_texture->resolution.x / 2); 
 
                 cur_r_face->min_screen_y = pos_0->y; 
                 if (pos_1->y < cur_r_face->min_screen_y) cur_r_face->min_screen_y = pos_1->y;
                 if (pos_2->y < cur_r_face->min_screen_y) cur_r_face->min_screen_y = pos_2->y;
+                cur_r_face->min_screen_y = fmax(cur_r_face->min_screen_y, -target_texture->resolution.y / 2); 
 
                 cur_r_face->max_screen_y = pos_0->y; 
                 if (pos_1->y > cur_r_face->max_screen_y) cur_r_face->max_screen_y = pos_1->y;
                 if (pos_2->y > cur_r_face->max_screen_y) cur_r_face->max_screen_y = pos_2->y;
+                cur_r_face->max_screen_y = fmin(cur_r_face->max_screen_y, target_texture->resolution.y / 2); 
 
                 ++current_renderable_face_index;
             }
@@ -447,12 +651,14 @@ int RI_render(RI_scene *scene, RI_texture *target_texture){
 
         for (int pixel_index = 0; pixel_index < target_texture->resolution.x * target_texture->resolution.y; ++pixel_index){
             target_texture->image_buffer[pixel_index] = 0xFF333333;
-            ri.z_buffer[pixel_index] = 99999;
+            ri.z_buffer[pixel_index] = 999999999;
         }
 
-        for (int face_index = 0; face_index < scene->face_count; ++face_index){
+        for (int face_index = 0; face_index < scene->face_count * 2; ++face_index){
             RI_renderable_face *current_face = &scene->faces_to_render[face_index];
             
+            if (!current_face->should_render) continue;
+
             RI_material *mat = current_face->material_reference;
         
             RI_vector_2f *uv_0 = &current_face->uv_0;;
@@ -493,6 +699,10 @@ int RI_render(RI_scene *scene, RI_texture *target_texture){
                     w1 = ((pos_2->y - pos_0->y) * (pixel_x_index - pos_0->x) + (pos_0->x - pos_2->x) * (pixel_y_index - pos_0->y)) / denominator; 
                     w2 = 1.0 - w0 - w1; 
                 
+                    if (!(mat->flags & RI_MATERIAL_DOUBLE_SIDED) && denominator > 0){
+                        continue;
+                    }
+
                     float w_over_z = (w0 / pos_0->z + w1 / pos_1->z + w2 / pos_2->z); 
                     float interpolated_z = 1.0 / w_over_z;
                 
@@ -510,7 +720,7 @@ int RI_render(RI_scene *scene, RI_texture *target_texture){
                     
                     uint32_t pixel_color = 0xFF000000;
                     
-                    if (mat->flags & RI_MATERIAL_HAS_TEXTURE || !uv_0 || !uv_1 || !uv_2){                
+                    if (mat->flags & RI_MATERIAL_HAS_TEXTURE && uv_0 && uv_1 && uv_2){                
                         double ux = (w0 * (uv_0->x / pos_0->z) + w1 * (uv_1->x / pos_1->z) + w2 * (uv_2->x / pos_2->z)) / w_over_z;
                         double uy = (w0 * (uv_0->y / pos_0->z) + w1 * (uv_1->y / pos_1->z) + w2 * (uv_2->y / pos_2->z)) / w_over_z;                
                     
@@ -525,13 +735,17 @@ int RI_render(RI_scene *scene, RI_texture *target_texture){
                         if (mat->albedo) pixel_color = mat->albedo;
                         else pixel_color = 0xFFFF77FF;
                     }
+
+                    // tri culling debug
+                    if (face_index >= scene->face_count) pixel_color = 0xFF7777FF;
+                    // if (face_index < scene->face_count) pixel_color = 0xFF77FF77;
                 
                     // flip the texture
                     // x = target_texture->resolution.x - 1 - x;
                     // y = target_texture->resolution.y - 1 - y;
                 
                     if (x >= 0 && y >= 0 && x < target_texture->resolution.x && y < target_texture->resolution.y){
-                        target_texture->image_buffer[y * target_texture->resolution.y + x] = pixel_color;
+                        target_texture->image_buffer[y * target_texture->resolution.x + x] = pixel_color;
                     }
                 }
             }
