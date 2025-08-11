@@ -789,6 +789,10 @@ int RI_render(RI_scene *scene, RI_texture *target_texture){
             }
         }
 
+        if (ri.z_buffer_resolution.x * ri.z_buffer_resolution.y < target_texture->resolution.x * target_texture->resolution.y){
+            ri.z_buffer = RI_realloc(ri.z_buffer, sizeof(double) * target_texture->resolution.x * target_texture->resolution.y);
+        }
+
         for (int pixel_index = 0; pixel_index < target_texture->resolution.x * target_texture->resolution.y; ++pixel_index){
             target_texture->image_buffer[pixel_index] = 0xFF333333;
             ri.z_buffer[pixel_index] = 999999999;
@@ -933,6 +937,7 @@ int sdl_init(int RI_window_width, int RI_window_height, char *RI_window_title){
     ri.frame_buffer->resolution = (RI_vector_2){ri.window_width, ri.window_height};
     
     ri.z_buffer = RI_malloc(sizeof(double) * ri.window_width * ri.window_height);
+    ri.z_buffer_resolution = (RI_vector_2){ri.window_width, ri.window_height};
 
     SDL_Init(SDL_INIT_VIDEO);
 
