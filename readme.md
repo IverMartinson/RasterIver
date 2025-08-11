@@ -56,3 +56,4 @@ To run the binary, it needs to be in the same folder as librasteriver.so (if you
 - [ ] bump maps
 - [ ] normal maps
 - [x] memory tracker
+- [x] tileable textures

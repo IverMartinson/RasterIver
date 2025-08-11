@@ -461,6 +461,15 @@ void RI_euler_rotation_to_quaternion(RI_vector_4f *quaternion, RI_vector_3f eule
     quaternion->z = cx * cy * sz - sx * sy * cz;
 }
 
+double mod(double a, double b){
+    if(b < 0.0)
+        return -mod(-a, -b);   
+    double ret = fmod(a, b);
+    if(ret < 0.0)
+        ret+=b;
+    return ret;
+}
+
 int RI_render(RI_scene *scene, RI_texture *target_texture){
     // do rendering stuff
     if (ri.running){
@@ -526,28 +535,29 @@ int RI_render(RI_scene *scene, RI_texture *target_texture){
                 vector_3f_hadamard(&cur_r_face->position_1, current_actor->transform.scale);
                 vector_3f_hadamard(&cur_r_face->position_2, current_actor->transform.scale);
 
-                // combine camera and object rotation
-                RI_vector_4f combined_rotation = current_actor->transform.rotation;
-                RI_vector_4f camera_rotation = scene->camera_rotation;
-
-                quaternion_conjugate(&camera_rotation);
-                
-                quaternion_multiply(&combined_rotation, camera_rotation);
-
-                // rotate
-                quaternion_rotate(&cur_r_face->position_0, combined_rotation);
-                quaternion_rotate(&cur_r_face->position_1, combined_rotation);
-                quaternion_rotate(&cur_r_face->position_2, combined_rotation);
+                // actor rotation
+                quaternion_rotate(&cur_r_face->position_0, current_actor->transform.rotation);
+                quaternion_rotate(&cur_r_face->position_1, current_actor->transform.rotation);
+                quaternion_rotate(&cur_r_face->position_2, current_actor->transform.rotation);
                 
                 // object position
                 vector_3f_element_wise_add(&cur_r_face->position_0, current_actor->transform.position);
                 vector_3f_element_wise_add(&cur_r_face->position_1, current_actor->transform.position);
                 vector_3f_element_wise_add(&cur_r_face->position_2, current_actor->transform.position);
-
-                // camera position
+                
+                // camera rotation
                 vector_3f_element_wise_subtract(&cur_r_face->position_0, scene->camera_position);
                 vector_3f_element_wise_subtract(&cur_r_face->position_1, scene->camera_position);
                 vector_3f_element_wise_subtract(&cur_r_face->position_2, scene->camera_position);
+
+                quaternion_rotate(&cur_r_face->position_0, scene->camera_rotation);
+                quaternion_rotate(&cur_r_face->position_1, scene->camera_rotation);
+                quaternion_rotate(&cur_r_face->position_2, scene->camera_rotation);
+                
+                // camera position
+                // vector_3f_element_wise_subtract(&cur_r_face->position_0, scene->camera_position);
+                // vector_3f_element_wise_subtract(&cur_r_face->position_1, scene->camera_position);
+                // vector_3f_element_wise_subtract(&cur_r_face->position_2, scene->camera_position);
 
                 RI_vector_3f *pos_0 = &cur_r_face->position_0;
                 RI_vector_3f *pos_1 = &cur_r_face->position_1;
@@ -868,6 +878,19 @@ int RI_render(RI_scene *scene, RI_texture *target_texture){
                         double ux = (w0 * (uv_0->x / pos_0->z) + w1 * (uv_1->x / pos_1->z) + w2 * (uv_2->x / pos_2->z)) / w_over_z;
                         double uy = (w0 * (uv_0->y / pos_0->z) + w1 * (uv_1->y / pos_1->z) + w2 * (uv_2->y / pos_2->z)) / w_over_z;                
                     
+                        if (mat->flags & RI_MATERIAL_USE_UV_LOOP_MULTIPLIER){
+                            ux *= mat->uv_loop_multiplier.x;
+                            uy *= mat->uv_loop_multiplier.y;
+                        }
+
+                        if (mat->flags & RI_MATERIAL_USE_UV_RENDER_RESOLUTION){
+                            ux *= mat->texture_reference->resolution.x / mat->texture_render_size.x;
+                            uy *= mat->texture_reference->resolution.y / mat->texture_render_size.y;
+                        }
+
+                        ux = mod(ux, 1.0);
+                        uy = mod(-uy, 1.0);
+
                         RI_vector_2 texel_position = {mat->texture_reference->resolution.x * ux, mat->texture_reference->resolution.y * uy};
                         
                         if (texel_position.y * mat->texture_reference->resolution.x + texel_position.x < 0 || texel_position.y * mat->texture_reference->resolution.x + texel_position.x >= mat->texture_reference->resolution.x * mat->texture_reference->resolution.y) 
