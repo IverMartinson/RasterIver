@@ -7,7 +7,7 @@ RI_mesh* RI_request_meshes(int RI_number_of_requested_objects, char **filenames,
 RI_actor* RI_request_actors(int RI_number_of_requested_actors); // Load texture file(s)
 RI_material* RI_request_materials(int RI_number_of_requested_materials); // Create materials
 RI_texture* RI_request_textures(int RI_number_of_requested_textures, RI_texture_creation_data *texture_creation_data); // Create new actor(s)
-RI_scene* RI_request_scene();
+RI_scene* RI_request_scenes(int RI_number_of_requested_scenes);
 int RI_init(int RI_window_width, int RI_window_height, char *RI_window_title); // Initialize RasterIver
 int RI_stop(int result); // Stop RasterIver safely and free memory
 int RI_render(RI_scene *scene, RI_texture *target_texture); // Render a scene to a texture

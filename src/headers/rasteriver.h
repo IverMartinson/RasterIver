@@ -23,17 +23,11 @@ typedef struct {
     SDL_Event event;
     
     // RasterIver
-    RI_vector_3f *loaded_mesh_vetex_positions; // original vertex positions from a loaded mesh
-    RI_vector_3f *normals; // original normal vectors from a loaded mesh
-    RI_vector_2f *uvs; // UV coords from a loaded mesh
-    
-    RI_vector_3f *transformed_vertex_positions; // vertex positions after trasformations (mesh & camera rotation & position changes, scale, etc)
-    RI_vector_3f *transformed_normals; // normal vectors after rotation transformations (otherwise a normal's space would constantly be in local space instead of world space)
-
     RI_mesh *loaded_meshes;
     RI_texture *loaded_textures;
     RI_material *materials;
     RI_actor *actors;
+    RI_scene *scenes;
 
     RI_texture error_texture;
     RI_texture error_bump_map;
@@ -46,6 +40,7 @@ typedef struct {
     int loaded_texture_count;
     int material_count;
     int actor_count;
+    int scene_count;
     int running;
     int frame;
     char* prefix;

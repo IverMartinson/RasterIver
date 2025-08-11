@@ -19,7 +19,9 @@ int main(){
     RI_texture* textures = RI_request_textures(3, texture_creation_info);
     RI_material* materials = RI_request_materials(4);
     RI_actor* actors = RI_request_actors(4);
-    RI_scene* scene = RI_request_scene();
+    RI_scene* scenes = RI_request_scenes(1);
+
+    RI_scene* scene = &scenes[0];
 
     // meshes
     RI_mesh* unit_plane_mesh = &meshes[3];

@@ -68,6 +68,7 @@ void* written_RI_realloc(void *__ptr, size_t __size, const char *caller, int lin
         ri.allocation_table[ri.current_allocation_index].reallocated_alloc = 1;
         ri.allocation_table[ri.current_allocation_index].reallocated_free = 0;
         ri.allocation_table[ri.current_allocation_index].freed = 0;
+        ri.allocation_table[ri.current_allocation_index].line = line;
         ri.allocation_table[ri.current_allocation_index].pointer = pointer;        
         ri.allocation_table[ri.current_allocation_index].size = __size;
 
@@ -94,6 +95,7 @@ void* written_RI_malloc(size_t __size, const char *caller, int line){
         ri.allocation_table[ri.current_allocation_index].reallocated_free = 0;
         ri.allocation_table[ri.current_allocation_index].reallocated_alloc = 0;
         ri.allocation_table[ri.current_allocation_index].freed = 0;
+        ri.allocation_table[ri.current_allocation_index].line = line;
         ri.allocation_table[ri.current_allocation_index].pointer = pointer;        
         ri.allocation_table[ri.current_allocation_index].size = __size;
 
@@ -120,6 +122,7 @@ void* written_RI_calloc(size_t __nmemb, size_t __size, const char *caller, int l
         ri.allocation_table[ri.current_allocation_index].reallocated_free = 0;
         ri.allocation_table[ri.current_allocation_index].reallocated_alloc = 0;
         ri.allocation_table[ri.current_allocation_index].freed = 0;
+        ri.allocation_table[ri.current_allocation_index].line = line;
         ri.allocation_table[ri.current_allocation_index].pointer = pointer;        
         ri.allocation_table[ri.current_allocation_index].size = __size * __nmemb;
             
@@ -151,7 +154,7 @@ void written_RI_free(void *__ptr, const char *caller, int line){
             }
         }
         
-        debug("[Memory Manager] Freed %zu bytes  (func \"%s\":%d)", size, caller, line);
+        debug("[Memory Manager] Freed %zu bytes (func \"%s\":%d)", size, caller, line);
     }
  
     free(__ptr);
@@ -171,14 +174,23 @@ int RI_add_actors_to_scene(int RI_number_of_actors_to_add_to_scene, RI_actor *ac
     return 0;
 }
 
-RI_scene* RI_request_scene(){
-    RI_scene* new_scene = RI_malloc(sizeof(RI_scene));
-
-    new_scene->actor_count = 0;
-    new_scene->actors = NULL;
-    new_scene->faces_to_render = NULL;
+RI_scene* RI_request_scenes(int RI_number_of_requested_scenes){
+    int previous_scene_count = ri.scene_count;
+    ri.scene_count += RI_number_of_requested_scenes;
     
-    return new_scene;
+    ri.scenes = RI_realloc(ri.scenes, sizeof(RI_scene) * ri.scene_count);
+
+    for (int i = 0; i < RI_number_of_requested_scenes; ++i){
+        RI_scene new_scene = {0};
+
+        new_scene.actor_count = 0;
+        new_scene.actors = NULL;
+        new_scene.faces_to_render = NULL;
+        
+        ri.scenes[i + previous_scene_count] = new_scene;
+    }
+
+    return ri.scenes;
 }
 
 RI_actor* RI_request_actors(int RI_number_of_requested_actors){
@@ -265,7 +277,7 @@ RI_mesh* RI_request_meshes(int RI_number_of_requested_meshes, char **filenames, 
         FILE *file = fopen(filenames[i], "r");
 
         if (!file){
-            debug("Error! File \"%s\" not found", filenames[i]);
+            debug("[Mesh Loader] Error! File \"%s\" not found", filenames[i]);
             RI_stop(1);
         }
         
@@ -401,7 +413,7 @@ RI_mesh* RI_request_meshes(int RI_number_of_requested_meshes, char **filenames, 
         else if (!has_normals && has_uvs) loading_mesh_notice_string = "UVs";
         else if (!has_normals && !has_uvs) loading_mesh_notice_string = "normals and UVs";
         
-        if (!has_normals || !has_uvs) debug("Notice! Mesh \"%s\" is missing %s", filenames[i], loading_mesh_notice_string);
+        if (!has_normals || !has_uvs) debug("[Mesh Loader] Notice! Mesh \"%s\" is missing %s", filenames[i], loading_mesh_notice_string);
         
         new_mesh_data_struct.has_normals = has_normals;
         new_mesh_data_struct.has_uvs = has_uvs;
@@ -411,7 +423,7 @@ RI_mesh* RI_request_meshes(int RI_number_of_requested_meshes, char **filenames, 
         if (!RI_return_just_mesh) {
             ri.loaded_meshes[meshes_already_loaded_count + i] = new_mesh_data_struct;   
 
-            debug("Loaded mesh \"%s\"! %d faces, %d verticies, %d normals, %d uvs", filenames[i], current_face_index, current_vertex_index, current_normal_index, current_uv_index); 
+            debug("[Mesh Loader] Loaded mesh \"%s\"! %d faces, %d verticies, %d normals, %d uvs", filenames[i], current_face_index, current_vertex_index, current_normal_index, current_uv_index); 
         }
         else {
             *mesh = new_mesh_data_struct;
@@ -990,15 +1002,39 @@ int RI_init(int RI_window_width, int RI_window_height, char *RI_window_title){
 }
 
 int RI_stop(int result){
-    debug("Stopping...");
+    debug("[Notice] Stopping...");
     
+    for (int scene_index = 0; scene_index < ri.scene_count; ++scene_index){
+        RI_free(ri.scenes[scene_index].faces_to_render);
+        RI_free(ri.scenes[scene_index].actors);
+    }
+
     for (int mesh_index = 0; mesh_index < ri.loaded_mesh_count; ++mesh_index){
-        RI_free(ri.loaded_meshes[mesh_index].faces); // free face array
+        RI_free(ri.loaded_meshes[mesh_index].faces);
+        RI_free(ri.loaded_meshes[mesh_index].vertex_positions);
+        RI_free(ri.loaded_meshes[mesh_index].normals);
+        RI_free(ri.loaded_meshes[mesh_index].uvs);
     }
 
     for (int texture_index = 0; texture_index < ri.loaded_texture_count; ++texture_index){
         RI_free(ri.loaded_textures[texture_index].image_buffer);
     }
+
+    RI_free(ri.loaded_meshes);
+    RI_free(ri.loaded_textures);
+    RI_free(ri.materials);
+    RI_free(ri.actors);
+    RI_free(ri.scenes);
+
+    RI_free(ri.error_texture.image_buffer);
+    RI_free(ri.frame_buffer->image_buffer);
+    RI_free(ri.frame_buffer);
+    RI_free(ri.z_buffer);
+
+    RI_free(ri.error_mesh.faces);
+    RI_free(ri.error_mesh.vertex_positions);
+    RI_free(ri.error_mesh.normals);
+    RI_free(ri.error_mesh.uvs);
 
     if (ri.debug_memory){
         size_t total_allocated = 0;
@@ -1010,13 +1046,14 @@ int RI_stop(int result){
 
         for (int i = 1; i < ri.allocation_table_length; ++i) {
             if (ri.allocation_table[i].allocated != 1) continue;
+            else if (ri.allocation_table[i].freed)
+                freed += ri.allocation_table[i].size;
+                else debug("[Memory Manager] Memory allocated at line %d wasn't freed (%zu bytes)", ri.allocation_table[i].line, ri.allocation_table[i].size);
             
-            if (!ri.allocation_table[i].reallocated_free && !ri.allocation_table[i].freed && !ri.allocation_table[i].reallocated_alloc)
+            if (!ri.allocation_table[i].reallocated_free && !ri.allocation_table[i].reallocated_alloc)
                 allocated += ri.allocation_table[i].size;
             else if (ri.allocation_table[i].reallocated_alloc)
                 alloc_realloc += ri.allocation_table[i].size;
-            else if (ri.allocation_table[i].freed)
-                freed += ri.allocation_table[i].size;
             else if (ri.allocation_table[i].reallocated_free)
                 reallocated += ri.allocation_table[i].size;
         }
@@ -1024,11 +1061,11 @@ int RI_stop(int result){
         total_allocated = allocated + alloc_realloc;
         total_freed = freed + reallocated;
 
-        debug("[Memory Manager] [Total Bytes Allocated] M(c)alloc & Realloc(): %zu -- M(c)alloc(): %zu -- Realloc(): %zu: %zu", total_allocated, allocated, alloc_realloc);
+        debug("[Memory Manager] [Total Bytes Allocated] M(c)alloc & Realloc(): %zu -- M(c)alloc(): %zu -- Realloc(): %zu", total_allocated, allocated, alloc_realloc);
         debug("[Memory Manager] [Total Bytes Freed] Free() & Realloc(): %zu -- Free(): %zu -- Realloc(): %zu", total_freed, freed, reallocated);
 
-        if (allocated != freed){
-            debug("[Memory Manager] %zu bytes not freed", (allocated + alloc_realloc) - freed);
+        if (total_allocated != total_freed){
+            debug("[Memory Manager] %zu bytes not freed", total_allocated - total_freed);
         }
     
         debug("[Memory Manager] Freeing allocation table...");

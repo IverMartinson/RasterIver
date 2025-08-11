@@ -114,6 +114,7 @@ typedef struct {
     int reallocated_alloc;
     int freed;
     int allocated;
+    int line;
 } RI_memory_allocation;
 
 #endif
