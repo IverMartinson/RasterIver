@@ -60,8 +60,8 @@ typedef enum {
     RI_MATERIAL_DONT_DEPTH_TEST = ((uint64_t)1 << 8), // should check Z buffer (if 1, render on top of everything)
     RI_MATERIAL_DONT_DEPTH_WRITE = ((uint64_t)1 << 9), // should write to the Z buffer (if 1, render behind everything)
     RI_MATERIAL_DOUBLE_SIDED = ((uint64_t)1 << 10), // ignore backface culling
-    RI_MATERIAL_USE_UV_LOOP_MULTIPLIER = ((uint64_t)1 << 11), // use multiplier that tells how many times to loop the texture
-    RI_MATERIAL_USE_UV_RENDER_RESOLUTION = ((uint64_t)1 << 12), // use custom resolution that textures always appear as (scaling just tiles the texture)
+    RI_MATERIAL_USE_UV_LOOP_MULTIPLIER = ((uint64_t)1 << 11), // use multiplier that tells how many times to loop the texture (scaling also scales texture)
+    RI_MATERIAL_USE_UV_RENDER_RESOLUTION = ((uint64_t)1 << 12), // use custom resolution that textures always appear as (scaling doesn't change texture)
 } RI_material_flags;
 
 typedef struct {
@@ -96,6 +96,7 @@ typedef struct {
     RI_material* material_reference;
     int min_screen_x, max_screen_x, min_screen_y, max_screen_y;
     int should_render;
+    RI_actor* parent_actor;
 } RI_renderable_face;
 
 typedef struct {

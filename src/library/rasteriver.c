@@ -518,6 +518,8 @@ int RI_render(RI_scene *scene, RI_texture *target_texture){
 
                 RI_renderable_face *cur_r_face = &scene->faces_to_render[current_renderable_face_index];
 
+                cur_r_face->parent_actor = current_actor;
+
                 cur_r_face->material_reference = current_actor->material_reference;
 
                 cur_r_face->position_0 = current_actor->mesh_reference->vertex_positions[vert_pos_0_index];
@@ -700,6 +702,8 @@ int RI_render(RI_scene *scene, RI_texture *target_texture){
                         // quads are easy to turn into tris >w<
 
                         RI_renderable_face *cur_r_split_face = &scene->faces_to_render[scene->face_count + current_split_renderable_face_index];
+
+                        cur_r_split_face->parent_actor = current_actor;
 
                         cur_r_split_face->should_render = 1;
 
@@ -884,8 +888,8 @@ int RI_render(RI_scene *scene, RI_texture *target_texture){
                         }
 
                         if (mat->flags & RI_MATERIAL_USE_UV_RENDER_RESOLUTION){
-                            ux *= mat->texture_reference->resolution.x / mat->texture_render_size.x;
-                            uy *= mat->texture_reference->resolution.y / mat->texture_render_size.y;
+                            ux *= (current_face->parent_actor->transform.scale.x / mat->texture_render_size.x);
+                            uy *= (current_face->parent_actor->transform.scale.y / mat->texture_render_size.y);
                         }
 
                         ux = mod(ux, 1.0);

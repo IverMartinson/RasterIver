@@ -43,7 +43,7 @@ int main(){
     wall_material->flags = RI_MATERIAL_DOUBLE_SIDED | RI_MATERIAL_HAS_TEXTURE | RI_MATERIAL_USE_UV_RENDER_RESOLUTION;
     wall_material->albedo = 0xFF7777FF;
     wall_material->texture_reference = wall_texture;
-    wall_material->texture_render_size = (RI_vector_2f){200, 400};
+    wall_material->texture_render_size = (RI_vector_2f){25, 50};
 
     RI_material* test_object_material = &materials[2];
     test_object_material->flags = RI_MATERIAL_HAS_TEXTURE;
