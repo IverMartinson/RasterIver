@@ -62,6 +62,7 @@ typedef enum {
     RI_MATERIAL_DOUBLE_SIDED = ((uint64_t)1 << 10), // ignore backface culling
     RI_MATERIAL_USE_UV_LOOP_MULTIPLIER = ((uint64_t)1 << 11), // use multiplier that tells how many times to loop the texture (scaling also scales texture)
     RI_MATERIAL_USE_UV_RENDER_RESOLUTION = ((uint64_t)1 << 12), // use custom resolution that textures always appear as (scaling doesn't change texture)
+    RI_MATERIAL_DONT_USE_AA = ((uint64_t)1 << 13), // disable anti-aliasing
 } RI_material_flags;
 
 typedef struct {
@@ -97,7 +98,19 @@ typedef struct {
     int min_screen_x, max_screen_x, min_screen_y, max_screen_y;
     int should_render;
     RI_actor* parent_actor;
+    int shrunk;
+    int split;
 } RI_renderable_face;
+
+typedef enum {
+    RI_SCENE_UNLIT = ((uint64_t)1 << 0), // should calculate lighting
+    RI_SCENE_WIREFRAME = ((uint64_t)1 << 1), // render as wireframe
+    RI_SCENE_DOUBLE_SIDED = ((uint64_t)1 << 2), // ignore backface culling
+    RI_SCENE_DONT_USE_AA = ((uint64_t)1 << 3), // disable anti-aliasing
+    RI_SCENE_DEBUG_CULLS = ((uint64_t)1 << 4), // unchanged tris in grey, shrunk tris in blue, split triangles in green (old tri) and red (new tri)
+    RI_SCENE_DEBUG_AABB = ((uint64_t)1 << 5), // AABB of polygons
+    RI_SCENE_DEBUG_OVERDRAW = ((uint64_t)1 << 6), // overdraw
+} RI_scene_flags;
 
 typedef struct {
     RI_actor **actors;
@@ -109,6 +122,8 @@ typedef struct {
     RI_vector_4f camera_rotation;
     RI_renderable_face *faces_to_render;
     int face_count;
+    int antialiasing_subsample_resolution;
+    uint64_t flags;
 } RI_scene;
 
 // ----- Memory Manager -----

@@ -94,6 +94,9 @@ int main(){
 
     double y_rotation = 0;
 
+    scene->antialiasing_subsample_resolution = 8;
+    scene->flags = RI_SCENE_DONT_USE_AA;
+
     while (running){
         test_object->transform.position = (RI_vector_3f){sin(ri->frame * 0.1) * 50 - 100, sin(ri->frame * 0.2 + 0.4) * 50, sin(ri->frame * 0.1) * 10 + 200};
 

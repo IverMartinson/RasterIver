@@ -186,7 +186,8 @@ RI_scene* RI_request_scenes(int RI_number_of_requested_scenes){
         new_scene.actor_count = 0;
         new_scene.actors = NULL;
         new_scene.faces_to_render = NULL;
-        
+        new_scene.antialiasing_subsample_resolution = 4;
+
         ri.scenes[i + previous_scene_count] = new_scene;
     }
 
@@ -470,6 +471,19 @@ double mod(double a, double b){
     return ret;
 }
 
+uint32_t multiply_rgb(uint32_t color, float factor) {
+    uint8_t a = (color >> 24) & 0xFF;
+    uint8_t r = (color >> 16) & 0xFF;
+    uint8_t g = (color >> 8)  & 0xFF;
+    uint8_t b =  color        & 0xFF;
+
+    r = (uint8_t)fminf(fmaxf(r * factor, 0.0f), 255.0f);
+    g = (uint8_t)fminf(fmaxf(g * factor, 0.0f), 255.0f);
+    b = (uint8_t)fminf(fmaxf(b * factor, 0.0f), 255.0f);
+
+    return (a << 24) | (r << 16) | (g << 8) | b;
+}
+
 int RI_render(RI_scene *scene, RI_texture *target_texture){
     // do rendering stuff
     if (ri.running){
@@ -519,6 +533,8 @@ int RI_render(RI_scene *scene, RI_texture *target_texture){
                 RI_renderable_face *cur_r_face = &scene->faces_to_render[current_renderable_face_index];
 
                 cur_r_face->parent_actor = current_actor;
+                cur_r_face->shrunk = 0;
+                cur_r_face->split = 0;
 
                 cur_r_face->material_reference = current_actor->material_reference;
 
@@ -635,12 +651,16 @@ int RI_render(RI_scene *scene, RI_texture *target_texture){
                         vector_2f_lerp(*unclipped_uv, *uv_a, uv_a, fraction_a_to_unclip);
                         vector_2f_lerp(*unclipped_uv, *uv_b, uv_b, fraction_b_to_unclip);
 
+                        cur_r_face->shrunk = 1;     
+
                         break;}
 
                     case 1: // split polygon
                         RI_vector_3f clipped_point, point_a, point_b;
                         RI_vector_3f clipped_normal, normal_a, normal_b;
                         RI_vector_2f clipped_uv, uv_a, uv_b;
+
+                cur_r_face->split = 1;
 
                         if (is_0_clipped){ 
                             clipped_point = cur_r_face->position_0;
@@ -857,26 +877,55 @@ int RI_render(RI_scene *scene, RI_texture *target_texture){
                     w1 = ((pos_2->y - pos_0->y) * (pixel_x_index - pos_0->x) + (pos_0->x - pos_2->x) * (pixel_y_index - pos_0->y)) / denominator; 
                     w2 = 1.0 - w0 - w1; 
                 
-                    if (!(mat->flags & RI_MATERIAL_DOUBLE_SIDED) && denominator > 0){
+                    if (!(mat->flags & RI_MATERIAL_DOUBLE_SIDED || scene->flags & RI_SCENE_DOUBLE_SIDED) && denominator > 0){
                         continue;
                     }
 
                     double w_over_z = (w0 / pos_0->z + w1 / pos_1->z + w2 / pos_2->z); 
                     double interpolated_z = 1.0 / w_over_z;
-                
-                    if (!(w0 >= 0 && w1 >= 0 && w2 >= 0) || (mat->flags & RI_MATERIAL_WIREFRAME && (w0 >= mat->wireframe_width && w1 >= mat->wireframe_width && w2 >= mat->wireframe_width))){
+
+                    if (scene->flags & RI_SCENE_DEBUG_AABB) {
+                        target_texture->image_buffer[y * target_texture->resolution.x + x] += 0x0F0F0707;
+                        continue;
+                    }
+
+                    if (!(w0 >= 0 && w1 >= 0 && w2 >= 0) || ((mat->flags & RI_MATERIAL_WIREFRAME || scene->flags & RI_SCENE_WIREFRAME) && (w0 >= mat->wireframe_width && w1 >= mat->wireframe_width && w2 >= mat->wireframe_width))){    
                         continue;
                     }
                     
-                    if (!(mat->flags & RI_MATERIAL_DONT_DEPTH_TEST) && interpolated_z >= ri.z_buffer[y * target_texture->resolution.x + x]){
+                    if (!(mat->flags & RI_MATERIAL_DONT_DEPTH_TEST) && interpolated_z >= ri.z_buffer[y * target_texture->resolution.x + x]){                        
                         continue;
-                    }   
-                
+                    }
+
+                    if (scene->flags & RI_SCENE_DEBUG_OVERDRAW) {
+                        target_texture->image_buffer[y * target_texture->resolution.x + x] += 0x0F070F07;
+                        
+                        continue;
+                    }
+                    
                     if (!(mat->flags & RI_MATERIAL_DONT_DEPTH_WRITE)){
                         ri.z_buffer[y * target_texture->resolution.x + x] = interpolated_z;
                     }
                     
-                    uint32_t pixel_color = 0xFF000000;
+                    double alpha = 1;
+
+                    if (!(scene->flags & RI_SCENE_DONT_USE_AA) || !(mat->flags & RI_MATERIAL_DONT_USE_AA)){
+                        float total_inside = 0;
+                        
+                        for (float sub_y = 1.0 / (-scene->antialiasing_subsample_resolution / 2.0) - 0.5; sub_y < 1.0 / (scene->antialiasing_subsample_resolution / 2.0) - 0.5; sub_y += 1.0 / (scene->antialiasing_subsample_resolution / 2.0)){
+                            for (float sub_x = 1.0 / (-scene->antialiasing_subsample_resolution / 2.0) - 0.5; sub_x < 1.0 / (scene->antialiasing_subsample_resolution / 2.0) - 0.5; sub_x += 1.0 / (scene->antialiasing_subsample_resolution / 2.0)){
+                                w0 = ((pos_1->y - pos_2->y) * (pixel_x_index + sub_x - pos_2->x) + (pos_2->x - pos_1->x) * (pixel_y_index + sub_y - pos_2->y)) / denominator;
+                                w1 = ((pos_2->y - pos_0->y) * (pixel_x_index + sub_x - pos_0->x) + (pos_0->x - pos_2->x) * (pixel_y_index + sub_y - pos_0->y)) / denominator; 
+                                w2 = 1.0 - w0 - w1;
+                                
+                                if(!(w0 >= 0 && w1 >= 0 && w2 >= 0)) total_inside++;
+                            }
+                        }
+                        
+                        alpha = 1.0 - total_inside / (scene->antialiasing_subsample_resolution * scene->antialiasing_subsample_resolution);
+                    }
+                    
+                    uint32_t pixel_color = 0x00000000;
                     
                     if (mat->flags & RI_MATERIAL_HAS_TEXTURE && uv_0 && uv_1 && uv_2){                
                         double ux = (w0 * (uv_0->x / pos_0->z) + w1 * (uv_1->x / pos_1->z) + w2 * (uv_2->x / pos_2->z)) / w_over_z;
@@ -915,6 +964,14 @@ int RI_render(RI_scene *scene, RI_texture *target_texture){
                     // x = target_texture->resolution.x - 1 - x;
                     // y = target_texture->resolution.y - 1 - y;
                 
+
+                    if (scene->flags & RI_SCENE_DEBUG_CULLS){ // show unchanged tris in grey, shrunk tris in blue, split triangles in green (old tri) and red (new tri)
+                        if (current_face->shrunk) pixel_color = 0xFF7777FF;
+                        else if (current_face->split) pixel_color = 0xFF77FF77;
+                        else if (face_index >= current_renderable_face_index) pixel_color = 0xFFFF7777;
+                        else pixel_color = 0xFF777777;
+                    }
+
                     if (x >= 0 && y >= 0 && x < target_texture->resolution.x && y < target_texture->resolution.y){
                         target_texture->image_buffer[y * target_texture->resolution.x + x] = pixel_color;
                     }

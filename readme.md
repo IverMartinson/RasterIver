@@ -57,3 +57,6 @@ To run the binary, it needs to be in the same folder as librasteriver.so (if you
 - [ ] normal maps
 - [x] memory tracker
 - [x] tileable textures
+- [ ] UI elements (just images? text? custom text rasterizer? buttons?)
+- [ ] Documentation
+- [ ] text rasterizer for UI
