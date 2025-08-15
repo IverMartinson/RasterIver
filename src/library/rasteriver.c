@@ -484,7 +484,7 @@ uint32_t multiply_rgb(uint32_t color, float factor) {
     return (a << 24) | (r << 16) | (g << 8) | b;
 }
 
-int RI_render(RI_scene *scene, RI_texture *target_texture){
+int RI_render(RI_scene *scene, RI_texture *target_texture, int clear_texture){
     // do rendering stuff
     if (ri.running){
         double horizontal_fov_factor = target_texture->resolution.x / tanf(0.5 * scene->FOV);
@@ -827,10 +827,12 @@ int RI_render(RI_scene *scene, RI_texture *target_texture){
             ri.z_buffer = RI_realloc(ri.z_buffer, sizeof(double) * target_texture->resolution.x * target_texture->resolution.y);
         }
 
-        for (int pixel_index = 0; pixel_index < target_texture->resolution.x * target_texture->resolution.y; ++pixel_index){
-            target_texture->image_buffer[pixel_index] = 0xFF333333;
-            ri.z_buffer[pixel_index] = 999999999;
-        }
+            for (int pixel_index = 0; pixel_index < target_texture->resolution.x * target_texture->resolution.y; ++pixel_index){
+                if (clear_texture)
+                    target_texture->image_buffer[pixel_index] = 0xFF333333;
+                ri.z_buffer[pixel_index] = 999999999;
+           }
+
 
         for (int face_index = 0; face_index < current_renderable_face_index * 2; ++face_index){
             RI_renderable_face *current_face = &scene->faces_to_render[face_index];

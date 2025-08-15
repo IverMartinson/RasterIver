@@ -3,7 +3,10 @@
 int main(){
     // get RasterIver context
     RasterIver *ri = RI_get_ri();
+    ri->prefix = "--------------------------";
 
+    SP_font font = SP_load_font("fonts/CalSans-Regular.ttf");
+    
     ri->debug_memory = 0;
 
     RI_init(1000, 1000, "This is RasterIver 2.0!!");
@@ -57,7 +60,7 @@ int main(){
     screen_material->albedo = 0xFFFFFFFF;
 
     // actors
-    RI_actor* floor = &actors[0];
+    RI_actor* floor = &actors[2];
     floor->material_reference = floor_material;
     floor->mesh_reference = unit_plane_mesh;
     floor->transform.scale = (RI_vector_3f){1000, 100, 1000};
@@ -71,10 +74,10 @@ int main(){
     wall->transform.position = (RI_vector_3f){0, 0, 300};
     wall->transform.rotation = (RI_vector_4f){0.70710678, 0.70710678, 0, 0};
 
-    RI_actor* test_object = &actors[2];
+    RI_actor* test_object = &actors[0];
     test_object->material_reference = test_object_material;
     test_object->mesh_reference = test_object_mesh;
-    test_object->transform.scale = (RI_vector_3f){50, 50, 50};
+    test_object->transform.scale = (RI_vector_3f){2, 2, 2};
     test_object->transform.position = (RI_vector_3f){-50, 100, 100};
     test_object->transform.rotation = (RI_vector_4f){0, 1, 0, 0};
 
@@ -85,7 +88,7 @@ int main(){
     screen->transform.position = (RI_vector_3f){0, 0, 250};
     screen->transform.rotation = (RI_vector_4f){0, 1, 0, 0};
 
-    RI_add_actors_to_scene(4, actors, scene);
+    RI_add_actors_to_scene(1, actors, scene);
 
     scene->FOV = 1.5; // 90 degrees in radians
     scene->minimum_clip_distance = 0.1;
@@ -97,27 +100,38 @@ int main(){
     scene->antialiasing_subsample_resolution = 8;
     scene->flags = RI_SCENE_DONT_USE_AA;
 
+    int glyph = 536;
+
     while (running){
-        test_object->transform.position = (RI_vector_3f){sin(ri->frame * 0.1) * 50 - 100, sin(ri->frame * 0.2 + 0.4) * 50, sin(ri->frame * 0.1) * 10 + 200};
+        // test_object->transform.position = (RI_vector_3f){0, 0, 200};
 
-        RI_euler_rotation_to_quaternion(&screen->transform.rotation, (RI_vector_3f){-3.14159 / 2, 0, ri->frame * 0.03});
+        // RI_euler_rotation_to_quaternion(&screen->transform.rotation, (RI_vector_3f){-3.14159 / 2, 0, ri->frame * 0.03});
 
-        // scene->camera_position = (RI_vector_3f){cos(ri->frame * 0.07) * 10 * sin(ri->frame * 0.2), sin(ri->frame * 0.07) * 10 * sin(ri->frame * 0.2), -300};
-        scene->camera_position = (RI_vector_3f){0, 0, -300};
+        // // scene->camera_position = (RI_vector_3f){cos(ri->frame * 0.07) * 10 * sin(ri->frame * 0.2), sin(ri->frame * 0.07) * 10 * sin(ri->frame * 0.2), -300};
+        // scene->camera_position = (RI_vector_3f){0, 0, -300};
         
-        wall->transform.scale.x = fabs(sin(y_rotation)) * 100 + 70;
+        // wall->transform.scale.x = fabs(sin(y_rotation)) * 100 + 70;
 
         // RI_euler_rotation_to_quaternion(&scene->camera_rotation, (RI_vector_3f){0, y_rotation * .01 + 1.5, 0});
 
         // RI_euler_rotation_to_quaternion(&floor->transform.rotation, (RI_vector_3f){0, y_rotation, 0});
         
-        RI_euler_rotation_to_quaternion(&test_object->transform.rotation, (RI_vector_3f){y_rotation, y_rotation, y_rotation});
+        // RI_euler_rotation_to_quaternion(&test_object->transform.rotation, (RI_vector_3f){y_rotation, y_rotation, y_rotation});
         // RI_euler_rotation_to_quaternion(&test_object->transform.rotation, (RI_vector_3f){0, y_rotation, 0});
 
-        y_rotation += 0.1;
+        // y_rotation += 0.1;
+        
+        float scale = 0.3;
 
-        RI_render(scene, ri->frame_buffer);
-
-        RI_tick();
+        for (int i = 0; i < font.glyphs[glyph].number_of_contours; ++i){
+            for (int j = i > 0 ? font.glyphs[1].contour_end_indicies[i - 1] : 0; j < font.glyphs[glyph].contour_end_indicies[i]; ++j){
+                if (!(font.glyphs[glyph].flags[j] & 1)) test_object->material_reference->texture_reference = &ri->error_texture;
+                else test_object->material_reference->texture_reference = test_object_texture;
+                test_object->transform.position = (RI_vector_3f){font.glyphs[glyph].x_coords[j] * scale - 100, font.glyphs[glyph].y_coords[j] * scale - 100, 500};
+            
+                RI_render(scene, ri->frame_buffer, 0);
+                RI_tick();
+            }
+        }
     }
 }

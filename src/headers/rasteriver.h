@@ -5,6 +5,7 @@
 #include "values.h"
 #include "custom_types.h"
 #include "math.h"
+#include "sourparse.h"
 #include <SDL2/SDL.h>
 
 typedef struct {
