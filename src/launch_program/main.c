@@ -1,15 +1,15 @@
 #include "../headers/rasteriver.h"
 
 int main(){
+    SP_font *font = SP_load_font("fonts/CalSans-Regular.ttf");
+    
     // get RasterIver context
     RasterIver *ri = RI_get_ri();
     ri->prefix = "--------------------------";
 
-    SP_font font = SP_load_font("fonts/CalSans-Regular.ttf");
-    
     ri->debug_memory = 0;
 
-    RI_init(1000, 1000, "This is RasterIver 2.0!!");
+    RI_init(700, 700, "This is RasterIver 2.0!!");
 
     int running = 1;
 
@@ -100,9 +100,20 @@ int main(){
     scene->antialiasing_subsample_resolution = 8;
     scene->flags = RI_SCENE_DONT_USE_AA;
 
-    int glyph = 536;
+    int glyph = 0;
 
+
+    
     while (running){
+               
+        if (ri->frame % 1 == 0){
+            glyph++;
+
+                test_object->transform.position = (RI_vector_3f){-10000, -1000,-100000};
+                RI_render(scene, ri->frame_buffer, 1);
+
+        }
+
         // test_object->transform.position = (RI_vector_3f){0, 0, 200};
 
         // RI_euler_rotation_to_quaternion(&screen->transform.rotation, (RI_vector_3f){-3.14159 / 2, 0, ri->frame * 0.03});
@@ -123,15 +134,42 @@ int main(){
         
         float scale = 0.3;
 
-        for (int i = 0; i < font.glyphs[glyph].number_of_contours; ++i){
-            for (int j = i > 0 ? font.glyphs[1].contour_end_indicies[i - 1] : 0; j < font.glyphs[glyph].contour_end_indicies[i]; ++j){
-                if (!(font.glyphs[glyph].flags[j] & 1)) test_object->material_reference->texture_reference = &ri->error_texture;
-                else test_object->material_reference->texture_reference = test_object_texture;
-                test_object->transform.position = (RI_vector_3f){font.glyphs[glyph].x_coords[j] * scale - 100, font.glyphs[glyph].y_coords[j] * scale - 100, 500};
+if (font->glyphs[glyph].number_of_contours > 0){
+    for (int i = 0; i < font->glyphs[glyph].number_of_contours; ++i){
+            for (int j = i > 0 ? font->glyphs[glyph].contour_end_indicies[i - 1] : 0; j < font->glyphs[glyph].contour_end_indicies[i]; ++j){
+                // if (!(font->glyphs[glyph].flags[j] & 1)) test_object->material_reference->texture_reference = &ri->error_texture;
+                // test_object->material_reference->texture_reference = test_object_texture;
+                test_object->transform.position = (RI_vector_3f){font->glyphs[glyph].x_coords[j] * scale - 100, font->glyphs[glyph].y_coords[j] * scale - 100, 500};
             
                 RI_render(scene, ri->frame_buffer, 0);
-                RI_tick();
+            }
+        }
+
+}
+else {
+    for (int k = 0; k < font->glyphs[glyph].number_of_components; k++){
+        int c_glyph = font->glyphs[glyph].components[k].glyph_index;
+
+        if (k == 1) c_glyph = 599;
+
+        int offset_x = (int)font->glyphs[glyph].components[k].arg1;
+        int offset_y = (int)font->glyphs[glyph].components[k].arg2;
+        
+        for (int i = 0; i < font->glyphs[c_glyph].number_of_contours; ++i){
+            for (int j = i > 0 ? font->glyphs[c_glyph].contour_end_indicies[i - 1] : 0; j < font->glyphs[c_glyph].contour_end_indicies[i]; ++j){
+                // if (!(font->glyphs[glyph].flags[j] & 1)) test_object->material_reference->texture_reference = &ri->error_texture;
+                // test_object->material_reference->texture_reference = test_object_texture;
+                test_object->transform.position = (RI_vector_3f){(font->glyphs[c_glyph].x_coords[j] + offset_x) * scale - 100, (font->glyphs[c_glyph].y_coords[j] + offset_y) * scale - 100, 500};
+            
+                RI_render(scene, ri->frame_buffer, 0);
             }
         }
     }
+}
+RI_tick();
+    ++ri->frame;
+
+    }
+
+    SP_free_font(font);
 }

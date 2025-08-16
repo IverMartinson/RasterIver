@@ -1,11 +1,12 @@
 #include <stdio.h>
-#include <CL/cl.h>
+// #include <CL/cl.h>
 #include <SDL2/SDL.h>
 #include "../headers/rasteriver.h"
 #define STB_IMAGE_IMPLEMENTATION
 #include "../headers/stb_image.h"
 #include "stdint.h"
 #include <math.h>
+#include <signal.h>
 
 RasterIver ri = {NULL};
 
@@ -1005,7 +1006,7 @@ void RI_tick(){
         }
     }
 
-    ++ri.frame;
+    // ++ri.frame;
 }
 
 int opencl_init(){
@@ -1032,62 +1033,6 @@ int sdl_init(int RI_window_width, int RI_window_height, char *RI_window_title){
     ri.renderer = SDL_CreateRenderer(ri.window, -1, SDL_RENDERER_ACCELERATED);
 
     ri.texture = SDL_CreateTexture(ri.renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, ri.window_width, ri.window_height);
-
-    return 0;
-}
-
-int RI_init(int RI_window_width, int RI_window_height, char *RI_window_title){
-    ri.running = 1;
-
-    ri.prefix = "[RasterIver] ";
-
-    if (ri.debug_memory){
-        ri.current_allocation_index = 0;
-        ri.allocation_search_limit = 100;
-        ri.allocation_table_length = 100;
-        
-        size_t __size = sizeof(RI_memory_allocation) * ri.allocation_table_length;
-
-        ri.allocation_table = malloc(__size);
-    
-        debug("[Memory Manager] Allocated (malloc) %zu bytes", __size);
-
-        ri.allocation_table[ri.current_allocation_index].allocated = 1;
-        ri.allocation_table[ri.current_allocation_index].freed = 0;
-        ri.allocation_table[ri.current_allocation_index].reallocated_alloc = 0;
-        ri.allocation_table[ri.current_allocation_index].reallocated_free = 0;
-        ri.allocation_table[ri.current_allocation_index].pointer = ri.allocation_table;        
-        ri.allocation_table[ri.current_allocation_index].size = __size;
-
-        ri.current_allocation_index++;
-    }
-
-    opencl_init();
-
-    sdl_init(RI_window_width, RI_window_height, RI_window_title);
-
-    ri.loaded_mesh_count = 0;
-    ri.loaded_texture_count = 0;
-    ri.actor_count = 0;
-
-    char **error_cube_file = RI_malloc(sizeof(char *));
-    error_cube_file[0] = "objects/unit_cube.obj";
-
-    RI_mesh* error_mesh = RI_request_meshes(1, error_cube_file, 1);
-
-    ri.error_mesh = *error_mesh;
-
-    RI_free(error_mesh);
-    RI_free(error_cube_file);
-
-    ri.error_texture.image_buffer = RI_malloc(sizeof(uint32_t));
-
-    ri.error_texture.image_buffer[0] = 0xFFFF00FF;
-    ri.error_texture.resolution = (RI_vector_2){1, 1};
-
-    ri.error_material.texture_reference = &ri.error_texture;
-    ri.error_material.albedo = 0xFF5522CC;
-    ri.error_material.flags = RI_MATERIAL_UNLIT | RI_MATERIAL_DONT_DEPTH_TEST | RI_MATERIAL_DONT_RECEIVE_SHADOW | RI_MATERIAL_HAS_TEXTURE | RI_MATERIAL_DOUBLE_SIDED;
 
     return 0;
 }
@@ -1165,6 +1110,70 @@ int RI_stop(int result){
     }
 
     exit(result);
+
+    return 0;
+}
+
+void signal_interupt_handler(int signal) {
+    debug("Recieved SIGINT");
+        
+    RI_stop(1);
+}
+
+int RI_init(int RI_window_width, int RI_window_height, char *RI_window_title){
+    signal(SIGINT, signal_interupt_handler);
+    
+    ri.running = 1;
+
+    ri.prefix = "[RasterIver] ";
+
+    if (ri.debug_memory){
+        ri.current_allocation_index = 0;
+        ri.allocation_search_limit = 100;
+        ri.allocation_table_length = 100;
+        
+        size_t __size = sizeof(RI_memory_allocation) * ri.allocation_table_length;
+
+        ri.allocation_table = malloc(__size);
+    
+        debug("[Memory Manager] Allocated (malloc) %zu bytes", __size);
+
+        ri.allocation_table[ri.current_allocation_index].allocated = 1;
+        ri.allocation_table[ri.current_allocation_index].freed = 0;
+        ri.allocation_table[ri.current_allocation_index].reallocated_alloc = 0;
+        ri.allocation_table[ri.current_allocation_index].reallocated_free = 0;
+        ri.allocation_table[ri.current_allocation_index].pointer = ri.allocation_table;        
+        ri.allocation_table[ri.current_allocation_index].size = __size;
+
+        ri.current_allocation_index++;
+    }
+
+    opencl_init();
+
+    sdl_init(RI_window_width, RI_window_height, RI_window_title);
+
+    ri.loaded_mesh_count = 0;
+    ri.loaded_texture_count = 0;
+    ri.actor_count = 0;
+
+    char **error_cube_file = RI_malloc(sizeof(char *));
+    error_cube_file[0] = "objects/unit_cube.obj";
+
+    RI_mesh* error_mesh = RI_request_meshes(1, error_cube_file, 1);
+
+    ri.error_mesh = *error_mesh;
+
+    RI_free(error_mesh);
+    RI_free(error_cube_file);
+
+    ri.error_texture.image_buffer = RI_malloc(sizeof(uint32_t));
+
+    ri.error_texture.image_buffer[0] = 0xFFFF00FF;
+    ri.error_texture.resolution = (RI_vector_2){1, 1};
+
+    ri.error_material.texture_reference = &ri.error_texture;
+    ri.error_material.albedo = 0xFF5522CC;
+    ri.error_material.flags = RI_MATERIAL_UNLIT | RI_MATERIAL_DONT_DEPTH_TEST | RI_MATERIAL_DONT_RECEIVE_SHADOW | RI_MATERIAL_HAS_TEXTURE | RI_MATERIAL_DOUBLE_SIDED;
 
     return 0;
 }
