@@ -12,4 +12,4 @@ rasteriver.so:
 	$(COMPILER) $(FLAGS_ALL) src/library/rasteriver.c -o compiled_libs/librasteriver.so $(FLAGS_LIB) 
 
 clean:
-	rm build/*
+	-rm build/*

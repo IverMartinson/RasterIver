@@ -161,6 +161,138 @@ void written_RI_free(void *__ptr, const char *caller, int line){
     free(__ptr);
 }
 
+void RI_draw_line(RI_texture *target_texture, RI_vector_2 point_a, RI_vector_2 point_b, uint32_t color){
+    int num_pixels = distance_2(point_a, point_b);
+    
+    for (int i = 0; i < num_pixels; ++i){
+        RI_vector_2 point_2_draw; vector_2_lerp(point_a, point_b, &point_2_draw, (double)i / (double)num_pixels);
+
+        if (point_2_draw.x < 0 || point_2_draw.x >= target_texture->resolution.x || point_2_draw.y < 0 || point_2_draw.y >= target_texture->resolution.y) continue;
+
+        target_texture->image_buffer[point_2_draw.y * target_texture->resolution.x + point_2_draw.x] = color;
+    }
+}
+
+int ccw(RI_vector_2f a, RI_vector_2f b, RI_vector_2f c) {
+    return (c.y - a.y) * (b.x - a.x) > (b.y - a.y) * (c.x - a.x);
+}
+
+int intersects_segments(RI_vector_2f a, RI_vector_2f b, RI_vector_2f c, RI_vector_2f d) {
+    return (ccw(a, c, d) != ccw(b, c, d)) && (ccw(a, b, c) != ccw(a, b, d));
+}
+
+int intersects(RI_vector_2f a, RI_vector_2f b, RI_vector_2f c){
+    RI_vector_2f d = {10000, c.y};
+    return intersects_segments(a, b, c, d);
+}
+
+void render_glyph(RI_texture *target_texture, RI_vector_2f position, float size, uint32_t color, int bezier_resolution, float units_per_em, SP_glyph *glyph){
+    // estimate
+    int new_point_count = 0;
+    int allocated_new_points = glyph->number_of_points * 3;
+    RI_vector_2f *new_points = RI_malloc(sizeof(RI_vector_2f) * allocated_new_points);
+    
+    for (int contour = 0; contour < glyph->number_of_contours; ++contour){
+        // if we are at contour 0, point_start is 0.
+        // if contour is > 0 but != 0, point_start is equal to the previous index
+        int point_start = contour > 0 ? glyph->contour_end_indicies[contour - 1] : 0;
+
+        int point_offset = point_start;
+
+        // find first on-curve point because the first point isn't always on the curves
+        while (!(glyph->flags[point_offset] & 1)){
+            point_offset++;
+        }
+
+        for (int point = 0; point < glyph->contour_end_indicies[contour]; ++point){
+            if (new_point_count == allocated_new_points){
+                allocated_new_points += 20;
+
+                new_points = RI_realloc(new_points, sizeof(RI_vector_2f) * allocated_new_points);
+            }
+            
+            int cur = (point + point_offset) % glyph->contour_end_indicies[contour];
+            int next = (point + point_offset + 1) % glyph->contour_end_indicies[contour];
+            
+            new_points[new_point_count].x = (float)glyph->x_coords[cur] / units_per_em * size;
+            new_points[new_point_count].y = (float)glyph->y_coords[cur] / units_per_em * size;
+
+            target_texture->image_buffer[(int)((new_points[new_point_count].y + position.y) * target_texture->resolution.x + (new_points[new_point_count].x + position.x))] = 0xFF00FF00;
+
+            new_point_count++;
+
+            // if current and next glyph are both on or off the curve, add a point between them-
+            if ((glyph->flags[cur] & 1) == (glyph->flags[next] & 1)){
+                vector_2f_lerp((RI_vector_2f){(float)glyph->x_coords[cur] / units_per_em * size, (float)glyph->y_coords[cur] / units_per_em * size}, (RI_vector_2f){(float)glyph->x_coords[next] / units_per_em * size, (float)glyph->y_coords[next] / units_per_em * size}, &new_points[new_point_count], 0.5);
+
+                target_texture->image_buffer[(int)((new_points[new_point_count].y + position.y) * target_texture->resolution.x + (new_points[new_point_count].x + position.x))] = 0xFF00FF00;
+
+                new_point_count++;
+            }
+        }
+    }
+    
+    allocated_new_points = new_point_count;
+
+    for (int y = (int)((float)glyph->y_min / (float)units_per_em * size) + position.y; y < (int)((float)glyph->y_max / (float)units_per_em * size) + position.y; ++y){
+        for (int x = (int)((float)glyph->x_min / (float)units_per_em * size) + position.x; x < (int)((float)glyph->x_max / (float)units_per_em * size) + position.x; ++x){
+            int intersections = 0;
+            
+            for (int point = 0; point < new_point_count; point += 2){
+                RI_vector_2f point_a = new_points[point % new_point_count];
+                RI_vector_2f point_b = new_points[(point + 1) % new_point_count];
+                RI_vector_2f point_c = new_points[(point + 2) % new_point_count];
+
+                RI_vector_2f prev_point = new_points[point % new_point_count];
+
+                for (int i = 0; i < bezier_resolution; ++i){
+                    float w = (float)(i + 1) / (float)bezier_resolution;
+                    
+                    RI_vector_2f bez_point; vector_2f_bezier_interpolate(point_a, point_b, point_c, &bez_point, w);
+
+                    if (bez_point.y >= 0 && bez_point.x >= 0)
+                    target_texture->image_buffer[(int)((bez_point.y + position.y) * target_texture->resolution.x + (bez_point.x + position.x))] = 0xFFFF5555;
+
+
+                    if(intersects(prev_point, bez_point, (RI_vector_2f){x, y})) intersections++; 
+            
+                    prev_point = bez_point;
+                }
+            }
+
+            if (intersections % 2 != 0) target_texture->image_buffer[y * target_texture->resolution.x + x] = color;
+        }
+    }
+
+    RI_free(new_points);
+}
+
+void RI_render_text(SP_font *font, RI_texture *target_texture, RI_vector_2f position, uint32_t color, int bezier_resolution, float size, char *text){
+    int character_count = strlen(text);
+    
+    for (int character_i = 0; character_i < character_count; ++character_i){
+        int glyph = font->unicode_to_glyph_indicies[text[character_i]];
+        
+        SP_glyph *current_glyph = &font->glyphs[glyph];
+        
+        if (current_glyph->number_of_contours > 0){
+            render_glyph(target_texture, position, size, color, bezier_resolution, (int)font->units_per_em, current_glyph);
+        }
+        else {
+            for (int k = 0; k < current_glyph->number_of_components; k++){
+                int c_glyph = current_glyph->components[k].glyph_index;
+                
+                int offset_x = (int)current_glyph->components[k].arg1;
+                int offset_y = (int)current_glyph->components[k].arg2;
+                
+                render_glyph(target_texture, position, size, color, bezier_resolution, (int)font->units_per_em, &font->glyphs[c_glyph]);
+            }
+        }
+        
+        position.x += 50;
+    }
+}
+
 int RI_add_actors_to_scene(int RI_number_of_actors_to_add_to_scene, RI_actor *actors, RI_scene *scene){
     int previous_actor_count = scene->actor_count;
 

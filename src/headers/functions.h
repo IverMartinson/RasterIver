@@ -2,6 +2,7 @@
 #define FUNCTIONS_H
 
 #include "custom_types.h"
+#include "sourparse.h"
 
 RI_mesh* RI_request_meshes(int RI_number_of_requested_objects, char **filenames, int RI_request_just_mesh); // Load object file(s)
 RI_actor* RI_request_actors(int RI_number_of_requested_actors); // Load texture file(s)
@@ -14,5 +15,9 @@ int RI_render(RI_scene *scene, RI_texture *target_texture, int clear_texture); /
 int RI_add_actors_to_scene(int RI_number_of_actors_to_add_to_scene, RI_actor *actors, RI_scene *scene);
 void RI_euler_rotation_to_quaternion(RI_vector_4f* quaternion, RI_vector_3f euler_rotation);
 void RI_tick();
+void RI_render_text(SP_font *font, RI_texture *target_texture, RI_vector_2f position, uint32_t color, int bezier_resolution, float size, char *text);
+void RI_draw_line(RI_texture *target_texture, RI_vector_2 point_a, RI_vector_2 point_b, uint32_t color);
+RI_vector_2f v2_to_2f(RI_vector_2 v);
+RI_vector_2 v2f_to_2(RI_vector_2f v);
 
 #endif

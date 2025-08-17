@@ -99,20 +99,29 @@ int main(){
 
     scene->antialiasing_subsample_resolution = 8;
     scene->flags = RI_SCENE_DONT_USE_AA;
-
-    int glyph = 0;
-
-
     
     while (running){
-               
-        if (ri->frame % 1 == 0){
-            glyph++;
+        RI_render(scene, ri->frame_buffer, 1);
+        
+        // RI_render_text(font, ri->frame_buffer, (RI_vector_2f){50, 200}, 0xFFFFFFFF, 10, 300, "A");
+        
+        RI_vector_2f a = {300, 200};
+        RI_vector_2f b = {500, 200};
+        RI_vector_2f c = {400, 500};
+        
+        b.y = sin((double)ri->frame / 100.0) * 700;
+        b.x = cos((double)ri->frame / 100.0) * 700;
+        
+        RI_vector_2f prev = a;
 
-                test_object->transform.position = (RI_vector_3f){-10000, -1000,-100000};
-                RI_render(scene, ri->frame_buffer, 1);
-
+        for (int i = 0; i < ceil(sqrt(ri->frame / 10)); ++i){
+            RI_vector_2f temp; vector_2f_bezier_interpolate(a, b, c, &temp, (double)(i + 1) / (double)(ceil(sqrt(ri->frame / 10))));
+            
+            RI_draw_line(ri->frame_buffer, v2f_to_2(prev), v2f_to_2(temp), 0xFFFFFFFF);
+        
+            prev = temp;
         }
+        printf("%d\n", ri->frame);
 
         // test_object->transform.position = (RI_vector_3f){0, 0, 200};
 
@@ -132,43 +141,10 @@ int main(){
 
         // y_rotation += 0.1;
         
-        float scale = 0.3;
 
-if (font->glyphs[glyph].number_of_contours > 0){
-    for (int i = 0; i < font->glyphs[glyph].number_of_contours; ++i){
-            for (int j = i > 0 ? font->glyphs[glyph].contour_end_indicies[i - 1] : 0; j < font->glyphs[glyph].contour_end_indicies[i]; ++j){
-                // if (!(font->glyphs[glyph].flags[j] & 1)) test_object->material_reference->texture_reference = &ri->error_texture;
-                // test_object->material_reference->texture_reference = test_object_texture;
-                test_object->transform.position = (RI_vector_3f){font->glyphs[glyph].x_coords[j] * scale - 100, font->glyphs[glyph].y_coords[j] * scale - 100, 500};
-            
-                RI_render(scene, ri->frame_buffer, 0);
-            }
-        }
+        RI_tick();
 
-}
-else {
-    for (int k = 0; k < font->glyphs[glyph].number_of_components; k++){
-        int c_glyph = font->glyphs[glyph].components[k].glyph_index;
-
-        if (k == 1) c_glyph = 599;
-
-        int offset_x = (int)font->glyphs[glyph].components[k].arg1;
-        int offset_y = (int)font->glyphs[glyph].components[k].arg2;
-        
-        for (int i = 0; i < font->glyphs[c_glyph].number_of_contours; ++i){
-            for (int j = i > 0 ? font->glyphs[c_glyph].contour_end_indicies[i - 1] : 0; j < font->glyphs[c_glyph].contour_end_indicies[i]; ++j){
-                // if (!(font->glyphs[glyph].flags[j] & 1)) test_object->material_reference->texture_reference = &ri->error_texture;
-                // test_object->material_reference->texture_reference = test_object_texture;
-                test_object->transform.position = (RI_vector_3f){(font->glyphs[c_glyph].x_coords[j] + offset_x) * scale - 100, (font->glyphs[c_glyph].y_coords[j] + offset_y) * scale - 100, 500};
-            
-                RI_render(scene, ri->frame_buffer, 0);
-            }
-        }
-    }
-}
-RI_tick();
-    ++ri->frame;
-
+        ++ri->frame;
     }
 
     SP_free_font(font);
