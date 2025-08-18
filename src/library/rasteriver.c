@@ -192,6 +192,8 @@ void render_glyph(RI_texture *target_texture, RI_vector_2f position, float size,
     int allocated_new_points = glyph->number_of_points * 3;
     RI_vector_2f *new_points = RI_malloc(sizeof(RI_vector_2f) * allocated_new_points);
     
+    int *contour_ends = RI_malloc(sizeof(int) * glyph->number_of_contours);
+    
     for (int contour = 0; contour < glyph->number_of_contours; ++contour){
         // if we are at contour 0, point_start is 0.
         // if contour is > 0 but != 0, point_start is equal to the previous index
@@ -214,22 +216,21 @@ void render_glyph(RI_texture *target_texture, RI_vector_2f position, float size,
             int cur = (point + point_offset) % glyph->contour_end_indicies[contour];
             int next = (point + point_offset + 1) % glyph->contour_end_indicies[contour];
             
-            new_points[new_point_count].x = (float)glyph->x_coords[cur] / units_per_em * size;
-            new_points[new_point_count].y = (float)glyph->y_coords[cur] / units_per_em * size;
-
-            target_texture->image_buffer[(int)((new_points[new_point_count].y + position.y) * target_texture->resolution.x + (new_points[new_point_count].x + position.x))] = 0xFF00FF00;
+            new_points[new_point_count].x = (float)glyph->x_coords[cur] / units_per_em * size + position.x;
+            new_points[new_point_count].y = (float)glyph->y_coords[cur] / units_per_em * size + position.y;
 
             new_point_count++;
 
             // if current and next glyph are both on or off the curve, add a point between them-
             if ((glyph->flags[cur] & 1) == (glyph->flags[next] & 1)){
-                vector_2f_lerp((RI_vector_2f){(float)glyph->x_coords[cur] / units_per_em * size, (float)glyph->y_coords[cur] / units_per_em * size}, (RI_vector_2f){(float)glyph->x_coords[next] / units_per_em * size, (float)glyph->y_coords[next] / units_per_em * size}, &new_points[new_point_count], 0.5);
-
-                target_texture->image_buffer[(int)((new_points[new_point_count].y + position.y) * target_texture->resolution.x + (new_points[new_point_count].x + position.x))] = 0xFF00FF00;
+                vector_2f_lerp((RI_vector_2f){(float)glyph->x_coords[cur] / units_per_em * size + position.x, (float)glyph->y_coords[cur] / units_per_em * size + position.y}, (RI_vector_2f){(float)glyph->x_coords[next] / units_per_em * size + position.x, (float)glyph->y_coords[next] / units_per_em * size + position.y}, &new_points[new_point_count], 0.5);
 
                 new_point_count++;
             }
         }
+
+        contour_ends[contour] = new_point_count;
+        debug("%d", new_point_count);
     }
     
     allocated_new_points = new_point_count;
@@ -238,33 +239,43 @@ void render_glyph(RI_texture *target_texture, RI_vector_2f position, float size,
         for (int x = (int)((float)glyph->x_min / (float)units_per_em * size) + position.x; x < (int)((float)glyph->x_max / (float)units_per_em * size) + position.x; ++x){
             int intersections = 0;
             
-            for (int point = 0; point < new_point_count; point += 2){
-                RI_vector_2f point_a = new_points[point % new_point_count];
-                RI_vector_2f point_b = new_points[(point + 1) % new_point_count];
-                RI_vector_2f point_c = new_points[(point + 2) % new_point_count];
+            for (int contour = 0; contour < glyph->number_of_contours; ++contour){
+                int p_start = contour_ends[contour > 0 ? contour - 1 : 0];
+                int p_end = contour_ends[contour];
 
-                RI_vector_2f prev_point = new_points[point % new_point_count];
+                for (int point = 0; point < p_end - p_start; point += 2){
+                    RI_vector_2f point_a = new_points[p_start + point % (p_end - p_start)];
+                    RI_vector_2f point_b = new_points[p_start + (point + 1) % (p_end - p_start)];
+                    RI_vector_2f point_c = new_points[p_start + (point + 2) % (p_end - p_start)];
 
-                for (int i = 0; i < bezier_resolution; ++i){
-                    float w = (float)(i + 1) / (float)bezier_resolution;
-                    
-                    RI_vector_2f bez_point; vector_2f_bezier_interpolate(point_a, point_b, point_c, &bez_point, w);
+                    RI_vector_2f prev_point = new_points[p_start + point % p_end];
 
-                    if (bez_point.y >= 0 && bez_point.x >= 0)
-                    target_texture->image_buffer[(int)((bez_point.y + position.y) * target_texture->resolution.x + (bez_point.x + position.x))] = 0xFFFF5555;
+                    for (int i = 0; i < bezier_resolution; ++i){
+                        float w = (float)(i + 1) / (float)bezier_resolution;
 
+                        RI_draw_line(target_texture, v2f_to_2(point_a), v2f_to_2(point_c), 0xFF77FF77);
 
-                    if(intersects(prev_point, bez_point, (RI_vector_2f){x, y})) intersections++; 
-            
-                    prev_point = bez_point;
+                        RI_vector_2f bez_point; vector_2f_bezier_interpolate(point_a, point_b, point_c, &bez_point, w);
+
+                        if(intersects(prev_point, bez_point, (RI_vector_2f){x, y})) intersections++; 
+                
+                        RI_tick();
+
+                        int x;
+
+                        for (int _ = 0; _ < 10000000; _++)x = 10000*10000*_*_*_*_*_;
+                        
+                        prev_point = bez_point;
+                    }
                 }
             }
-
-            if (intersections % 2 != 0) target_texture->image_buffer[y * target_texture->resolution.x + x] = color;
+            
+            // if (intersections % 2 != 0) target_texture->image_buffer[y * target_texture->resolution.x + x] = color;
         }
     }
 
     RI_free(new_points);
+    RI_free(contour_ends);
 }
 
 void RI_render_text(SP_font *font, RI_texture *target_texture, RI_vector_2f position, uint32_t color, int bezier_resolution, float size, char *text){

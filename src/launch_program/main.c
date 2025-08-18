@@ -103,45 +103,8 @@ int main(){
     while (running){
         RI_render(scene, ri->frame_buffer, 1);
         
-        // RI_render_text(font, ri->frame_buffer, (RI_vector_2f){50, 200}, 0xFFFFFFFF, 10, 300, "A");
+        RI_render_text(font, ri->frame_buffer, (RI_vector_2f){50, 200}, 0xFFFFFFFF, 10, 300, "A");
         
-        RI_vector_2f a = {300, 200};
-        RI_vector_2f b = {500, 200};
-        RI_vector_2f c = {400, 500};
-        
-        b.y = sin((double)ri->frame / 100.0) * 700;
-        b.x = cos((double)ri->frame / 100.0) * 700;
-        
-        RI_vector_2f prev = a;
-
-        for (int i = 0; i < ceil(sqrt(ri->frame / 10)); ++i){
-            RI_vector_2f temp; vector_2f_bezier_interpolate(a, b, c, &temp, (double)(i + 1) / (double)(ceil(sqrt(ri->frame / 10))));
-            
-            RI_draw_line(ri->frame_buffer, v2f_to_2(prev), v2f_to_2(temp), 0xFFFFFFFF);
-        
-            prev = temp;
-        }
-        printf("%d\n", ri->frame);
-
-        // test_object->transform.position = (RI_vector_3f){0, 0, 200};
-
-        // RI_euler_rotation_to_quaternion(&screen->transform.rotation, (RI_vector_3f){-3.14159 / 2, 0, ri->frame * 0.03});
-
-        // // scene->camera_position = (RI_vector_3f){cos(ri->frame * 0.07) * 10 * sin(ri->frame * 0.2), sin(ri->frame * 0.07) * 10 * sin(ri->frame * 0.2), -300};
-        // scene->camera_position = (RI_vector_3f){0, 0, -300};
-        
-        // wall->transform.scale.x = fabs(sin(y_rotation)) * 100 + 70;
-
-        // RI_euler_rotation_to_quaternion(&scene->camera_rotation, (RI_vector_3f){0, y_rotation * .01 + 1.5, 0});
-
-        // RI_euler_rotation_to_quaternion(&floor->transform.rotation, (RI_vector_3f){0, y_rotation, 0});
-        
-        // RI_euler_rotation_to_quaternion(&test_object->transform.rotation, (RI_vector_3f){y_rotation, y_rotation, y_rotation});
-        // RI_euler_rotation_to_quaternion(&test_object->transform.rotation, (RI_vector_3f){0, y_rotation, 0});
-
-        // y_rotation += 0.1;
-        
-
         RI_tick();
 
         ++ri->frame;
