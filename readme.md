@@ -59,4 +59,6 @@ To run the binary, it needs to be in the same folder as librasteriver.so (if you
 - [x] tileable textures
 - [ ] UI elements (just images? text? custom text rasterizer? buttons?)
 - [ ] Documentation
-- [ ] text rasterizer for UI
+- [x] text rasterizer for UI [NOTE: its for any texture in general]
+- [ ] texture masking; greyscale texture is used to filter out parts of another image. All white = keep the pixel, all black = make it transparent
+- [x] add request empty texture

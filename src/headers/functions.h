@@ -19,5 +19,7 @@ void RI_render_text(SP_font *font, RI_texture *target_texture, RI_vector_2f posi
 void RI_draw_line(RI_texture *target_texture, RI_vector_2 point_a, RI_vector_2 point_b, uint32_t color);
 RI_vector_2f v2_to_2f(RI_vector_2 v);
 RI_vector_2 v2f_to_2(RI_vector_2f v);
+void RI_clear_texture(RI_texture *target_texture);
+RI_texture* RI_request_empty_texture(RI_vector_2 resolution);
 
 #endif

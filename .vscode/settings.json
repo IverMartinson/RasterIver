@@ -9,7 +9,8 @@
         "initializer_list": "c",
         "utility": "c",
         "compare": "c",
-        "rasteriver.h": "c"
+        "rasteriver.h": "c",
+        "custom_types.h": "c"
     },
     "OpenCL.explorer.localizedProperties": false,
     "C_Cpp.default.compilerPath": "/bin/gcc"
