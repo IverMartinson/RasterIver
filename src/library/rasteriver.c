@@ -1191,7 +1191,7 @@ void RI_tick(){
         }
     }
 
-    // ++ri.frame;
+    ++ri.frame;
 }
 
 int opencl_init(){

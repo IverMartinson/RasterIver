@@ -71,8 +71,6 @@ int main(){
         RI_render_text(QwitcherGrypen, ri->frame_buffer, (RI_vector_2f){00, 450}, 0xFFFFFFFF, 2, 80, "I love Qwitcher Grypen");
 
         RI_tick();
-
-        ++ri->frame;
     }
 
     SP_free_font(comic_sans);
