@@ -7,6 +7,7 @@
 #include "math.h"
 #include "sourparse.h"
 #include <SDL2/SDL.h>
+#include <CL/cl.h>
 
 typedef struct {
     // rendering (non SDL)
@@ -53,6 +54,16 @@ typedef struct {
     int allocation_search_limit;
     int current_allocation_index;
     int allocation_table_length;
+
+    // OpenCL
+    cl_platform_id cl_platform;
+    cl_uint cl_number_of_platforms;
+    
+    cl_device_id cl_device;
+    cl_uint cl_number_of_devices;
+
+    cl_context cl_context;
+    cl_command_queue cl_command_queue;
 } RasterIver;
 
 RasterIver* RI_get_ri();

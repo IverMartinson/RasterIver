@@ -62,3 +62,5 @@ To run the binary, it needs to be in the same folder as librasteriver.so (if you
 - [x] text rasterizer for UI [NOTE: its for any texture in general]
 - [ ] texture masking; greyscale texture is used to filter out parts of another image. All white = keep the pixel, all black = make it transparent
 - [x] add request empty texture
+- [ ] shaders. User makes a function for a pixel on a tri (passes a function as a pointer) and returns 1/0 whether to keep or ignore the pixel
+- [ ] add batch/blit object copying

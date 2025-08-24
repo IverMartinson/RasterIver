@@ -1,4 +1,10 @@
 #include "../headers/rasteriver.h"
+#include <time.h>
+
+int shader_function(int pixel_x, int pixel_y, RI_vector_3f position, RI_vector_3f normal, RI_vector_2f uv, uint32_t color){
+    if (uv.x > 0.5) return 1;
+    else return 0;
+}
 
 int main(){
     SP_font *comic_sans = SP_load_font("fonts/ComicSans-Regular.ttf");
@@ -12,8 +18,6 @@ int main(){
     ri->debug_memory = 0;
 
     RI_init(700, 700, "This is RasterIver 2.0!!");
-
-    int running = 1;
 
     // data for loading files
     char *filenames[] = {"objects/unit_plane.obj"};
@@ -34,14 +38,18 @@ int main(){
     text_plane_material->flags = RI_MATERIAL_HAS_TEXTURE | RI_MATERIAL_DOUBLE_SIDED;
     text_plane_material->texture_reference = RI_request_empty_texture((RI_vector_2){400, 400});
     text_plane_material->albedo = 0xFFFFFFFF;
+    text_plane_material->shader_function_pointer = shader_function;
 
     // actors
     RI_actor* text_plane = &actors[0];
     text_plane->material_reference = text_plane_material;
     text_plane->mesh_reference = text_plane_mesh;
-    text_plane->transform.scale = (RI_vector_3f){50, 50, 50};
-    text_plane->transform.position = (RI_vector_3f){100, 50, 400};
+    text_plane->transform.scale = (RI_vector_3f){100, 100, 100};
+    text_plane->transform.position = (RI_vector_3f){0, 0, 400};
     text_plane->transform.rotation = (RI_vector_4f){0, 1, 0, 0};
+    RI_euler_rotation_to_quaternion(&text_plane->transform.rotation, (RI_vector_3f){-3.1415926 / 2, 0, 0});
+
+    RI_vector_4f rotation_delta;
 
     RI_add_actors_to_scene(1, actors, scene);
 
@@ -61,17 +69,40 @@ int main(){
     RI_render_text(cal_sans, text_plane_material->texture_reference, (RI_vector_2f){0, 200}, 0xFFFFFFFF, 2, 80, "Wow!!");
     RI_render_text(QwitcherGrypen, text_plane_material->texture_reference, (RI_vector_2f){0, 300}, 0xFFFFFFFF, 2, 80, "WOW!!!!");    
 
-    while (running){
-        RI_euler_rotation_to_quaternion(&text_plane->transform.rotation, (RI_vector_3f){-1.5, ri->frame / 10.0, 0});
+    long int start, end;
+    char *fps_string = (char *)malloc(64 * sizeof(char));
+    double fps = 0;
+
+    double delta_time = 0;
+    double delta_min = 0.00001;
+    double delta_max = 0.1;
+
+    fps_string[0] = '\0';
+
+    while (ri->running){
+        start = clock();
+
+        RI_euler_rotation_to_quaternion(&rotation_delta, (RI_vector_3f){2.0 * delta_time, 2.0 * delta_time, 2.0 * delta_time});
+
+        quaternion_multiply(&text_plane->transform.rotation, rotation_delta);
 
         RI_render(scene, ri->frame_buffer, 1);
-        
-        RI_render_text(comic_sans, ri->frame_buffer, (RI_vector_2f){00, 250}, 0xFFFFFFFF, 2, 80, "I love Comic Sans");
-        RI_render_text(cal_sans, ri->frame_buffer, (RI_vector_2f){00, 350}, 0xFFFFFFFF, 2, 80, "I love Cal Sans");
-        RI_render_text(QwitcherGrypen, ri->frame_buffer, (RI_vector_2f){00, 450}, 0xFFFFFFFF, 2, 80, "I love Qwitcher Grypen");
 
-        RI_tick();
+        snprintf(fps_string, 64, "%.2f", fps);
+        RI_render_text(cal_sans, ri->frame_buffer, (RI_vector_2f){0, 670}, 0xFFFFFFFF, 2, 20, fps_string);
+        
+        snprintf(fps_string, 64, "%.6f", delta_time);
+        RI_render_text(cal_sans, ri->frame_buffer, (RI_vector_2f){0, 640}, 0xFFFFFFFF, 2, 20, fps_string);
+
+        RI_tick(1);
+
+        end = clock();
+
+        delta_time = fmin(fmax(((double)(end - start) / (double)(CLOCKS_PER_SEC)), delta_min), delta_max);
+        fps = 1.0 / delta_time;
     }
+
+    RI_stop(0);
 
     SP_free_font(comic_sans);
     SP_free_font(cal_sans);

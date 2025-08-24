@@ -74,13 +74,12 @@ typedef struct {
     uint64_t flags;
     RI_vector_2f uv_loop_multiplier;
     RI_vector_2f texture_render_size;
+    int (*shader_function_pointer) (int pixel_x, int pixel_y, RI_vector_3f position, RI_vector_3f normal, RI_vector_2f uv, uint32_t color);
 } RI_material;
 
 typedef struct { // An entity that has an mesh, transform, materials, etc
     RI_mesh *mesh_reference;
     RI_material *material_reference;
-    RI_vector_3f *transformed_vertex_positions;
-    RI_vector_3f *transformed_normals;
     RI_transform transform;
 } RI_actor;
 

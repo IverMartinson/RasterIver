@@ -1,5 +1,5 @@
 #include <stdio.h>
-// #include <CL/cl.h>
+#include <CL/cl.h>
 #include <SDL2/SDL.h>
 #include "../headers/rasteriver.h"
 #define STB_IMAGE_IMPLEMENTATION
@@ -1091,10 +1091,6 @@ int RI_render(RI_scene *scene, RI_texture *target_texture, int clear_texture){
                         continue;
                     }
                     
-                    if (!(mat->flags & RI_MATERIAL_DONT_DEPTH_WRITE)){
-                        ri.z_buffer[y * target_texture->resolution.x + x] = interpolated_z;
-                    }
-                    
                     double alpha = 1;
 
                     if (!(scene->flags & RI_SCENE_DONT_USE_AA) || !(mat->flags & RI_MATERIAL_DONT_USE_AA)){
@@ -1160,6 +1156,10 @@ int RI_render(RI_scene *scene, RI_texture *target_texture, int clear_texture){
                         else pixel_color = 0xFF777777;
                     }
 
+                    if (!(mat->flags & RI_MATERIAL_DONT_DEPTH_WRITE)){
+                        ri.z_buffer[y * target_texture->resolution.x + x] = interpolated_z;
+                    }
+
                     if (x >= 0 && y >= 0 && x < target_texture->resolution.x && y < target_texture->resolution.y){
                         target_texture->image_buffer[y * target_texture->resolution.x + x] = pixel_color;
                     }
@@ -1175,7 +1175,7 @@ int RI_render(RI_scene *scene, RI_texture *target_texture, int clear_texture){
     return 0;
 }
 
-void RI_tick(){
+void RI_tick(int clear_window_texture_after_rendering){
     SDL_UpdateTexture(ri.texture, NULL, ri.frame_buffer->image_buffer, ri.window_width * sizeof(uint32_t));
 
     SDL_RenderClear(ri.renderer);
@@ -1191,10 +1191,33 @@ void RI_tick(){
         }
     }
 
+    if (clear_window_texture_after_rendering){
+        RI_clear_texture(ri.frame_buffer);
+    }
+
     ++ri.frame;
 }
 
 int opencl_init(){
+    cl_int cl_result;
+
+    cl_result = clGetPlatformIDs(1, &ri.cl_platform, &ri.cl_number_of_platforms);
+
+    if (cl_result != CL_SUCCESS || ri.cl_number_of_platforms == 0) {
+        debug("[OpenCL Init] Error! No OpenCL platforms");
+        RI_stop(1);
+    } 
+    
+    cl_result = clGetDeviceIDs(ri.cl_platform, CL_DEVICE_TYPE_GPU, 1, &ri.cl_device, &ri.cl_number_of_devices);
+
+    if (cl_result != CL_SUCCESS || ri.cl_number_of_devices == 0) {
+        debug("[OpenCL Init] Error! No OpenCL devices");
+        RI_stop(1);
+    }
+    
+    ri.cl_context = clCreateContext(NULL, 1, &ri.cl_device, NULL, NULL, &cl_result);
+    ri.cl_command_queue = clCreateCommandQueue(ri.cl_context, ri.cl_device, 0, &cl_result);
+
     return 0;
 }
 
@@ -1294,8 +1317,6 @@ int RI_stop(int result){
         RI_free(ri.allocation_table);
     }
 
-    exit(result);
-
     return 0;
 }
 
@@ -1333,7 +1354,7 @@ int RI_init(int RI_window_width, int RI_window_height, char *RI_window_title){
         ri.current_allocation_index++;
     }
 
-    opencl_init();
+    // opencl_init();
 
     sdl_init(RI_window_width, RI_window_height, RI_window_title);
 
