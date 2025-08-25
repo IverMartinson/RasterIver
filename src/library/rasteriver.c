@@ -1140,8 +1140,14 @@ int RI_render(RI_scene *scene, RI_texture *target_texture, int clear_texture){
                             uy *= (current_face->parent_actor->transform.scale.y / mat->texture_render_size.y);
                         }
 
-                        ux = mod(ux, 1.0);
-                        uy = mod(-uy, 1.0);
+                        if (mat->flags & RI_MATERIAL_USE_UV_LOOP_MULTIPLIER || mat->flags & RI_MATERIAL_USE_UV_RENDER_RESOLUTION){
+                            ux = mod(ux, 1.0);
+                            uy = mod(-uy, 1.0);
+                        } else{
+                            ux = fmax(fmin(ux, 1.0), 0.0);
+                            uy = fmax(fmin(1.0 - uy, 1.0), 0.0);
+                        }
+                        
 
                         RI_vector_2 texel_position = {mat->texture_reference->resolution.x * ux, mat->texture_reference->resolution.y * uy};
                         
@@ -1172,7 +1178,7 @@ int RI_render(RI_scene *scene, RI_texture *target_texture, int clear_texture){
                     
                     double shader_result = 1;
                     
-                    if (current_face->material_reference->shader_function_pointer != NULL) shader_result = current_face->material_reference->shader_function_pointer(x, y, (RI_vector_3f){0, 0, 0}, normal, (RI_vector_2f){ux, uy}, pixel_color);
+                    if (current_face->material_reference->shader_function_pointer != NULL) shader_result = current_face->material_reference->shader_function_pointer(x, y, *pos_0, *pos_1, *pos_2, normal, (RI_vector_2f){ux, uy}, pixel_color);
 
                     // set alpha after checking shader result becuase things with alpha 0 should still depth write
 

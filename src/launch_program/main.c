@@ -1,9 +1,9 @@
 #include "../headers/rasteriver.h"
 #include <time.h>
 
-double shader_function(int pixel_x, int pixel_y, RI_vector_3f position, RI_vector_3f normal, RI_vector_2f uv, uint32_t color){
-    if (color == 0xFFFFFFFF) return 0;
-    else return 1;
+double shader_function(int pixel_x, int pixel_y, RI_vector_3f v_pos_0, RI_vector_3f v_pos_1, RI_vector_3f v_pos_2, RI_vector_3f normal, RI_vector_2f uv, uint32_t color){
+    if (uv.y > uv.x * uv.x) return 1;
+    else return 0;
 }
 
 int main(){
