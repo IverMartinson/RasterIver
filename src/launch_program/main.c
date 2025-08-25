@@ -1,9 +1,9 @@
 #include "../headers/rasteriver.h"
 #include <time.h>
 
-int shader_function(int pixel_x, int pixel_y, RI_vector_3f position, RI_vector_3f normal, RI_vector_2f uv, uint32_t color){
-    if (uv.x > 0.5) return 1;
-    else return 0;
+double shader_function(int pixel_x, int pixel_y, RI_vector_3f position, RI_vector_3f normal, RI_vector_2f uv, uint32_t color){
+    if (color == 0xFFFFFFFF) return 0;
+    else return 1;
 }
 
 int main(){
@@ -24,14 +24,14 @@ int main(){
 
     // requesting assets
     RI_mesh* meshes = RI_request_meshes(1, filenames, 0);
-    RI_material* materials = RI_request_materials(1);
-    RI_actor* actors = RI_request_actors(1);
+    RI_material* materials = RI_request_materials(2);
+    RI_actor* actors = RI_request_actors(2);
     RI_scene* scenes = RI_request_scenes(1);
 
     RI_scene* scene = &scenes[0];
 
     // meshes
-    RI_mesh* text_plane_mesh = &meshes[0];
+    RI_mesh* plane_mesh = &meshes[0];
 
     // materials
     RI_material* text_plane_material = &materials[0];
@@ -40,18 +40,33 @@ int main(){
     text_plane_material->albedo = 0xFFFFFFFF;
     text_plane_material->shader_function_pointer = shader_function;
 
+    RI_material* bill_material = &materials[1];
+    bill_material->flags = RI_MATERIAL_HAS_TEXTURE | RI_MATERIAL_DOUBLE_SIDED;
+    RI_texture_creation_data tex_data[1] = {(RI_texture_creation_data){"textures/THIS IS THE WALL.png", {0, 0}}};
+    bill_material->texture_reference = RI_request_textures(1, tex_data);
+    bill_material->albedo = 0xFFFFFFFF;
+    bill_material->shader_function_pointer = NULL;
+
     // actors
     RI_actor* text_plane = &actors[0];
     text_plane->material_reference = text_plane_material;
-    text_plane->mesh_reference = text_plane_mesh;
+    text_plane->mesh_reference = plane_mesh;
     text_plane->transform.scale = (RI_vector_3f){100, 100, 100};
     text_plane->transform.position = (RI_vector_3f){0, 0, 400};
     text_plane->transform.rotation = (RI_vector_4f){0, 1, 0, 0};
     RI_euler_rotation_to_quaternion(&text_plane->transform.rotation, (RI_vector_3f){-3.1415926 / 2, 0, 0});
+    
+    RI_actor* bill_plane = &actors[1];
+    bill_plane->material_reference = bill_material;
+    bill_plane->mesh_reference = plane_mesh;
+    bill_plane->transform.scale = (RI_vector_3f){300, 300, 300};
+    bill_plane->transform.position = (RI_vector_3f){0, 0, 600};
+    bill_plane->transform.rotation = (RI_vector_4f){0, 1, 0, 0};
+    RI_euler_rotation_to_quaternion(&bill_plane->transform.rotation, (RI_vector_3f){3.1415926 / 2, 0, 0});
 
     RI_vector_4f rotation_delta;
 
-    RI_add_actors_to_scene(1, actors, scene);
+    RI_add_actors_to_scene(2, actors, scene);
 
     scene->FOV = 1.5; // 90 degrees in radians
     scene->minimum_clip_distance = 0.1;

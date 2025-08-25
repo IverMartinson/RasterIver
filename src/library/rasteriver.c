@@ -1027,10 +1027,14 @@ int RI_render(RI_scene *scene, RI_texture *target_texture, int clear_texture){
 
             RI_material *mat = current_face->material_reference;
         
-            RI_vector_2f *uv_0 = &current_face->uv_0;;
-            RI_vector_2f *uv_1 = &current_face->uv_1;;
-            RI_vector_2f *uv_2 = &current_face->uv_2;;
+            RI_vector_2f *uv_0 = &current_face->uv_0;
+            RI_vector_2f *uv_1 = &current_face->uv_1;
+            RI_vector_2f *uv_2 = &current_face->uv_2;
         
+            RI_vector_3f *normal_0 = &current_face->normal_0;
+            RI_vector_3f *normal_1 = &current_face->normal_1;
+            RI_vector_3f *normal_2 = &current_face->normal_2;
+
             if (mat == NULL){
                 mat = &ri.error_material;
             }
@@ -1110,10 +1114,21 @@ int RI_render(RI_scene *scene, RI_texture *target_texture, int clear_texture){
                     }
                     
                     uint32_t pixel_color = 0x00000000;
-                    
+         
+                    double ux, uy;
+                    ux = uy = -1;
+
+                    RI_vector_3f normal = {0};
+
+                    if (normal_0){
+                        normal.x = (w0 * (normal_0->x / pos_0->z) + w1 * (normal_1->x / pos_1->z) + w2 * (normal_2->x / pos_2->z)) / w_over_z;
+                        normal.y = (w0 * (normal_0->y / pos_0->z) + w1 * (normal_1->y / pos_1->z) + w2 * (normal_2->y / pos_2->z)) / w_over_z;      
+                        normal.z = (w0 * (normal_0->z / pos_0->z) + w1 * (normal_1->z / pos_1->z) + w2 * (normal_2->z / pos_2->z)) / w_over_z;      
+                    }
+
                     if (mat->flags & RI_MATERIAL_HAS_TEXTURE && uv_0 && uv_1 && uv_2){                
-                        double ux = (w0 * (uv_0->x / pos_0->z) + w1 * (uv_1->x / pos_1->z) + w2 * (uv_2->x / pos_2->z)) / w_over_z;
-                        double uy = (w0 * (uv_0->y / pos_0->z) + w1 * (uv_1->y / pos_1->z) + w2 * (uv_2->y / pos_2->z)) / w_over_z;                
+                        ux = (w0 * (uv_0->x / pos_0->z) + w1 * (uv_1->x / pos_1->z) + w2 * (uv_2->x / pos_2->z)) / w_over_z;
+                        uy = (w0 * (uv_0->y / pos_0->z) + w1 * (uv_1->y / pos_1->z) + w2 * (uv_2->y / pos_2->z)) / w_over_z;                
                     
                         if (mat->flags & RI_MATERIAL_USE_UV_LOOP_MULTIPLIER){
                             ux *= mat->uv_loop_multiplier.x;
@@ -1147,7 +1162,6 @@ int RI_render(RI_scene *scene, RI_texture *target_texture, int clear_texture){
                     // flip the texture
                     // x = target_texture->resolution.x - 1 - x;
                     // y = target_texture->resolution.y - 1 - y;
-                
 
                     if (scene->flags & RI_SCENE_DEBUG_CULLS){ // show unchanged tris in grey, shrunk tris in blue, split triangles in green (old tri) and red (new tri)
                         if (current_face->shrunk) pixel_color = 0xFF7777FF;
@@ -1155,6 +1169,16 @@ int RI_render(RI_scene *scene, RI_texture *target_texture, int clear_texture){
                         else if (face_index >= current_renderable_face_index) pixel_color = 0xFFFF7777;
                         else pixel_color = 0xFF777777;
                     }
+                    
+                    double shader_result = 1;
+                    
+                    if (current_face->material_reference->shader_function_pointer != NULL) shader_result = current_face->material_reference->shader_function_pointer(x, y, (RI_vector_3f){0, 0, 0}, normal, (RI_vector_2f){ux, uy}, pixel_color);
+
+                    // set alpha after checking shader result becuase things with alpha 0 should still depth write
+
+                    if (shader_result <= 0) continue;
+                    
+                    alpha = shader_result;
 
                     if (!(mat->flags & RI_MATERIAL_DONT_DEPTH_WRITE)){
                         ri.z_buffer[y * target_texture->resolution.x + x] = interpolated_z;
