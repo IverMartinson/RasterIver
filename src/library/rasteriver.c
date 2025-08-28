@@ -342,7 +342,7 @@ void RI_render_text(SP_font *font, RI_texture *target_texture, RI_vector_2f posi
             }
         }
         
-        position.x += (float)font->h_metrics[glyph].advance_width / font->units_per_em * size;
+        position.x += (float)(font->h_metrics[glyph].advance_width) / font->units_per_em * size;
     }
 }
 
@@ -399,9 +399,14 @@ RI_actor* RI_request_actors(int RI_number_of_requested_actors){
 }
 
 RI_material* RI_request_materials(int RI_number_of_requested_materials){
+    int previous_material_count = ri.material_count;
     ri.material_count += RI_number_of_requested_materials;
 
     ri.materials = RI_realloc(ri.materials, sizeof(RI_material) * ri.material_count);
+
+    for (int i = previous_material_count; i < ri.material_count; ++i){
+        ri.materials[i] = ri.error_material;
+    }
 
     return ri.materials;
 }
@@ -621,33 +626,6 @@ RI_mesh* RI_request_meshes(int RI_number_of_requested_meshes, char **filenames, 
     else return mesh;
 }
 
-void quaternion_rotate(RI_vector_3f *position, RI_vector_4f rotation){
-    RI_vector_4f pos_quat = {0, position->x, position->y, position->z};
-
-    RI_vector_4f rotation_conjugation = rotation;
-    quaternion_conjugate(&rotation_conjugation);
-
-    quaternion_multiply(&rotation, pos_quat);
-
-    quaternion_multiply(&rotation, rotation_conjugation);
-
-    *position = (RI_vector_3f){rotation.x, rotation.y, rotation.z};
-}
-
-void RI_euler_rotation_to_quaternion(RI_vector_4f *quaternion, RI_vector_3f euler_rotation){
-    double cx = cosf(euler_rotation.x * 0.5f);
-    double sx = sinf(euler_rotation.x * 0.5f);
-    double cy = cosf(euler_rotation.y * 0.5f);
-    double sy = sinf(euler_rotation.y * 0.5f);
-    double cz = cosf(euler_rotation.z * 0.5f);
-    double sz = sinf(euler_rotation.z * 0.5f);
-
-    quaternion->w = cx * cy * cz + sx * sy * sz;
-    quaternion->x = sx * cy * cz - cx * sy * sz;
-    quaternion->y = cx * sy * cz + sx * cy * sz;
-    quaternion->z = cx * cy * sz - sx * sy * cz;
-}
-
 double mod(double a, double b){
     if(b < 0.0)
         return -mod(-a, -b);   
@@ -672,7 +650,7 @@ uint32_t multiply_rgb(uint32_t color, float factor) {
 
 int RI_render(RI_scene *scene, RI_texture *target_texture, int clear_texture){
     // do rendering stuff
-    if (ri.running){
+    if (ri.running){        
         double horizontal_fov_factor = target_texture->resolution.x / tanf(0.5 * scene->FOV);
         double vertical_fov_factor = target_texture->resolution.y / tanf(0.5 * scene->FOV);
 
@@ -747,21 +725,16 @@ int RI_render(RI_scene *scene, RI_texture *target_texture, int clear_texture){
                 // object position
                 vector_3f_element_wise_add(&cur_r_face->position_0, current_actor->transform.position);
                 vector_3f_element_wise_add(&cur_r_face->position_1, current_actor->transform.position);
-                vector_3f_element_wise_add(&cur_r_face->position_2, current_actor->transform.position);
-                
-                // camera rotation
+                vector_3f_element_wise_add(&cur_r_face->position_2, current_actor->transform.position);    
+
+                // camera position & rotation
                 vector_3f_element_wise_subtract(&cur_r_face->position_0, scene->camera_position);
                 vector_3f_element_wise_subtract(&cur_r_face->position_1, scene->camera_position);
                 vector_3f_element_wise_subtract(&cur_r_face->position_2, scene->camera_position);
 
                 quaternion_rotate(&cur_r_face->position_0, scene->camera_rotation);
                 quaternion_rotate(&cur_r_face->position_1, scene->camera_rotation);
-                quaternion_rotate(&cur_r_face->position_2, scene->camera_rotation);
-                
-                // camera position
-                // vector_3f_element_wise_subtract(&cur_r_face->position_0, scene->camera_position);
-                // vector_3f_element_wise_subtract(&cur_r_face->position_1, scene->camera_position);
-                // vector_3f_element_wise_subtract(&cur_r_face->position_2, scene->camera_position);
+                quaternion_rotate(&cur_r_face->position_2, scene->camera_rotation);        
 
                 RI_vector_3f *pos_0 = &cur_r_face->position_0;
                 RI_vector_3f *pos_1 = &cur_r_face->position_1;
@@ -976,14 +949,7 @@ int RI_render(RI_scene *scene, RI_texture *target_texture, int clear_texture){
                         break;
                 }
 
-                cur_r_face->position_0.x = cur_r_face->position_0.x / cur_r_face->position_0.z * horizontal_fov_factor;
-                cur_r_face->position_0.y = cur_r_face->position_0.y / cur_r_face->position_0.z * vertical_fov_factor;
-                
-                cur_r_face->position_1.x = cur_r_face->position_1.x / cur_r_face->position_1.z * horizontal_fov_factor;
-                cur_r_face->position_1.y = cur_r_face->position_1.y / cur_r_face->position_1.z * vertical_fov_factor;
-
-                cur_r_face->position_2.x = cur_r_face->position_2.x / cur_r_face->position_2.z * horizontal_fov_factor;
-                cur_r_face->position_2.y = cur_r_face->position_2.y / cur_r_face->position_2.z * vertical_fov_factor;
+                current_actor->material_reference->vertex_shader(&cur_r_face->position_0, &cur_r_face->position_1, &cur_r_face->position_2, horizontal_fov_factor, vertical_fov_factor);
 
                 cur_r_face->min_screen_x = pos_0->x; 
                 if (pos_1->x < cur_r_face->min_screen_x) cur_r_face->min_screen_x = pos_1->x;
@@ -1176,9 +1142,7 @@ int RI_render(RI_scene *scene, RI_texture *target_texture, int clear_texture){
                         else pixel_color = 0xFF777777;
                     }
                     
-                    double shader_result = 1;
-                    
-                    if (current_face->material_reference->shader_function_pointer != NULL) shader_result = current_face->material_reference->shader_function_pointer(x, y, *pos_0, *pos_1, *pos_2, normal, (RI_vector_2f){ux, uy}, pixel_color);
+                    double shader_result = shader_result = current_face->material_reference->fragment_shader(x, y, *pos_0, *pos_1, *pos_2, normal, (RI_vector_2f){ux, uy}, pixel_color);
 
                     // set alpha after checking shader result becuase things with alpha 0 should still depth write
 
@@ -1356,6 +1320,24 @@ void signal_interupt_handler(int signal) {
     RI_stop(1);
 }
 
+double default_fragment_shader(int pixel_x, int pixel_y, RI_vector_3f v_pos_0, RI_vector_3f v_pos_1, RI_vector_3f v_pos_2, RI_vector_3f normal, RI_vector_2f uv, uint32_t color){
+    return 1;
+}
+
+void perspective_vertex_shader(RI_vector_3f *v_pos_0, RI_vector_3f *v_pos_1, RI_vector_3f *v_pos_2, double horizontal_fov_factor, double vertical_fov_factor){
+    v_pos_0->x = v_pos_0->x / v_pos_0->z * horizontal_fov_factor;
+    v_pos_0->y = v_pos_0->y / v_pos_0->z * vertical_fov_factor;
+    
+    v_pos_1->x = v_pos_1->x / v_pos_1->z * horizontal_fov_factor;
+    v_pos_1->y = v_pos_1->y / v_pos_1->z * vertical_fov_factor;
+
+    v_pos_2->x = v_pos_2->x / v_pos_2->z * horizontal_fov_factor;
+    v_pos_2->y = v_pos_2->y / v_pos_2->z * vertical_fov_factor;
+}
+
+void orthographic_vertex_shader(RI_vector_3f *v_pos_0, RI_vector_3f *v_pos_1, RI_vector_3f *v_pos_2, double horizontal_fov_factor, double vertical_fov_factor){
+}
+
 int RI_init(int RI_window_width, int RI_window_height, char *RI_window_title){
     signal(SIGINT, signal_interupt_handler);
     
@@ -1407,8 +1389,19 @@ int RI_init(int RI_window_width, int RI_window_height, char *RI_window_title){
     ri.error_texture.image_buffer[0] = 0xFFFF00FF;
     ri.error_texture.resolution = (RI_vector_2){1, 1};
 
+    ri.default_fragment_shader = default_fragment_shader;
+    ri.default_vertex_shader = perspective_vertex_shader;
+    ri.perspective_vertex_shader = perspective_vertex_shader;
+    ri.orthographic_vertex_shader = orthographic_vertex_shader;
+
+    ri.error_material.bump_map_reference = NULL;
+    ri.error_material.normal_map_reference = NULL;
+    ri.error_material.uv_loop_multiplier = (RI_vector_2f){1.0, 1.0};
+    ri.error_material.wireframe_width = 0.2;
     ri.error_material.texture_reference = &ri.error_texture;
-    ri.error_material.albedo = 0xFF5522CC;
+    ri.error_material.albedo = 0xFFFF00FF;
+    ri.error_material.fragment_shader = ri.default_fragment_shader;
+    ri.error_material.vertex_shader = ri.default_vertex_shader;
     ri.error_material.flags = RI_MATERIAL_UNLIT | RI_MATERIAL_DONT_DEPTH_TEST | RI_MATERIAL_DONT_RECEIVE_SHADOW | RI_MATERIAL_HAS_TEXTURE | RI_MATERIAL_DOUBLE_SIDED;
 
     return 0;

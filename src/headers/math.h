@@ -227,4 +227,31 @@ RI_vector_2 v2f_to_2(RI_vector_2f v){
     return (RI_vector_2){v.x, v.y};
 }
 
+void quaternion_rotate(RI_vector_3f *position, RI_vector_4f rotation){
+    RI_vector_4f pos_quat = {0, position->x, position->y, position->z};
+
+    RI_vector_4f rotation_conjugation = rotation;
+    quaternion_conjugate(&rotation_conjugation);
+
+    quaternion_multiply(&rotation, pos_quat);
+
+    quaternion_multiply(&rotation, rotation_conjugation);
+
+    *position = (RI_vector_3f){rotation.x, rotation.y, rotation.z};
+}
+
+void RI_euler_rotation_to_quaternion(RI_vector_4f *quaternion, RI_vector_3f euler_rotation){
+    double cx = cosf(euler_rotation.x * 0.5f);
+    double sx = sinf(euler_rotation.x * 0.5f);
+    double cy = cosf(euler_rotation.y * 0.5f);
+    double sy = sinf(euler_rotation.y * 0.5f);
+    double cz = cosf(euler_rotation.z * 0.5f);
+    double sz = sinf(euler_rotation.z * 0.5f);
+
+    quaternion->w = cx * cy * cz + sx * sy * sz;
+    quaternion->x = sx * cy * cz - cx * sy * sz;
+    quaternion->y = cx * sy * cz + sx * cy * sz;
+    quaternion->z = cx * cy * sz - sx * sy * cz;
+}
+
 #endif

@@ -38,20 +38,19 @@ int main(){
     text_plane_material->flags = RI_MATERIAL_HAS_TEXTURE | RI_MATERIAL_DOUBLE_SIDED;
     text_plane_material->texture_reference = RI_request_empty_texture((RI_vector_2){400, 400});
     text_plane_material->albedo = 0xFFFFFFFF;
-    text_plane_material->shader_function_pointer = shader_function;
+    text_plane_material->fragment_shader = shader_function;
 
     RI_material* bill_material = &materials[1];
     bill_material->flags = RI_MATERIAL_HAS_TEXTURE | RI_MATERIAL_DOUBLE_SIDED;
     RI_texture_creation_data tex_data[1] = {(RI_texture_creation_data){"textures/THIS IS THE WALL.png", {0, 0}}};
     bill_material->texture_reference = RI_request_textures(1, tex_data);
     bill_material->albedo = 0xFFFFFFFF;
-    bill_material->shader_function_pointer = NULL;
 
     // actors
     RI_actor* text_plane = &actors[0];
     text_plane->material_reference = text_plane_material;
     text_plane->mesh_reference = plane_mesh;
-    text_plane->transform.scale = (RI_vector_3f){100, 100, 100};
+    text_plane->transform.scale = (RI_vector_3f){300, 300, 300};
     text_plane->transform.position = (RI_vector_3f){0, 0, 400};
     text_plane->transform.rotation = (RI_vector_4f){0, 1, 0, 0};
     RI_euler_rotation_to_quaternion(&text_plane->transform.rotation, (RI_vector_3f){-3.1415926 / 2, 0, 0});
@@ -72,6 +71,8 @@ int main(){
     scene->minimum_clip_distance = 0.1;
 
     RI_euler_rotation_to_quaternion(&scene->camera_rotation, (RI_vector_3f){0, 0, 0});
+
+    scene->camera_position = (RI_vector_3f){0, 0, 0};
 
     double y_rotation = 0;
 

@@ -15,6 +15,11 @@ typedef struct {
     double *z_buffer;
     RI_vector_2 z_buffer_resolution;
  
+    double (*default_fragment_shader) (int pixel_x, int pixel_y, RI_vector_3f v_pos_0, RI_vector_3f v_pos_1, RI_vector_3f v_pos_2, RI_vector_3f normal, RI_vector_2f uv, uint32_t color);
+    void (*default_vertex_shader) (RI_vector_3f *v_pos_0, RI_vector_3f *v_pos_1, RI_vector_3f *v_pos_2, double horizontal_fov_factor, double vertical_fov_factor);
+    void (*perspective_vertex_shader) (RI_vector_3f *v_pos_0, RI_vector_3f *v_pos_1, RI_vector_3f *v_pos_2, double horizontal_fov_factor, double vertical_fov_factor);
+    void (*orthographic_vertex_shader) (RI_vector_3f *v_pos_0, RI_vector_3f *v_pos_1, RI_vector_3f *v_pos_2, double horizontal_fov_factor, double vertical_fov_factor);
+
     int window_width;
     int window_height;
     char *window_title;

@@ -3,6 +3,7 @@
 
 #include "math.h"
 #include <stddef.h>
+#include "sourparse.h"
 
 // ----- Meshes -----
 typedef struct {
@@ -74,7 +75,8 @@ typedef struct {
     uint64_t flags;
     RI_vector_2f uv_loop_multiplier;
     RI_vector_2f texture_render_size;
-    double (*shader_function_pointer) (int pixel_x, int pixel_y, RI_vector_3f v_pos_0, RI_vector_3f v_pos_1, RI_vector_3f v_pos_2, RI_vector_3f normal, RI_vector_2f uv, uint32_t color);
+    double (*fragment_shader) (int pixel_x, int pixel_y, RI_vector_3f v_pos_0, RI_vector_3f v_pos_1, RI_vector_3f v_pos_2, RI_vector_3f normal, RI_vector_2f uv, uint32_t color);
+    void (*vertex_shader) (RI_vector_3f *v_pos_0, RI_vector_3f *v_pos_1, RI_vector_3f *v_pos_2, double horizontal_fov_factor, double vertical_fov_factor);
 } RI_material;
 
 typedef struct { // An entity that has an mesh, transform, materials, etc
@@ -124,6 +126,17 @@ typedef struct {
     int antialiasing_subsample_resolution;
     uint64_t flags;
 } RI_scene;
+
+// ----- Fonts -----
+typedef struct {
+    char character;
+    int is_rendered;
+} rendered_character_map;
+
+typedef struct {
+    SP_font *sp_font;
+    rendered_character_map *rendered_character_map;
+} RI_font;
 
 // ----- Memory Manager -----
 typedef struct {
