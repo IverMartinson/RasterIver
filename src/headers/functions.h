@@ -17,7 +17,7 @@ void RI_euler_rotation_to_quaternion(RI_vector_4f* quaternion, RI_vector_3f eule
 // Tick RasterIver.
 // Copies the window's texture (ri.frame_buffer.image_buffer) onto the screen, calls SDL_RenderPresent, handles SDL events, increases ri.frame by 1, and optionally clears the window's texture
 void RI_tick(int clear_window_texture_after_rendering); 
-void RI_render_text(SP_font *font, RI_texture *target_texture, RI_vector_2f position, uint32_t color, int bezier_resolution, float size, char *text);
+void RI_render_text(SP_font *font, RI_texture *target_texture, RI_vector_2f position, uint32_t color, int bezier_resolution, double size, char *text);
 void RI_draw_line(RI_texture *target_texture, RI_vector_2 point_a, RI_vector_2 point_b, uint32_t color);
 RI_vector_2f v2_to_2f(RI_vector_2 v);
 RI_vector_2 v2f_to_2(RI_vector_2f v);

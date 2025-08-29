@@ -13,7 +13,6 @@ int main(){
     
     // get RasterIver context
     RasterIver *ri = RI_get_ri();
-    ri->prefix = "--------------------------";
 
     ri->debug_memory = 0;
 
@@ -106,6 +105,9 @@ int main(){
 
         snprintf(fps_string, 64, "%.2f", fps);
         RI_render_text(cal_sans, ri->frame_buffer, (RI_vector_2f){0, 670}, 0xFFFFFFFF, 2, 20, fps_string);
+
+        RI_render_text(comic_sans, ri->frame_buffer, (RI_vector_2f){0, 300}, 0xFFFF00FF, 2, 60, "Traditionally Choice");
+        RI_render_text(comic_sans, ri->frame_buffer, (RI_vector_2f){0, 120}, 0xFFFF00FF, 2, 60, "itititititititititititititit");
         
         snprintf(fps_string, 64, "%.6f", delta_time);
         RI_render_text(cal_sans, ri->frame_buffer, (RI_vector_2f){0, 640}, 0xFFFFFFFF, 2, 20, fps_string);
