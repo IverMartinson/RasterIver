@@ -289,11 +289,11 @@ void render_glyph(RI_texture *target_texture, RI_vector_2f position, double size
                 int p_end = contour_ends[contour];
         
                 for (int point = p_start; point < p_end - 2; point += 2){ 
-            for (int i = 0; i < bezier_resolution; ++i){
+                    for (int i = 0; i < bezier_resolution; ++i){
 
-                    if(intersects(lines[point + i], lines[point + i + 1], (RI_vector_2f){x, y})) intersections++; 
-                            }  
-                                      }
+                        if(intersects(lines[point + i], lines[point + i + 1], (RI_vector_2f){x, y})) intersections++; 
+                    }  
+                }
             }
 
             if (intersections % 2 != 0) target_texture->image_buffer[y * target_texture->resolution.x + x] = color;
