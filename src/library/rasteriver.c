@@ -174,9 +174,9 @@ RI_texture* RI_request_empty_texture(RI_vector_2 resolution){
     return &ri.loaded_textures[previous_loaded_texture_count];
 }
 
-void RI_clear_texture(RI_texture *target_texture){
+void RI_wipe_texture(RI_texture *target_texture, uint32_t color){
     for (int i = 0; i < target_texture->resolution.x * target_texture->resolution.y; ++i){
-        target_texture->image_buffer[i] = 0x00000000;
+        target_texture->image_buffer[i] = color;
     }
 }
 
@@ -375,7 +375,7 @@ void RI_render_text(SP_font *font, RI_texture *target_texture, RI_vector_2f posi
     }
 }
 
-int RI_add_actors_to_scene(int RI_number_of_actors_to_add_to_scene, RI_actor *actors, RI_scene *scene){
+int RI_add_actors_to_scene(int RI_number_of_actors_to_add_to_scene, RI_actor **actors, RI_scene *scene){
     int previous_actor_count = scene->actor_count;
 
     scene->actor_count += RI_number_of_actors_to_add_to_scene;
@@ -383,276 +383,227 @@ int RI_add_actors_to_scene(int RI_number_of_actors_to_add_to_scene, RI_actor *ac
     scene->actors = RI_realloc(scene->actors, sizeof(RI_actor *) * scene->actor_count);
 
     for (int i = 0; i < RI_number_of_actors_to_add_to_scene; ++i){
-        scene->actors[i + previous_actor_count] = &actors[i];
+        scene->actors[i + previous_actor_count] = actors[i];
     }
 
     return 0;
 }
 
-RI_scene* RI_request_scenes(int RI_number_of_requested_scenes){
-    int previous_scene_count = ri.scene_count;
-    ri.scene_count += RI_number_of_requested_scenes;
-    
-    ri.scenes = RI_realloc(ri.scenes, sizeof(RI_scene) * ri.scene_count);
+RI_scene* RI_request_scene(int RI_number_of_requested_scenes){
+    RI_scene *new_scene = RI_malloc(sizeof(RI_scene));
 
-    for (int i = 0; i < RI_number_of_requested_scenes; ++i){
-        RI_scene new_scene = {0};
+    new_scene->actor_count = 0;
+    new_scene->actors = NULL;
+    new_scene->faces_to_render = NULL;
+    new_scene->antialiasing_subsample_resolution = 4;
+    new_scene->camera_position = (RI_vector_3f){0, 0, 0};
+    new_scene->camera_rotation = (RI_vector_4f){1, 0, 0, 0};
+    new_scene->face_count = 0;
+    new_scene->faces_to_render = NULL;
+    new_scene->flags = 0;
+    new_scene->FOV = 3.14159 / 2;
+    new_scene->min_clip = 0.01;
+    new_scene->minimum_clip_distance = 0.01;
 
-        new_scene.actor_count = 0;
-        new_scene.actors = NULL;
-        new_scene.faces_to_render = NULL;
-        new_scene.antialiasing_subsample_resolution = 4;
-
-        ri.scenes[i + previous_scene_count] = new_scene;
-    }
-
-    return ri.scenes;
+    return new_scene;
 }
 
-RI_actor* RI_request_actors(int RI_number_of_requested_actors){
-    int previous_actor_count = ri.actor_count;
-    ri.actor_count += RI_number_of_requested_actors;
-    
-    ri.actors = RI_realloc(ri.actors, sizeof(RI_actor) * ri.actor_count);
+RI_actor* RI_request_actor(int RI_number_of_requested_actors){
+    RI_actor *new_actor = RI_malloc(sizeof(RI_scene));
 
-    for (int i = 0; i < RI_number_of_requested_actors; ++i){
-        RI_actor new_actor = {0};
+    new_actor->mesh_reference = NULL;
+    new_actor->material_reference = NULL;
+    new_actor->transform.position = (RI_vector_3f){0, 0, 0};
+    new_actor->transform.scale = (RI_vector_3f){1, 1, 1};
+    new_actor->transform.rotation = (RI_vector_4f){1, 0, 0, 0};
 
-        new_actor.mesh_reference = NULL;
-        new_actor.material_reference = NULL;
-
-        ri.actors[i + previous_actor_count] = new_actor;
-    }
-
-    return ri.actors;
+    return new_actor;
 }
 
-RI_material* RI_request_materials(int RI_number_of_requested_materials){
-    int previous_material_count = ri.material_count;
-    ri.material_count += RI_number_of_requested_materials;
+RI_material* RI_request_material(){
+    RI_material *new_material = RI_malloc(sizeof(RI_actor));
 
-    ri.materials = RI_realloc(ri.materials, sizeof(RI_material) * ri.material_count);
-
-    for (int i = previous_material_count; i < ri.material_count; ++i){
-        ri.materials[i] = ri.error_material;
-    }
-
-    return ri.materials;
+    *new_material = ri.error_material;
+    
+    return new_material;
 }
 
-RI_texture* RI_request_textures(int RI_number_of_requested_textures, RI_texture_creation_data *texture_creation_data){
-    int previous_loaded_texture_count = ri.loaded_texture_count;
+RI_texture* RI_request_texture(char *filename){
+    RI_texture *new_texture = RI_malloc(sizeof(RI_texture));
 
-    ri.loaded_texture_count += RI_number_of_requested_textures;
-
-    ri.loaded_textures = RI_realloc(ri.loaded_textures, sizeof(RI_texture) * ri.loaded_texture_count);
+    unsigned char* temp_texture = stbi_load(filename, &new_texture->resolution.x, &new_texture->resolution.y, NULL, 4);
     
-    for (int i = 0; i < RI_number_of_requested_textures; i++){
-        RI_texture new_texture = {0};
-        
-        char *current_texture_filename = texture_creation_data[i].filename;
-
-        unsigned char* temp_texture = stbi_load(current_texture_filename, &new_texture.resolution.x, &new_texture.resolution.y, NULL, 4);
-        
-        if(stbi_failure_reason()){
-            new_texture = ri.error_texture;
-        }
-        else {
-            new_texture.image_buffer = RI_malloc(sizeof(uint32_t) * new_texture.resolution.x * new_texture.resolution.y);
-
-            for (int i = 0; i < new_texture.resolution.x * new_texture.resolution.y; ++i){
-                unsigned char r = temp_texture[i * 4];
-                unsigned char g = temp_texture[i * 4 + 1];
-                unsigned char b = temp_texture[i * 4 + 2];
-                unsigned char a = temp_texture[i * 4 + 3];
-                
-                new_texture.image_buffer[i] = (a << 24 | r << 16 | g << 8 | b);
-            }
-        }
-
-        ri.loaded_textures[previous_loaded_texture_count + i] = new_texture;
-
-        stbi_image_free(temp_texture);
-    }
-
-    return ri.loaded_textures;
-}
-
-RI_mesh* RI_request_meshes(int RI_number_of_requested_meshes, char **filenames, int RI_return_just_mesh){
-    int meshes_already_loaded_count = ri.loaded_mesh_count;
-    
-    RI_mesh* mesh;
-    
-    if (!RI_return_just_mesh) {
-        ri.loaded_mesh_count += RI_number_of_requested_meshes;
-
-        ri.loaded_meshes = RI_realloc(ri.loaded_meshes, sizeof(RI_mesh) * ri.loaded_mesh_count);
+    if(stbi_failure_reason()){
+        *new_texture = ri.error_texture;
     }
     else {
-        mesh = RI_malloc(sizeof(RI_mesh));
+        new_texture->image_buffer = RI_malloc(sizeof(uint32_t) * new_texture->resolution.x * new_texture->resolution.y);
+
+        for (int i = 0; i < new_texture->resolution.x * new_texture->resolution.y; ++i){
+            unsigned char r = temp_texture[i * 4];
+            unsigned char g = temp_texture[i * 4 + 1];
+            unsigned char b = temp_texture[i * 4 + 2];
+            unsigned char a = temp_texture[i * 4 + 3];
+            
+            new_texture->image_buffer[i] = (a << 24 | r << 16 | g << 8 | b);
+        }
     }
 
-    for (int i = 0; i < RI_number_of_requested_meshes; i++){
-        RI_mesh new_mesh_data_struct = {0};
+    stbi_image_free(temp_texture);
 
-        FILE *file = fopen(filenames[i], "r");
+    return new_texture;
+}
 
-        if (!file){
-            debug("[Mesh Loader] Error! File \"%s\" not found", filenames[i]);
-            RI_stop(1);
-        }
-        
-        char line[512];
-        
-        while (fgets(line, sizeof(line), file)) {
-            if (line[0] == 'f' && line[1] == ' ') { // face
-                new_mesh_data_struct.face_count++;
-            }
-            else if (line[0] == 'v' && line[1] == ' ') { // vertex
-                new_mesh_data_struct.vertex_count++;
-            }
-            else if (line[0] == 'v' && line[1] == 'n') { // normal
-                new_mesh_data_struct.normal_count++;
-            }
-            else if (line[0] == 'v' && line[1] == 't') { // UV
-                new_mesh_data_struct.uv_count++;
-            }
-        }
-        
-        fclose(file);
-        
-        new_mesh_data_struct.faces = RI_malloc(sizeof(RI_face) * new_mesh_data_struct.face_count);
-        new_mesh_data_struct.vertex_positions = RI_malloc(sizeof(RI_vector_3f) * new_mesh_data_struct.vertex_count);
-        new_mesh_data_struct.normals = RI_malloc(sizeof(RI_vector_3f) * new_mesh_data_struct.normal_count);
-        new_mesh_data_struct.uvs = RI_malloc(sizeof(RI_vector_2f) * new_mesh_data_struct.uv_count);
+RI_mesh* RI_request_mesh(char *filename){
+    RI_mesh *new_mesh = RI_calloc(1, sizeof(RI_mesh));
 
-        FILE *file_again = fopen(filenames[i], "r");
+    FILE *file = fopen(filename, "r");
 
-        int current_face_index = 0;
-        int current_vertex_index = 0;
-        int current_normal_index = 0;
-        int current_uv_index = 0;
-
-        int has_normals, has_uvs;
-        has_normals = has_uvs = 0;
-
-        while (fgets(line, sizeof(line), file_again)) {
-            if (line[0] == 'f' && line[1] == ' ') {
-                int vertex_0_index, vertex_1_index, vertex_2_index, normal_0_index, normal_1_index, normal_2_index, uv_0_index, uv_1_index, uv_2_index;
-
-                int matches = sscanf(line, "f %d/%d/%d %d/%d/%d %d/%d/%d/", 
-                    &vertex_0_index, &uv_0_index, &normal_0_index, 
-                    &vertex_1_index, &uv_1_index, &normal_1_index, 
-                    &vertex_2_index, &uv_2_index, &normal_2_index);
+    if (!file){
+        debug("[Mesh Loader] Error! File \"%s\" not found", filename);
+        RI_stop(1);
+    }
     
-                if (matches != 9){
-                    vertex_0_index = -1;
-                    vertex_1_index = -1;
-                    vertex_2_index = -1;
-                    
-                    normal_0_index = -1;
-                    normal_1_index = -1;
-                    normal_2_index = -1;
-                    
-                    uv_0_index = -1;
-                    uv_1_index = -1;
-                    uv_2_index = -1;
+    char line[512];
     
-                    if (strchr(line, '/')){
-                        sscanf(line, "f %d//%d %d//%d %d//%d", 
-                            &vertex_0_index, &normal_0_index, 
-                            &vertex_1_index, &normal_1_index, 
-                            &vertex_2_index, &normal_2_index);
-                    
-                        has_normals = 1;
-                    }
-                    else {
-                        sscanf(line, "f %d %d %d", 
-                            &vertex_0_index, 
-                            &vertex_1_index, 
-                            &vertex_2_index);
-                    }
+    while (fgets(line, sizeof(line), file)) {
+        if (line[0] == 'f' && line[1] == ' ') { // face
+            new_mesh->face_count++;
+        }
+        else if (line[0] == 'v' && line[1] == ' ') { // vertex
+            new_mesh->vertex_count++;
+        }
+        else if (line[0] == 'v' && line[1] == 'n') { // normal
+            new_mesh->normal_count++;
+        }
+        else if (line[0] == 'v' && line[1] == 't') { // UV
+            new_mesh->uv_count++;
+        }
+    }
+
+    rewind(file);
+        
+    new_mesh->faces = RI_malloc(sizeof(RI_face) * new_mesh->face_count);
+    new_mesh->vertex_positions = RI_malloc(sizeof(RI_vector_3f) * new_mesh->vertex_count);
+    new_mesh->normals = RI_malloc(sizeof(RI_vector_3f) * new_mesh->normal_count);
+    new_mesh->uvs = RI_malloc(sizeof(RI_vector_2f) * new_mesh->uv_count);
+
+    int current_face_index = 0;
+    int current_vertex_index = 0;
+    int current_normal_index = 0;
+    int current_uv_index = 0;
+
+    int has_normals, has_uvs;
+    has_normals = has_uvs = 0;
+
+    while (fgets(line, sizeof(line), file)) {
+        if (line[0] == 'f' && line[1] == ' ') {
+            int vertex_0_index, vertex_1_index, vertex_2_index, normal_0_index, normal_1_index, normal_2_index, uv_0_index, uv_1_index, uv_2_index;
+
+            int matches = sscanf(line, "f %d/%d/%d %d/%d/%d %d/%d/%d/", 
+                &vertex_0_index, &uv_0_index, &normal_0_index, 
+                &vertex_1_index, &uv_1_index, &normal_1_index, 
+                &vertex_2_index, &uv_2_index, &normal_2_index);
+
+            if (matches != 9){
+                vertex_0_index = -1;
+                vertex_1_index = -1;
+                vertex_2_index = -1;
+                
+                normal_0_index = -1;
+                normal_1_index = -1;
+                normal_2_index = -1;
+                
+                uv_0_index = -1;
+                uv_1_index = -1;
+                uv_2_index = -1;
+
+                if (strchr(line, '/')){
+                    sscanf(line, "f %d//%d %d//%d %d//%d", 
+                        &vertex_0_index, &normal_0_index, 
+                        &vertex_1_index, &normal_1_index, 
+                        &vertex_2_index, &normal_2_index);
+                
+                    has_normals = 1;
                 }
                 else {
-                    has_normals = has_uvs = 1;
+                    sscanf(line, "f %d %d %d", 
+                        &vertex_0_index, 
+                        &vertex_1_index, 
+                        &vertex_2_index);
                 }
-
-                new_mesh_data_struct.faces[current_face_index].position_0_index = vertex_0_index - 1;
-                new_mesh_data_struct.faces[current_face_index].position_1_index = vertex_1_index - 1;
-                new_mesh_data_struct.faces[current_face_index].position_2_index = vertex_2_index - 1;
-
-                new_mesh_data_struct.faces[current_face_index].normal_0_index = normal_0_index - 1;
-                new_mesh_data_struct.faces[current_face_index].normal_1_index = normal_1_index - 1;
-                new_mesh_data_struct.faces[current_face_index].normal_2_index = normal_2_index - 1;
-                
-                new_mesh_data_struct.faces[current_face_index].uv_0_index = uv_0_index - 1;
-                new_mesh_data_struct.faces[current_face_index].uv_1_index = uv_1_index - 1;
-                new_mesh_data_struct.faces[current_face_index].uv_2_index = uv_2_index - 1;
-
-                new_mesh_data_struct.faces[current_face_index].should_render = 1;
-
-                ++current_face_index;
             }
-            else if (line[0] == 'v' && line[1] == ' ') {
-                double x, y, z;
-                
-                sscanf(line, "v %lf %lf %lf", &x, &y, &z);
-
-                new_mesh_data_struct.vertex_positions[current_vertex_index].x = x;
-                new_mesh_data_struct.vertex_positions[current_vertex_index].y = y;
-                new_mesh_data_struct.vertex_positions[current_vertex_index].z = z;
-
-                ++current_vertex_index;
-            } 
-            else if (line[0] == 'v' && line[1] == 'n') {
-                double x, y, z;
-                
-                sscanf(line, "vn %lf %lf %lf", &x, &y, &z);
-
-                new_mesh_data_struct.normals[current_normal_index].x = x;
-                new_mesh_data_struct.normals[current_normal_index].y = y;
-                new_mesh_data_struct.normals[current_normal_index].z = z;
-
-                ++current_normal_index;
+            else {
+                has_normals = has_uvs = 1;
             }
-            else if (line[0] == 'v' && line[1] == 't') {
-                double x, y, z;
 
-                sscanf(line, "vt %lf %lf %lf", &x, &y, &z);
+            new_mesh->faces[current_face_index].position_0_index = vertex_0_index - 1;
+            new_mesh->faces[current_face_index].position_1_index = vertex_1_index - 1;
+            new_mesh->faces[current_face_index].position_2_index = vertex_2_index - 1;
 
-                new_mesh_data_struct.uvs[current_uv_index].x = x;
-                new_mesh_data_struct.uvs[current_uv_index].y = y;
-                // UVS are almost always 2D so we don't need Z (the type itself is a vector 2f, not 3f) 
+            new_mesh->faces[current_face_index].normal_0_index = normal_0_index - 1;
+            new_mesh->faces[current_face_index].normal_1_index = normal_1_index - 1;
+            new_mesh->faces[current_face_index].normal_2_index = normal_2_index - 1;
+            
+            new_mesh->faces[current_face_index].uv_0_index = uv_0_index - 1;
+            new_mesh->faces[current_face_index].uv_1_index = uv_1_index - 1;
+            new_mesh->faces[current_face_index].uv_2_index = uv_2_index - 1;
 
-                ++current_uv_index;
-            } 
+            new_mesh->faces[current_face_index].should_render = 1;
+
+            ++current_face_index;
         }
+        else if (line[0] == 'v' && line[1] == ' ') {
+            double x, y, z;
+            
+            sscanf(line, "v %lf %lf %lf", &x, &y, &z);
 
-        char* loading_mesh_notice_string;
+            new_mesh->vertex_positions[current_vertex_index].x = x;
+            new_mesh->vertex_positions[current_vertex_index].y = y;
+            new_mesh->vertex_positions[current_vertex_index].z = z;
 
-        if (has_normals && !has_uvs) loading_mesh_notice_string = "normals";
-        else if (!has_normals && has_uvs) loading_mesh_notice_string = "UVs";
-        else if (!has_normals && !has_uvs) loading_mesh_notice_string = "normals and UVs";
-        
-        if (!has_normals || !has_uvs) debug("[Mesh Loader] Notice! Mesh \"%s\" is missing %s", filenames[i], loading_mesh_notice_string);
-        
-        new_mesh_data_struct.has_normals = has_normals;
-        new_mesh_data_struct.has_uvs = has_uvs;
+            ++current_vertex_index;
+        } 
+        else if (line[0] == 'v' && line[1] == 'n') {
+            double x, y, z;
+            
+            sscanf(line, "vn %lf %lf %lf", &x, &y, &z);
 
-        // fclose(file_again);
+            new_mesh->normals[current_normal_index].x = x;
+            new_mesh->normals[current_normal_index].y = y;
+            new_mesh->normals[current_normal_index].z = z;
 
-        if (!RI_return_just_mesh) {
-            ri.loaded_meshes[meshes_already_loaded_count + i] = new_mesh_data_struct;   
-
-            debug("[Mesh Loader] Loaded mesh \"%s\"! %d faces, %d verticies, %d normals, %d uvs", filenames[i], current_face_index, current_vertex_index, current_normal_index, current_uv_index); 
+            ++current_normal_index;
         }
-        else {
-            *mesh = new_mesh_data_struct;
-        }
+        else if (line[0] == 'v' && line[1] == 't') {
+            double x, y, z;
+
+            sscanf(line, "vt %lf %lf %lf", &x, &y, &z);
+
+            new_mesh->uvs[current_uv_index].x = x;
+            new_mesh->uvs[current_uv_index].y = y;
+            // UVS are almost always 2D so we don't need Z (the type itself is a vector 2f, not 3f) 
+
+            ++current_uv_index;
+        } 
     }
 
-    if (!RI_return_just_mesh) return ri.loaded_meshes;
-    else return mesh;
+    char* loading_mesh_notice_string;
+
+    if (has_normals && !has_uvs) loading_mesh_notice_string = "normals";
+    else if (!has_normals && has_uvs) loading_mesh_notice_string = "UVs";
+    else if (!has_normals && !has_uvs) loading_mesh_notice_string = "normals and UVs";
+    
+    if (!has_normals || !has_uvs) debug("[Mesh Loader] Notice! Mesh \"%s\" is missing %s", filename, loading_mesh_notice_string);
+    
+    new_mesh->has_normals = has_normals;
+    new_mesh->has_uvs = has_uvs;
+
+    debug("[Mesh Loader] Loaded mesh \"%s\"! %d faces, %d verticies, %d normals, %d uvs", filename, current_face_index, current_vertex_index, current_normal_index, current_uv_index); 
+
+    fclose(file);
+
+    return new_mesh;
 }
 
 double mod(double a, double b){
@@ -1215,7 +1166,7 @@ void RI_tick(int clear_window_texture_after_rendering){
     }
 
     if (clear_window_texture_after_rendering){
-        RI_clear_texture(ri.frame_buffer);
+        RI_wipe_texture(ri.frame_buffer, 0xFF000000);
     }
 
     ++ri.frame;
@@ -1404,9 +1355,8 @@ int RI_init(int RI_window_width, int RI_window_height, char *RI_window_title){
     ri.actor_count = 0;
 
     char **error_cube_file = RI_malloc(sizeof(char *));
-    error_cube_file[0] = "objects/unit_cube.obj";
-
-    RI_mesh* error_mesh = RI_request_meshes(1, error_cube_file, 1);
+    
+    RI_mesh* error_mesh = RI_request_mesh("objects/unit_cube.obj");
 
     ri.error_mesh = *error_mesh;
 

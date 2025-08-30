@@ -18,35 +18,25 @@ int main(){
 
     RI_init(700, 700, "This is RasterIver 2.0!!");
 
-    // data for loading files
-    char *filenames[] = {"objects/unit_plane.obj"};
-
-    // requesting assets
-    RI_mesh* meshes = RI_request_meshes(1, filenames, 0);
-    RI_material* materials = RI_request_materials(2);
-    RI_actor* actors = RI_request_actors(2);
-    RI_scene* scenes = RI_request_scenes(1);
-
-    RI_scene* scene = &scenes[0];
+    RI_scene* scene = RI_request_scene();
 
     // meshes
-    RI_mesh* plane_mesh = &meshes[0];
+    RI_mesh* plane_mesh = RI_request_mesh("objects/unit_plane.obj");
 
     // materials
-    RI_material* text_plane_material = &materials[0];
+    RI_material* text_plane_material = RI_request_material();
     text_plane_material->flags = RI_MATERIAL_HAS_TEXTURE | RI_MATERIAL_DOUBLE_SIDED;
     text_plane_material->texture_reference = RI_request_empty_texture((RI_vector_2){400, 400});
     text_plane_material->albedo = 0xFFFFFFFF;
     text_plane_material->fragment_shader = shader_function;
 
-    RI_material* bill_material = &materials[1];
+    RI_material* bill_material = RI_request_material();
     bill_material->flags = RI_MATERIAL_HAS_TEXTURE | RI_MATERIAL_DOUBLE_SIDED;
-    RI_texture_creation_data tex_data[1] = {(RI_texture_creation_data){"textures/THIS IS THE WALL.png", {0, 0}}};
-    bill_material->texture_reference = RI_request_textures(1, tex_data);
+    bill_material->texture_reference = RI_request_texture("textures/THIS IS THE WALL.png");
     bill_material->albedo = 0xFFFFFFFF;
 
     // actors
-    RI_actor* text_plane = &actors[0];
+    RI_actor* text_plane = RI_request_actor();
     text_plane->material_reference = text_plane_material;
     text_plane->mesh_reference = plane_mesh;
     text_plane->transform.scale = (RI_vector_3f){300, 300, 300};
@@ -54,7 +44,7 @@ int main(){
     text_plane->transform.rotation = (RI_vector_4f){0, 1, 0, 0};
     RI_euler_rotation_to_quaternion(&text_plane->transform.rotation, (RI_vector_3f){-3.1415926 / 2, 0, 0});
     
-    RI_actor* bill_plane = &actors[1];
+    RI_actor* bill_plane = RI_request_actor();
     bill_plane->material_reference = bill_material;
     bill_plane->mesh_reference = plane_mesh;
     bill_plane->transform.scale = (RI_vector_3f){300, 300, 300};
@@ -64,7 +54,7 @@ int main(){
 
     RI_vector_4f rotation_delta;
 
-    RI_add_actors_to_scene(2, actors, scene);
+    RI_add_actors_to_scene(2, (RI_actor*[]){text_plane, bill_plane}, scene);
 
     scene->FOV = 1.5; // 90 degrees in radians
     scene->minimum_clip_distance = 0.1;
@@ -78,7 +68,7 @@ int main(){
     scene->antialiasing_subsample_resolution = 8;
     scene->flags = RI_SCENE_DONT_USE_AA;
 
-    RI_clear_texture(text_plane_material->texture_reference);
+    RI_wipe_texture(text_plane_material->texture_reference, 0xFF000000);
 
     RI_render_text(comic_sans, text_plane_material->texture_reference, (RI_vector_2f){0, 0}, 0xFFFFFFFF, 2, 80, "WOWWWW!!!11!!");
     RI_render_text(cal_sans, text_plane_material->texture_reference, (RI_vector_2f){0, 200}, 0xFFFFFFFF, 2, 80, "Wow!!");
