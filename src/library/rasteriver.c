@@ -162,12 +162,16 @@ void written_RI_free(void *__ptr, const char *caller, int line){
 }
 
 RI_texture* RI_request_empty_texture(RI_vector_2 resolution){
-    RI_texture *new_texture = RI_malloc(sizeof(RI_texture));
+    int previous_loaded_texture_count = ri.loaded_texture_count;
 
-    new_texture->image_buffer = RI_malloc(sizeof(uint32_t) * resolution.x * resolution.y);
-    new_texture->resolution = resolution;
+    ri.loaded_texture_count++;
 
-    return new_texture;
+    ri.loaded_textures = RI_realloc(ri.loaded_textures, sizeof(RI_texture) * ri.loaded_texture_count);
+
+    ri.loaded_textures[previous_loaded_texture_count].image_buffer = RI_malloc(sizeof(uint32_t) * resolution.x * resolution.y);
+    ri.loaded_textures[previous_loaded_texture_count].resolution = resolution;
+
+    return &ri.loaded_textures[previous_loaded_texture_count];
 }
 
 void RI_clear_texture(RI_texture *target_texture){
@@ -300,6 +304,7 @@ void render_glyph(RI_texture *target_texture, RI_vector_2f position, double size
         }
     }
 
+    RI_free(lines);
     RI_free(new_points);
     RI_free(contour_ends);
 }

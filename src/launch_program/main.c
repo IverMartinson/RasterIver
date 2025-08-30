@@ -77,7 +77,7 @@ int main(){
 
     scene->antialiasing_subsample_resolution = 8;
     scene->flags = RI_SCENE_DONT_USE_AA;
-    
+
     RI_clear_texture(text_plane_material->texture_reference);
 
     RI_render_text(comic_sans, text_plane_material->texture_reference, (RI_vector_2f){0, 0}, 0xFFFFFFFF, 2, 80, "WOWWWW!!!11!!");
@@ -119,6 +119,8 @@ int main(){
         delta_time = fmin(fmax(((double)(end - start) / (double)(CLOCKS_PER_SEC)), delta_min), delta_max);
         fps = 1.0 / delta_time;
     }
+
+    free(fps_string);
 
     RI_stop(0);
 
