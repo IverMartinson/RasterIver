@@ -1223,56 +1223,72 @@ int sdl_init(int RI_window_width, int RI_window_height, char *RI_window_title){
     return 0;
 }
 
-void RI_free_scene(RI_scene *scene){
-    if (!scene){
+// these functions take in a pointer to the pointer to the thing being freed.
+// this is so you can reset the pointer to NULL and then check if it was previously freed and then not try to free it
+
+void RI_free_scene(RI_scene **scene){
+    if (!scene || !*scene){
         debug("[RI_free_scene] Cannot free scene, already frung");
         return;
     } 
 
-    if (scene->actors) RI_free(scene->actors);
-    if (scene->faces_to_render) RI_free(scene->faces_to_render);
-    RI_free(scene);
+    if ((*scene)->actors) RI_free((*scene)->actors);
+    if ((*scene)->faces_to_render) RI_free((*scene)->faces_to_render);
+ 
+    RI_free(*scene);
+
+    *scene = NULL;
 }
 
-void RI_free_texture(RI_texture *texture){
-    if (!texture){
+void RI_free_texture(RI_texture **texture){
+    if (!texture || !*texture){
         debug("[RI_free_texture] Cannot free texture, already frung");
         return;
     } 
 
-    if (texture->image_buffer) RI_free(texture->image_buffer);
-    RI_free(texture);
+    if ((*texture)->image_buffer) RI_free((*texture)->image_buffer);
+
+    RI_free(*texture);
+
+    *texture = NULL;
 }
 
-void RI_free_material(RI_material *material){
-    if (!material){
+void RI_free_material(RI_material **material){
+    if (!material || !*material){
         debug("[RI_free_material] Cannot free material, already frung");
         return;
     } 
 
-    RI_free(material);
+    RI_free(*material);
+
+    *material = NULL;
 }
 
-void RI_free_mesh(RI_mesh *mesh){
-    if (!mesh){
+void RI_free_mesh(RI_mesh **mesh){
+    if (!mesh || !*mesh){
         debug("[RI_free_mesh] Cannot free mesh, already frung");
         return;
     } 
 
-    if (mesh->faces) RI_free(mesh->faces);
-    if (mesh->normals) RI_free(mesh->normals);
-    if (mesh->uvs) RI_free(mesh->uvs);
-    if (mesh->vertex_positions) RI_free(mesh->vertex_positions);
-    RI_free(mesh);
+    if ((*mesh)->faces) RI_free((*mesh)->faces);
+    if ((*mesh)->normals) RI_free((*mesh)->normals);
+    if ((*mesh)->uvs) RI_free((*mesh)->uvs);
+    if ((*mesh)->vertex_positions) RI_free((*mesh)->vertex_positions);
+
+    RI_free(*mesh);
+
+    *mesh = NULL;
 }
 
-void RI_free_actor(RI_actor *actor){
-    if (!actor){
+void RI_free_actor(RI_actor **actor){
+    if (!actor || !*actor){
         debug("[RI_free_actor] Cannot free actor, already frung");
         return;
     } 
 
-    RI_free(actor);
+    RI_free(*actor);
+
+    *actor = NULL;
 }
 
 int RI_stop(int result){

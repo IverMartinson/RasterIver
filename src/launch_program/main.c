@@ -14,7 +14,7 @@ int main(){
     // get RasterIver context
     RasterIver *ri = RI_get_ri();
 
-    ri->debug_memory = 1;
+    ri->debug_memory = 0;
 
     RI_init(700, 700, "This is RasterIver 2.0!!");
 
@@ -112,18 +112,18 @@ int main(){
 
     free(fps_string);
 
-    RI_free_texture(bill_material->texture_reference);
-    RI_free_texture(text_plane_material->texture_reference);
+    RI_free_texture(&bill_material->texture_reference);
+    RI_free_texture(&text_plane_material->texture_reference);
 
-    RI_free_material(bill_material);
-    RI_free_material(text_plane_material);
+    RI_free_material(&bill_material);
+    RI_free_material(&text_plane_material);
 
-    RI_free_mesh(plane_mesh);
+    RI_free_mesh(&plane_mesh);
     
-    RI_free_actor(bill_plane);
-    RI_free_actor(text_plane);
+    RI_free_actor(&bill_plane);
+    RI_free_actor(&text_plane);
 
-    RI_free_scene(scene);
+    RI_free_scene(&scene);
 
     RI_stop(0);
 

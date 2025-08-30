@@ -56,19 +56,19 @@ void RI_wipe_texture(RI_texture *target_texture, uint32_t color);
 // ----- memory
 
 // Unallocated a scene
-void RI_free_scene(RI_scene *scene);
+void RI_free_scene(RI_scene **scene);
 
 // Unallocates a texture 
-void RI_free_texture(RI_texture *texture);
+void RI_free_texture(RI_texture **texture);
 
 // Unallocates a material (NOT it's references)
-void RI_free_material(RI_material *material);
+void RI_free_material(RI_material **material);
 
 // Unallocated a mesh
-void RI_free_mesh(RI_mesh *mesh);
+void RI_free_mesh(RI_mesh **mesh);
 
 // Unallocated an actor (NOT it's references)
-void RI_free_actor(RI_actor *actor);
+void RI_free_actor(RI_actor **actor);
 
 // ------ other
 
