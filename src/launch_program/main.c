@@ -112,6 +112,19 @@ int main(){
 
     free(fps_string);
 
+    RI_free_texture(bill_material->texture_reference);
+    RI_free_texture(text_plane_material->texture_reference);
+
+    RI_free_material(bill_material);
+    RI_free_material(text_plane_material);
+
+    RI_free_mesh(plane_mesh);
+    
+    RI_free_actor(bill_plane);
+    RI_free_actor(text_plane);
+
+    RI_free_scene(scene);
+
     RI_stop(0);
 
     SP_free_font(comic_sans);

@@ -53,6 +53,23 @@ void RI_draw_line(RI_texture *target_texture, RI_vector_2 point_a, RI_vector_2 p
 void RI_wipe_texture(RI_texture *target_texture, uint32_t color);
 
 
+// ----- memory
+
+// Unallocated a scene
+void RI_free_scene(RI_scene *scene);
+
+// Unallocates a texture 
+void RI_free_texture(RI_texture *texture);
+
+// Unallocates a material (NOT it's references)
+void RI_free_material(RI_material *material);
+
+// Unallocated a mesh
+void RI_free_mesh(RI_mesh *mesh);
+
+// Unallocated an actor (NOT it's references)
+void RI_free_actor(RI_actor *actor);
+
 // ------ other
 
 int RI_add_actors_to_scene(int RI_number_of_actors_to_add_to_scene, RI_actor **actors, RI_scene *scene);

@@ -1219,30 +1219,60 @@ int sdl_init(int RI_window_width, int RI_window_height, char *RI_window_title){
     return 0;
 }
 
+void RI_free_scene(RI_scene *scene){
+    if (!scene){
+        debug("[RI_free_scene] Cannot free scene, already frung");
+        return;
+    } 
+
+    if (scene->actors) RI_free(scene->actors);
+    if (scene->faces_to_render) RI_free(scene->faces_to_render);
+    RI_free(scene);
+}
+
+void RI_free_texture(RI_texture *texture){
+    if (!texture){
+        debug("[RI_free_texture] Cannot free texture, already frung");
+        return;
+    } 
+
+    if (texture->image_buffer) RI_free(texture->image_buffer);
+    RI_free(texture);
+}
+
+void RI_free_material(RI_material *material){
+    if (!material){
+        debug("[RI_free_material] Cannot free material, already frung");
+        return;
+    } 
+
+    RI_free(material);
+}
+
+void RI_free_mesh(RI_mesh *mesh){
+    if (!mesh){
+        debug("[RI_free_mesh] Cannot free mesh, already frung");
+        return;
+    } 
+
+    if (mesh->faces) RI_free(mesh->faces);
+    if (mesh->normals) RI_free(mesh->normals);
+    if (mesh->uvs) RI_free(mesh->uvs);
+    if (mesh->vertex_positions) RI_free(mesh->vertex_positions);
+    RI_free(mesh);
+}
+
+void RI_free_actor(RI_actor *actor){
+    if (!actor){
+        debug("[RI_free_actor] Cannot free actor, already frung");
+        return;
+    } 
+
+    RI_free(actor);
+}
+
 int RI_stop(int result){
     debug("[Notice] Stopping...");
-    
-    for (int scene_index = 0; scene_index < ri.scene_count; ++scene_index){
-        RI_free(ri.scenes[scene_index].faces_to_render);
-        RI_free(ri.scenes[scene_index].actors);
-    }
-
-    for (int mesh_index = 0; mesh_index < ri.loaded_mesh_count; ++mesh_index){
-        RI_free(ri.loaded_meshes[mesh_index].faces);
-        RI_free(ri.loaded_meshes[mesh_index].vertex_positions);
-        RI_free(ri.loaded_meshes[mesh_index].normals);
-        RI_free(ri.loaded_meshes[mesh_index].uvs);
-    }
-
-    for (int texture_index = 0; texture_index < ri.loaded_texture_count; ++texture_index){
-        RI_free(ri.loaded_textures[texture_index].image_buffer);
-    }
-
-    RI_free(ri.loaded_meshes);
-    RI_free(ri.loaded_textures);
-    RI_free(ri.materials);
-    RI_free(ri.actors);
-    RI_free(ri.scenes);
 
     RI_free(ri.error_texture.image_buffer);
     RI_free(ri.frame_buffer->image_buffer);
