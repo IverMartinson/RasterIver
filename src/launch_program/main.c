@@ -14,7 +14,7 @@ int main(){
     // get RasterIver context
     RasterIver *ri = RI_get_ri();
 
-    ri->debug_memory = 0;
+    ri->debug_memory = 1;
 
     RI_init(700, 700, "This is RasterIver 2.0!!");
 

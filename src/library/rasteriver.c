@@ -206,12 +206,16 @@ int intersects(RI_vector_2f a, RI_vector_2f b, RI_vector_2f c){
 }
 
 void render_glyph(RI_texture *target_texture, RI_vector_2f position, double size, uint32_t color, int bezier_resolution, double units_per_em, SP_glyph *glyph){
+    // this function doesn't use the RI allocation wrappers because 
+    // everything in it is freed by the end, 
+    // so it just wastes memory trying to track it
+    
     // estimate
     int new_point_count = 0;
     int allocated_new_points = glyph->number_of_points * 3;
-    RI_vector_2f *new_points = RI_malloc(sizeof(RI_vector_2f) * allocated_new_points);
+    RI_vector_2f *new_points = malloc(sizeof(RI_vector_2f) * allocated_new_points);
     
-    int *contour_ends = RI_malloc(sizeof(int) * glyph->number_of_contours);
+    int *contour_ends = malloc(sizeof(int) * glyph->number_of_contours);
     
     for (int contour = 0; contour < glyph->number_of_contours; ++contour){
         // if we are at contour 0, point_start is 0.
@@ -229,7 +233,7 @@ void render_glyph(RI_texture *target_texture, RI_vector_2f position, double size
             if (new_point_count + 1 >= allocated_new_points){
                 allocated_new_points += 20;
 
-                new_points = RI_realloc(new_points, sizeof(RI_vector_2f) * allocated_new_points);
+                new_points = realloc(new_points, sizeof(RI_vector_2f) * allocated_new_points);
             }
             
             int cur = (point % (glyph->contour_end_indicies[contour] + 1 - point_start) + point_offset);
@@ -255,7 +259,7 @@ void render_glyph(RI_texture *target_texture, RI_vector_2f position, double size
 
     // maybe make multiple arrays that are lists of lines in increments of y values so that we dont have to check every line even if its above the pixel (the ray only goes to the right)
 
-    RI_vector_2f *lines = RI_malloc(sizeof(RI_vector_2f) * (new_point_count / 2) * (bezier_resolution <= 1 ? 2 : bezier_resolution) + 30);
+    RI_vector_2f *lines = malloc(sizeof(RI_vector_2f) * (new_point_count / 2) * (bezier_resolution <= 1 ? 2 : bezier_resolution) + 30);
 
     for (int contour = 0; contour < glyph->number_of_contours; ++contour){
         int p_start = (contour > 0 ? contour_ends[contour - 1] : 0);
@@ -304,9 +308,9 @@ void render_glyph(RI_texture *target_texture, RI_vector_2f position, double size
         }
     }
 
-    RI_free(lines);
-    RI_free(new_points);
-    RI_free(contour_ends);
+    free(lines);
+    free(new_points);
+    free(contour_ends);
 }
 
 void RI_render_text(SP_font *font, RI_texture *target_texture, RI_vector_2f position, uint32_t color, int bezier_resolution, double size, char *text){
