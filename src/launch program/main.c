@@ -1,145 +1,60 @@
-#include <stdio.h>
-#include "../RasterIver/headers/rasteriver.h"
+#include "../headers/rasteriver.h"
 #include <time.h>
-#include <stdlib.h>
 
-int width = 400;
-int height = 400;
-
-int main(){ 
-    srand(time(NULL));                                                         
-
-    RI_SetFlag(RI_FLAG_DEBUG, 1);
-    RI_SetFlag(RI_FLAG_DEBUG_LEVEL, RI_DEBUG_HIGH);
-    RI_SetFlag(RI_FLAG_DEBUG_TICK, 0);
-    RI_SetFlag(RI_FLAG_DEBUG_FPS, 0);
-    RI_SetFlag(RI_FLAG_SHOW_FPS, 1);
-    RI_SetFlag(RI_FLAG_SHOW_FRAME, 0);
-    RI_SetFlag(RI_FLAG_SHOW_BUFFER, RI_BUFFER_COMPLETE);
-    RI_SetFlag(RI_FLAG_CLEAN_POLYGONS, 1);
-    RI_SetFlag(RI_FLAG_POPULATE_POLYGONS, 0);
-    RI_SetFlag(RI_FLAG_BE_MASTER_RENDERER, 1);
-    RI_SetFlag(RI_FLAG_HANDLE_SDL_EVENTS, 0);
-    RI_SetFlag(RI_FLAG_SHOW_INFO, 0);
-    RI_SetFlag(RI_FLAG_USE_CPU, 1);
-
-    RI_SetValue(RI_VALUE_WIREFRAME_SCALE, 0.06);
-    RI_SetValue(RI_VALUE_MINIMUM_CLIP, 90);
-
-    char prefix[50] = "[RASTERIVER IS AMAZING] ";
-    RI_SetDebugPrefix(prefix);
-    // RI_SetFpsCap(15);
-
-    if (RI_Init(width, height, "Rasteriver Test") == RI_ERROR){
+int main(){
+    RI_context* context = RI_get_context();
+    
+    context->window.width = 800;
+    context->window.height = 800;
+    context->window.title = "This is RasterIver 3.0!!!!!!!";
+    
+    if (RI_init() != 0){
+        printf("failed to init RI\n");
         return 1;
     }
 
-    RI_newObject object_buffer[9] = {
-        {10, 0, 100,          
-            -0.3, 0, 0, 0,          
-            5, 10, 30,       
-            RI_MATERIAL_HAS_TEXTURE, 
-            "objects/cube.obj", 
-            "textures/bill_mcdinner.png"},
-        {50, 0, 100,        
-            0, 0, 0, 0,          
-            10, 10, 10,        
-            RI_PMP_TEXTURED, 
-            "objects/cube.obj", 
-            "textures/bill_mcdinner.png"},
-        {-50, 0, 100,         
-            0, 0, 0, 0,          
-            10, 10, 10,      
-            RI_PMP_TEXTURED, 
-            "objects/cube.obj", 
-            "textures/bill_mcdinner.png"},
-        {0, 50, 100,       
-            0, 0, 0, 0,          
-            10, 10, 10,          
-            RI_PMP_TEXTURED, 
-            "objects/cube.obj", 
-            "textures/bill_mcdinner.png"},
-        {0, -50, 100,       
-            0, 0, 0, 0,          
-            10, 10, 10,         
-            RI_PMP_TEXTURED, 
-            "objects/cube.obj", 
-            "textures/bill_mcdinner.png"},
-        {-50, 50, 100,       
-            0, 0, 0, 0,          
-            10, 10, 10,         
-            RI_PMP_TEXTURED, 
-            "objects/cube.obj", 
-            "textures/bill_mcdinner.png"},
-        {-50, -50, 100,          
-            0, 0, 0, 0,          
-            10, 10, 10,      
-            RI_PMP_TEXTURED, 
-            "objects/cube.obj", 
-            "textures/bill_mcdinner.png"},
-        {50, 50, 100,          
-            0, 0, 0, 0,          
-            10, 10, 10,       
-            RI_PMP_TEXTURED, 
-            "objects/cube.obj", 
-            "textures/bill_mcdinner.png"},
-        {50, -50, 100,        
-            0, 0, 0, 0,          
-            10, 10, 10,        
-            RI_PMP_TEXTURED, 
-            "objects/cube.obj", 
-            "textures/bill_mcdinner.png"},
-        };
+    RI_scene *scene = RI_new_scene();
 
-        int objects_to_request = 1;
+    RI_actor *actor = RI_new_actor();
 
-    RI_objects objects = RI_RequestObjects(object_buffer, objects_to_request);
+    RI_load_mesh("objects/cube.obj", actor);
+    
+    actor->scale = (RI_vector_3){100, 100, 100};
+    actor->position = (RI_vector_3){0, 0, 0};
+    actor->rotation = (RI_vector_4){1, 0, 0, 0};
 
-        for (int i = 0; i < objects_to_request; i++){
-            objects[i].material.albedo.a = 255;// * ((float)i / objects_to_request);
-            objects[i].material.albedo.r = 255;// * ((float)i / objects_to_request);
-            objects[i].material.albedo.g = 255;// * ((float)i / objects_to_request);
-            objects[i].material.albedo.b = 255;// * ((float)i / objects_to_request);
-        }
+    scene->actors = malloc(sizeof(RI_actor) * 10);
+
+    scene->actors[0] = actor;
+
+    scene->length_of_actors_array = 1;
+
+    long int start, end;
+    double fps = 0;
+
+    double delta_time = 0;
+    double delta_min = 0.00001;
+    double delta_max = 1;
+    while (context->is_running){
+        start = clock();
         
-        float frame = 0;
-        SDL_Event event;
+        RI_render(NULL, scene);
 
-        int selected_triangle = -1;
-        RI_SetValue(RI_VALUE_SELECTED_TRIANGLE, selected_triangle);
-    while (RI_IsRunning() == RI_RUNNING){        
-        // objects[0].transform.rotation.x += rand() % 100 * 0.01;
-        // objects[0].transform.rotation.y += rand() % 100 * 0.02;
-        // objects[0].transform.rotation.z += rand() % 100 * 0.03;
-        while( SDL_PollEvent( &event ) ){
-                
-            switch( event.type ){
-                /* Keyboard event */
-                /* Pass the event data onto PrintKeyInfo() */
-                case SDL_KEYDOWN:
-                    selected_triangle = (selected_triangle + 1) % 12;
-    break;
+        actor->position = (RI_vector_3){0, 0, 1000};
 
-                /* SDL_QUIT event (window close) */
-                case SDL_QUIT:
-                    RI_Stop();
-                    break;
+        RI_euler_rotation_to_quaternion(&actor->rotation, (RI_vector_3){context->current_frame * 0.001, context->current_frame * 0.001, context->current_frame * 0.001});
+        
+        RI_tick();
 
-                default:
-                    break;
-            }
+        end = clock();
 
-        }
-        for (int i = 0; i < objects_to_request; i++){
-        objects[0].transform.rotation.x += 0.05;
+        delta_time = fmin(fmax((double)(end - start) / (double)(CLOCKS_PER_SEC), delta_min), delta_max);
+        fps = 1.0 / delta_time;
 
-            objects[i].transform.position.z = 110 + sin(frame) * 20;
-        }
-
-        frame -= 0.05;
-
-        RI_Tick();
+        printf("%f\n", fps);
     }
 
-    RI_Stop();
+    free(scene->actors);
+
+    return 0;
 }

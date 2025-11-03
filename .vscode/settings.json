@@ -13,7 +13,17 @@
         "stdint.h": "c",
         "cmath": "c",
         "time.h": "c",
-        "*.cl": "c",
-        "sdl_ttf.h": "c"
+        "*.cl": "opencl",
+        "sdl_ttf.h": "c",
+        "types.h": "c",
+        "__hash_table": "c",
+        "__locale": "c",
+        "ios": "c",
+        "algorithm": "c",
+        "__node_handle": "c",
+        "chrono": "c",
+        "random": "c",
+        "limits": "c",
+        "queue": "c"
     }
 }

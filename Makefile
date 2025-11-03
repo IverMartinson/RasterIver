@@ -1,13 +1,13 @@
 COMPILER=gcc
 FLAGS_ALL=-g -Wall -Wextra -Wno-unused-variable -Wno-unused-parameter
-FLAGS_EXAMPLE=-Lbuilds/final\ binaries -lrasteriver -Wl,-rpath=builds/final\ binaries/ -lm -lSDL2
-FLAGS_LIB=-D CL_TARGET_OPENCL_VERSION=120 -fPIC -shared -lc -lSDL2 -lSDL2_ttf -lm -lOpenCL
+FLAGS_EXAMPLE=-Lbuilds/ -lrasteriver -Wl,-rpath=builds/ -lm -lSDL2
+FLAGS_LIB=-fPIC -shared -lc -lSDL2 -lm -lOpenCL
 
 main.bin: rasteriver.so
-	$(COMPILER) $(FLAGS_ALL) src/launch\ program/main.c -o builds/final\ binaries/main.bin $(FLAGS_EXAMPLE) 
+	$(COMPILER) $(FLAGS_ALL) src/launch\ program/main.c -o builds/main.bin $(FLAGS_EXAMPLE) 
 
 rasteriver.so:
-	$(COMPILER) $(FLAGS_ALL) src/RasterIver/source\ code/rasteriver.c -o builds/final\ binaries/librasteriver.so $(FLAGS_LIB) 
+	$(COMPILER) $(FLAGS_ALL) src/main/main.c -o builds/librasteriver.so $(FLAGS_LIB) 
 
 clean:
-	rm builds/final\ binaries/*
+	rm builds/*

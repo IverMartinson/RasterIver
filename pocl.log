@@ -1,0 +1,110 @@
+[2025-11-02 00:25:19.095013303] PoCL: in fn pocl_install_sigfpe_handler at line 265:  *** INFO ***  |   GENERAL |  Installing SIGFPE handler...
+[2025-11-02 00:25:19.095334747] PoCL: in fn pocl_init_devices at line 595:  *** WARNING ***  |   WARNING |  Loading /lib/x86_64-linux-gnu/pocl/libpocl-devices-level0.so failed: /lib/x86_64-linux-gnu/pocl/libpocl-devices-level0.so: cannot open shared object file: No such file or directory
+[2025-11-02 00:25:19.095388678] PoCL: in fn pocl_init_devices at line 605:  *** WARNING ***  |   WARNING |  Loading libpocl-devices-level0.so failed: libpocl-devices-level0.so: cannot open shared object file: No such file or directory
+[2025-11-02 00:25:19.106167519] PoCL: in fn POclCreateCommandQueue at line 103:  *** INFO ***  |   GENERAL |  Created Command Queue 3 (0x558c76197db0) on device 0
+[2025-11-02 00:25:19.106192125] PoCL: in fn void pocl_llvm_create_context(cl_context) at line 589:  *** INFO ***  |      LLVM |  Created context 2 (0x558c7617e5b0)
+[2025-11-02 00:25:19.106196724] PoCL: in fn POclCreateContext at line 232:  *** INFO ***  |   GENERAL |  Created Context 2 (0x558c7617e5b0)
+[2025-11-02 00:25:19.106202074] PoCL: in fn POclRetainContext at line 32:  *** INFO ***  | REFCOUNTS |  Retain Context 2 (0x558c7617e5b0), Refcount: 2
+[2025-11-02 00:25:19.106205290] PoCL: in fn POclCreateCommandQueue at line 103:  *** INFO ***  |   GENERAL |  Created Command Queue 4 (0x558c761978d0) on device 0
+[2025-11-02 00:25:19.106273919] PoCL: in fn POclRetainContext at line 32:  *** INFO ***  | REFCOUNTS |  Retain Context 2 (0x558c7617e5b0), Refcount: 3
+[2025-11-02 00:25:19.106283788] PoCL: in fn compile_and_link_program at line 711:  *** INFO ***  |      LLVM |  building program with options 
+[2025-11-02 00:25:19.106287925] PoCL: in fn compile_and_link_program at line 748:  *** INFO ***  |      LLVM |  building program for 1 devs with options 
+[2025-11-02 00:25:19.106289989] PoCL: in fn compile_and_link_program at line 752:  *** INFO ***  |      LLVM |     BUILDING for device: cpu
+[2025-11-02 00:25:19.106292915] PoCL: in fn pocl_driver_build_source at line 799:  *** INFO ***  |      LLVM |  building from sources for device 0
+[2025-11-02 00:25:19.106398654] PoCL: in fn int pocl_llvm_build_program(cl_program, unsigned int, cl_uint, _cl_program* const*, const char**, int) at line 421:  *** INFO ***  |      LLVM |  all build options: -Dcl_khr_int64 -DPOCL_DEVICE_ADDRESS_BITS=64 -D__USE_CLANG_OPENCL_C_H -xcl -Dinline= -I. -cl-kernel-arg-info  -D__ENDIAN_LITTLE__=1 -D__IMAGE_SUPPORT__=1 -DCL_DEVICE_MAX_GLOBAL_VARIABLE_SIZE=64000 -D__OPENCL_VERSION__=300 -cl-std=CL3.0 -D__OPENCL_C_VERSION__=300 -Dcl_khr_byte_addressable_store=1 -Dcl_khr_global_int32_base_atomics=1 -Dcl_khr_global_int32_extended_atomics=1 -Dcl_khr_local_int32_base_atomics=1 -Dcl_khr_local_int32_extended_atomics=1 -Dcl_khr_3d_image_writes=1 -Dcl_khr_command_buffer=1 -Dcl_khr_command_buffer_multi_device=1 -Dcl_khr_subgroups=1 -Dcl_intel_unified_shared_memory=1 -Dcl_ext_buffer_device_address=1 -Dcl_pocl_svm_rect=1 -Dcl_pocl_command_buffer_svm=1 -Dcl_pocl_command_buffer_host_buffer=1 -Dcl_khr_subgroup_ballot=1 -Dcl_khr_subgroup_shuffle=1 -Dcl_intel_subgroups=1 -Dcl_intel_subgroups_short=1 -Dcl_ext_float_atomics=1 -Dcl_intel_required_subgroup_size=1 -Dcl_khr_il_program=1 -Dcl_khr_fp64=1 -Dcl_khr_int64_base_atomics=1 -Dcl_khr_int64_extended_atomics=1 -D__opencl_c_3d_image_writes=1 -D__opencl_c_images=1 -D__opencl_c_atomic_order_acq_rel=1 -D__opencl_c_atomic_order_seq_cst=1 -D__opencl_c_atomic_scope_device=1 -D__opencl_c_program_scope_global_variables=1 -D__opencl_c_atomic_scope_all_devices=1 -D__opencl_c_generic_address_space=1 -D__opencl_c_work_group_collective_functions=1 -D__opencl_c_read_write_images=1 -D__opencl_c_subgroups=1 -D__opencl_c_fp64=1 -D__opencl_c_ext_fp32_global_atomic_add=1 -D__opencl_c_ext_fp32_local_atomic_add=1 -D__opencl_c_ext_fp32_global_atomic_min_max=1 -D__opencl_c_ext_fp32_local_atomic_min_max=1 -D__opencl_c_ext_fp64_global_atomic_add=1 -D__opencl_c_ext_fp64_local_atomic_add=1 -D__opencl_c_ext_fp64_global_atomic_min_max=1 -D__opencl_c_ext_fp64_local_atomic_min_max=1 -D__opencl_c_int64=1 -cl-ext=-all,+cl_khr_byte_addressable_store,+cl_khr_global_int32_base_atomics,+cl_khr_global_int32_extended_atomics,+cl_khr_local_int32_base_atomics,+cl_khr_local_int32_extended_atomics,+cl_khr_3d_image_writes,+cl_khr_command_buffer,+cl_khr_command_buffer_multi_device,+cl_khr_subgroups,+cl_intel_unified_shared_memory,+cl_ext_buffer_device_address,+cl_pocl_svm_rect,+cl_pocl_command_buffer_svm,+cl_pocl_command_buffer_host_buffer,+cl_khr_subgroup_ballot,+cl_khr_subgroup_shuffle,+cl_intel_subgroups,+cl_intel_subgroups_short,+cl_ext_float_atomics,+cl_intel_required_subgroup_size,+cl_khr_il_program,+cl_khr_fp64,+cl_khr_int64_base_atomics,+cl_khr_int64_extended_atomics,+__opencl_c_3d_image_writes,+__opencl_c_images,+__opencl_c_atomic_order_acq_rel,+__opencl_c_atomic_order_seq_cst,+__opencl_c_atomic_scope_device,+__opencl_c_program_scope_global_variables,+__opencl_c_atomic_scope_all_devices,+__opencl_c_generic_address_space,+__opencl_c_work_group_collective_functions,+__opencl_c_read_write_images,+__opencl_c_subgroups,+__opencl_c_fp64,+__opencl_c_ext_fp32_global_atomic_add,+__opencl_c_ext_fp32_local_atomic_add,+__opencl_c_ext_fp32_global_atomic_min_max,+__opencl_c_ext_fp32_local_atomic_min_max,+__opencl_c_ext_fp64_global_atomic_add,+__opencl_c_ext_fp64_local_atomic_add,+__opencl_c_ext_fp64_global_atomic_min_max,+__opencl_c_ext_fp64_local_atomic_min_max,+__opencl_c_int64 -fno-builtin -fno-jump-tables -triple=x86_64-pc-linux-gnu -target-cpu haswell 
+[2025-11-02 00:25:19.136559405] PoCL: in fn POclCreateKernel at line 134:  *** INFO ***  |   GENERAL |  Created Kernel rasterizer (0x558c7623eae0)
+[2025-11-02 00:25:19.136571598] PoCL: in fn POclCreateKernel at line 134:  *** INFO ***  |   GENERAL |  Created Kernel transformer (0x558c761bf070)
+[2025-11-02 00:25:19.136576507] PoCL: in fn POclRetainContext at line 32:  *** INFO ***  | REFCOUNTS |  Retain Context 2 (0x558c7617e5b0), Refcount: 4
+[2025-11-02 00:25:19.136580474] PoCL: in fn POclCreateBuffer at line 341:  *** INFO ***  |    MEMORY |  Created Buffer 8 (0x558c761b61e0), MEM_HOST_PTR: (nil), device_ptrs[0]: (nil), SIZE 2240000, FLAGS 1 
+[2025-11-02 00:25:19.136584241] PoCL: in fn POclRetainContext at line 32:  *** INFO ***  | REFCOUNTS |  Retain Context 2 (0x558c7617e5b0), Refcount: 5
+[2025-11-02 00:25:19.136586486] PoCL: in fn POclCreateBuffer at line 341:  *** INFO ***  |    MEMORY |  Created Buffer 9 (0x558c761a85f0), MEM_HOST_PTR: (nil), device_ptrs[0]: (nil), SIZE 640000, FLAGS 1 
+[2025-11-02 00:25:19.136589592] PoCL: in fn POclSetKernelArg at line 108:  *** INFO ***  |   GENERAL |  Kernel      rasterizer || SetArg idx   0 || RI_renderable_face* || Local 0 || Size      8 || Value 0x7f98e2ceb298 || Pointer 0x558c761b61e0 || *(uint32*)Value:        0 || *(uint64*)Value:        0 ||
+Hex Value:  E0611B76 8C550000
+[2025-11-02 00:25:19.136593739] PoCL: in fn POclSetKernelArg at line 108:  *** INFO ***  |   GENERAL |  Kernel      rasterizer || SetArg idx   1 ||    uint* || Local 0 || Size      8 || Value 0x7f98e2ceb2a8 || Pointer 0x558c761a85f0 || *(uint32*)Value:        0 || *(uint64*)Value:        0 ||
+Hex Value:  F0851A76 8C550000
+[2025-11-02 00:25:19.136597226] PoCL: in fn POclSetKernelArg at line 108:  *** INFO ***  |   GENERAL |  Kernel      rasterizer || SetArg idx   2 ||      int || Local 0 || Size      4 || Value 0x7f98e2ceb220 || Pointer (nil) || *(uint32*)Value:      400 || *(uint64*)Value:        0 ||
+Hex Value:  90010000
+[2025-11-02 00:25:19.136600632] PoCL: in fn POclSetKernelArg at line 108:  *** INFO ***  |   GENERAL |  Kernel      rasterizer || SetArg idx   3 ||      int || Local 0 || Size      4 || Value 0x7f98e2ceb224 || Pointer (nil) || *(uint32*)Value:      400 || *(uint64*)Value:        0 ||
+Hex Value:  90010000
+[2025-11-02 00:25:19.136603918] PoCL: in fn POclSetKernelArg at line 108:  *** INFO ***  |   GENERAL |  Kernel      rasterizer || SetArg idx   4 ||      int || Local 0 || Size      4 || Value 0x7f98e2ceb228 || Pointer (nil) || *(uint32*)Value:      200 || *(uint64*)Value:        0 ||
+Hex Value:  C8000000
+[2025-11-02 00:25:19.136607064] PoCL: in fn POclSetKernelArg at line 108:  *** INFO ***  |   GENERAL |  Kernel      rasterizer || SetArg idx   5 ||      int || Local 0 || Size      4 || Value 0x7f98e2ceb22c || Pointer (nil) || *(uint32*)Value:      200 || *(uint64*)Value:        0 ||
+Hex Value:  C8000000
+[2025-11-02 00:25:19.136609880] PoCL: in fn POclSetKernelArg at line 108:  *** INFO ***  |   GENERAL |  Kernel      rasterizer || SetArg idx   6 ||      int || Local 0 || Size      4 || Value 0x7f98e2ceb344 || Pointer (nil) || *(uint32*)Value:        0 || *(uint64*)Value:        0 ||
+Hex Value:  00000000
+[2025-11-02 00:25:19.136612715] PoCL: in fn POclSetKernelArg at line 108:  *** INFO ***  |   GENERAL |  Kernel      rasterizer || SetArg idx   7 ||      int || Local 0 || Size      4 || Value 0x7f98e2ceb348 || Pointer (nil) || *(uint32*)Value:        0 || *(uint64*)Value:        0 ||
+Hex Value:  00000000
+[2025-11-02 00:25:19.136615630] PoCL: in fn POclSetKernelArg at line 108:  *** INFO ***  |   GENERAL |  Kernel      rasterizer || SetArg idx   0 || RI_renderable_face* || Local 0 || Size      8 || Value 0x7f98e2ceb298 || Pointer 0x558c761b61e0 || *(uint32*)Value:        0 || *(uint64*)Value:        0 ||
+Hex Value:  E0611B76 8C550000
+[2025-11-02 00:25:19.136618746] PoCL: in fn POclSetKernelArg at line 65:  *** ERROR ***  |     ERROR | CL_INVALID_ARG_INDEX This kernel has 8 args, cannot set arg 9
+[2025-11-02 00:25:19.136621421] PoCL: in fn POclSetKernelArg at line 65:  *** ERROR ***  |     ERROR | CL_INVALID_ARG_INDEX This kernel has 8 args, cannot set arg 10
+[2025-11-02 00:25:19.136669041] PoCL: in fn POclReleaseCommandQueue at line 40:  *** INFO ***  | REFCOUNTS |  Release Command Queue 4 (0x558c761978d0), Refcount: 1
+[2025-11-02 00:25:19.136672938] PoCL: in fn POclRetainContext at line 32:  *** INFO ***  | REFCOUNTS |  Retain Context 2 (0x558c7617e5b0), Refcount: 6
+[2025-11-02 00:25:19.136675162] PoCL: in fn POclCreateBuffer at line 341:  *** INFO ***  |    MEMORY |  Created Buffer 10 (0x558c761b5b30), MEM_HOST_PTR: (nil), device_ptrs[0]: (nil), SIZE 480, FLAGS 1 
+[2025-11-02 00:25:19.136677737] PoCL: in fn POclSetKernelArg at line 108:  *** INFO ***  |   GENERAL |  Kernel      rasterizer || SetArg idx   0 || RI_renderable_face* || Local 0 || Size      8 || Value 0x7f98e2ceb2a0 || Pointer 0x558c761b5b30 || *(uint32*)Value:        0 || *(uint64*)Value:        0 ||
+Hex Value:  305B1B76 8C550000
+[2025-11-02 00:25:19.136681084] PoCL: in fn POclRetainContext at line 32:  *** INFO ***  | REFCOUNTS |  Retain Context 2 (0x558c7617e5b0), Refcount: 7
+[2025-11-02 00:25:19.136683218] PoCL: in fn POclCreateBuffer at line 341:  *** INFO ***  |    MEMORY |  Created Buffer 11 (0x558c761b5ce0), MEM_HOST_PTR: (nil), device_ptrs[0]: (nil), SIZE 192, FLAGS 1 
+[2025-11-02 00:25:19.136685572] PoCL: in fn POclSetKernelArg at line 108:  *** INFO ***  |   GENERAL |  Kernel      rasterizer || SetArg idx   1 ||    uint* || Local 0 || Size      8 || Value 0x7f98e2ceb2b0 || Pointer 0x558c761b5ce0 || *(uint32*)Value:        0 || *(uint64*)Value:        0 ||
+Hex Value:  E05C1B76 8C550000
+[2025-11-02 00:25:19.136688738] PoCL: in fn POclRetainContext at line 32:  *** INFO ***  | REFCOUNTS |  Retain Context 2 (0x558c7617e5b0), Refcount: 8
+[2025-11-02 00:25:19.136690862] PoCL: in fn POclCreateBuffer at line 341:  *** INFO ***  |    MEMORY |  Created Buffer 12 (0x558c7617af80), MEM_HOST_PTR: (nil), device_ptrs[0]: (nil), SIZE 144, FLAGS 1 
+[2025-11-02 00:25:19.136693096] PoCL: in fn POclSetKernelArg at line 108:  *** INFO ***  |   GENERAL |  Kernel      rasterizer || SetArg idx   2 ||      int || Local 0 || Size      8 || Value 0x7f98e2ceb2b8 || Pointer (nil) || *(uint32*)Value:        0 || *(uint64*)Value: 94061765046144 ||
+Hex Value:  80AF1776 8C550000
+[2025-11-02 00:25:19.136696162] PoCL: in fn POclSetKernelArg at line 163:  *** ERROR ***  |     ERROR | CL_INVALID_ARG_SIZE Arg 2 is type int, but arg_size (8) is not sizeof(type) == 4
+[2025-11-02 00:25:19.136698747] PoCL: in fn POclRetainContext at line 32:  *** INFO ***  | REFCOUNTS |  Retain Context 2 (0x558c7617e5b0), Refcount: 9
+[2025-11-02 00:25:19.136700861] PoCL: in fn POclCreateBuffer at line 341:  *** INFO ***  |    MEMORY |  Created Buffer 13 (0x558c7617b130), MEM_HOST_PTR: (nil), device_ptrs[0]: (nil), SIZE 224, FLAGS 1 
+[2025-11-02 00:25:19.136703115] PoCL: in fn POclSetKernelArg at line 108:  *** INFO ***  |   GENERAL |  Kernel      rasterizer || SetArg idx   3 ||      int || Local 0 || Size      8 || Value 0x7f98e2ceb2c0 || Pointer (nil) || *(uint32*)Value:        0 || *(uint64*)Value: 94061765046576 ||
+Hex Value:  30B11776 8C550000
+[2025-11-02 00:25:19.136705970] PoCL: in fn POclSetKernelArg at line 163:  *** ERROR ***  |     ERROR | CL_INVALID_ARG_SIZE Arg 3 is type int, but arg_size (8) is not sizeof(type) == 4
+[2025-11-02 00:25:19.136731178] PoCL: in fn POclSetKernelArg at line 108:  *** INFO ***  |   GENERAL |  Kernel      rasterizer || SetArg idx   6 ||      int || Local 0 || Size     72 || Value 0x558c761bc3d8 || Pointer (nil) || *(uint32*)Value:        0 || *(uint64*)Value:        0 ||
+Hex Value:  00000000 00000000 00000000 00000000 00000000 00000000 00000000 0000F03F 00000000 00000000 00000000 00000000 00000000 00000000 DB0FC93F 0AD7233C 0050C347 31323800
+[2025-11-02 00:25:19.136735957] PoCL: in fn POclSetKernelArg at line 163:  *** ERROR ***  |     ERROR | CL_INVALID_ARG_SIZE Arg 6 is type int, but arg_size (72) is not sizeof(type) == 4
+[2025-11-02 00:25:19.136738191] PoCL: in fn POclSetKernelArg at line 65:  *** ERROR ***  |     ERROR | CL_INVALID_ARG_INDEX This kernel has 8 args, cannot set arg 11
+[2025-11-02 00:25:19.136740525] PoCL: in fn POclSetKernelArg at line 65:  *** ERROR ***  |     ERROR | CL_INVALID_ARG_INDEX This kernel has 8 args, cannot set arg 12
+[2025-11-02 00:25:19.136748591] PoCL: in fn POclSetKernelArg at line 108:  *** INFO ***  |   GENERAL |  Kernel      rasterizer || SetArg idx   7 ||      int || Local 0 || Size      4 || Value 0x7fff4aef62ac || Pointer (nil) || *(uint32*)Value:        0 || *(uint64*)Value:        0 ||
+Hex Value:  00000000
+[2025-11-02 00:25:19.136751887] PoCL: in fn POclSetKernelArg at line 65:  *** ERROR ***  |     ERROR | CL_INVALID_ARG_INDEX This kernel has 8 args, cannot set arg 8
+[2025-11-02 00:25:19.136754281] PoCL: in fn POclSetKernelArg at line 108:  *** INFO ***  |   GENERAL |  Kernel      rasterizer || SetArg idx   5 ||      int || Local 0 || Size    104 || Value 0x558c761ad7f0 || Pointer (nil) || *(uint32*)Value:        0 || *(uint64*)Value:        0 ||
+Hex Value:  50F51776 8C550000 E0082076 8C550000 00000000 00000000 00000000 00000000 70735F73 686F7274 00000000 00000000 40000000 00000000 50000000 00000000 EDF8DC2E 89550000 00FBBBE2 987F0000 636C5F69 6E74656C 5F646576 6963655F 73696465 5F617663
+[2025-11-02 00:25:19.136758058] PoCL: in fn POclSetKernelArg at line 163:  *** ERROR ***  |     ERROR | CL_INVALID_ARG_SIZE Arg 5 is type int, but arg_size (104) is not sizeof(type) == 4
+[2025-11-02 00:25:19.136762246] PoCL: in fn pocl_kernel_calc_wg_size at line 181:  *** INFO ***  |   GENERAL |  Preparing kernel rasterizer with local size 12 x 1 x 1 group sizes 1 x 1 x 1...
+[2025-11-02 00:25:19.136767135] PoCL: in fn pocl_driver_alloc_mem_obj at line 495:  *** INFO ***  |    MEMORY |  Basic device ALLOC 0x558c76200980 / size 480 
+[2025-11-02 00:25:19.136770011] PoCL: in fn pocl_driver_alloc_mem_obj at line 495:  *** INFO ***  |    MEMORY |  Basic device ALLOC 0x558c76200c00 / size 192 
+[2025-11-02 00:25:19.136772786] PoCL: in fn POclRetainCommandQueue at line 35:  *** INFO ***  | REFCOUNTS |  Retain Command Queue 4 (0x558c761978d0), Refcount: 2
+[2025-11-02 00:25:19.136775321] PoCL: in fn pocl_create_event at line 533:  *** INFO ***  |    EVENTS |  Created event 1 (0x558c76201360) Command ndrange_kernel
+[2025-11-02 00:25:19.136778326] PoCL: in fn pocl_create_command_struct at line 694:  *** INFO ***  |    EVENTS |  Created immediate command struct: CMD 0x558c7617eca0 (event 1 / 0x558c76201360, type: ndrange_kernel)
+[2025-11-02 00:25:19.136781542] PoCL: in fn POclRetainKernel at line 33:  *** INFO ***  | REFCOUNTS |  Retain Kernel rasterizer (0x558c7623eae0), Refcount: 2
+[2025-11-02 00:25:19.136785039] PoCL: in fn pocl_command_enqueue at line 1383:  *** INFO ***  |    EVENTS |  In-order Q; adding event syncs
+[2025-11-02 00:25:19.136787373] PoCL: in fn pocl_command_enqueue at line 1416:  *** INFO ***  |    EVENTS |  Pushed Event 1 to CQ 4.
+[2025-11-02 00:25:19.136789918] PoCL: in fn pocl_update_event_queued at line 2276:  *** INFO ***  |    EVENTS |  Event queued: 1
+[2025-11-02 00:25:19.136792864] PoCL: in fn pocl_update_event_submitted at line 2296:  *** INFO ***  |    EVENTS |  Event submitted: 1
+[2025-11-02 00:25:19.136877533] PoCL: in fn pocl_check_kernel_disk_cache at line 1008:  *** INFO ***  |   GENERAL |  Using a cached WG function: /home/iver/.cache/pocl/kcache/BN/JPLNELHDHEKNABHNMDANGLHABDKEIGKPMJODB/rasterizer/12-1-1-goffs0-smallgrid/rasterizer.so
+[2025-11-02 00:25:19.136989363] PoCL: in fn pocl_update_event_running_unlocked at line 2315:  *** INFO ***  |    EVENTS |  Event running: 1
+[2025-11-02 00:25:19.137035330] PoCL: in fn pocl_update_event_finished at line 2468:  *** INFO ***  |    EVENTS |  cpu: Command complete, event 1
+[2025-11-02 00:25:19.137040770] PoCL: in fn finalize_kernel_command at line 431:  *** INFO ***  |    TIMING |       >>>        45.816  us    NDRange Kernel        
+[2025-11-02 00:25:19.137044717] PoCL: in fn POclReleaseKernel at line 40:  *** INFO ***  | REFCOUNTS |  Release Kernel rasterizer (0x558c7623eae0), Refcount: 1
+[2025-11-02 00:25:19.137048585] PoCL: in fn POclReleaseMemObject at line 54:  *** INFO ***  | REFCOUNTS |  Release Memory Object 10 (0x558c761b5b30), Refcount: 1
+[2025-11-02 00:25:19.137051801] PoCL: in fn POclReleaseMemObject at line 54:  *** INFO ***  | REFCOUNTS |  Release Memory Object 11 (0x558c761b5ce0), Refcount: 1
+[2025-11-02 00:25:19.137054957] PoCL: in fn POclReleaseEvent at line 39:  *** INFO ***  | REFCOUNTS |  Release Event 1 (0x558c76201360), Refcount: 2
+[2025-11-02 00:25:19.137065106] PoCL: in fn POclReleaseCommandQueue at line 40:  *** INFO ***  | REFCOUNTS |  Release Command Queue 4 (0x558c761978d0), Refcount: 2
+[2025-11-02 00:25:19.137071207] PoCL: in fn POclSetKernelArg at line 108:  *** INFO ***  |   GENERAL |  Kernel      rasterizer || SetArg idx   0 || RI_renderable_face* || Local 0 || Size      8 || Value 0x7f98e2ceb298 || Pointer 0x558c761b61e0 || *(uint32*)Value:        0 || *(uint64*)Value:        0 ||
+Hex Value:  E0611B76 8C550000
+[2025-11-02 00:25:19.137075034] PoCL: in fn POclSetKernelArg at line 108:  *** INFO ***  |   GENERAL |  Kernel      rasterizer || SetArg idx   6 ||      int || Local 0 || Size      4 || Value 0x7f98e2ceb344 || Pointer (nil) || *(uint32*)Value:        0 || *(uint64*)Value:        0 ||
+Hex Value:  00000000
+[2025-11-02 00:25:19.137078461] PoCL: in fn POclSetKernelArg at line 108:  *** INFO ***  |   GENERAL |  Kernel      rasterizer || SetArg idx   7 ||      int || Local 0 || Size      4 || Value 0x7f98e2ceb348 || Pointer (nil) || *(uint32*)Value:        0 || *(uint64*)Value:        0 ||
+Hex Value:  00000000
+[2025-11-02 00:25:19.137081907] PoCL: in fn pocl_kernel_calc_wg_size at line 181:  *** INFO ***  |   GENERAL |  Preparing kernel rasterizer with local size 32 x 32 x 1 group sizes 13 x 13 x 1...
+[2025-11-02 00:25:19.137096144] PoCL: in fn pocl_driver_alloc_mem_obj at line 495:  *** INFO ***  |    MEMORY |  Basic device ALLOC 0x7f98ac26c080 / size 2240000 
+[2025-11-02 00:25:19.137101103] PoCL: in fn POclRetainCommandQueue at line 35:  *** INFO ***  | REFCOUNTS |  Retain Command Queue 4 (0x558c761978d0), Refcount: 3
+[2025-11-02 00:25:19.137103458] PoCL: in fn pocl_create_event at line 533:  *** INFO ***  |    EVENTS |  Created event 2 (0x558c761ae070) Command ndrange_kernel
+[2025-11-02 00:25:19.137105852] PoCL: in fn pocl_create_command_struct at line 694:  *** INFO ***  |    EVENTS |  Created immediate command struct: CMD 0x558c762c17f0 (event 2 / 0x558c761ae070, type: ndrange_kernel)
+[2025-11-02 00:25:19.137108728] PoCL: in fn POclReleaseEvent at line 39:  *** INFO ***  | REFCOUNTS |  Release Event 1 (0x558c76201360), Refcount: 1
+[2025-11-02 00:25:19.137111563] PoCL: in fn POclRetainKernel at line 33:  *** INFO ***  | REFCOUNTS |  Retain Kernel rasterizer (0x558c7623eae0), Refcount: 2
+[2025-11-02 00:25:19.137114258] PoCL: in fn pocl_command_enqueue at line 1383:  *** INFO ***  |    EVENTS |  In-order Q; adding event syncs
+[2025-11-02 00:25:19.137116402] PoCL: in fn pocl_command_enqueue at line 1416:  *** INFO ***  |    EVENTS |  Pushed Event 2 to CQ 4.
+[2025-11-02 00:25:19.137118626] PoCL: in fn pocl_update_event_queued at line 2276:  *** INFO ***  |    EVENTS |  Event queued: 2
+[2025-11-02 00:25:19.137121131] PoCL: in fn pocl_update_event_submitted at line 2296:  *** INFO ***  |    EVENTS |  Event submitted: 2
+[2025-11-02 00:25:19.137184580] PoCL: in fn pocl_check_kernel_disk_cache at line 1008:  *** INFO ***  |   GENERAL |  Using a cached WG function: /home/iver/.cache/pocl/kcache/BN/JPLNELHDHEKNABHNMDANGLHABDKEIGKPMJODB/rasterizer/32-32-1-goffs0-smallgrid/rasterizer.so
+[2025-11-02 00:25:19.137252679] PoCL: in fn pocl_update_event_running_unlocked at line 2315:  *** INFO ***  |    EVENTS |  Event running: 2
+./run: line 1: 531230 Segmentation fault      ./builds/main.bin
