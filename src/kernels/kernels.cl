@@ -258,15 +258,21 @@ void global_quaternion_rotate(__global RI_vector_3 *position, RI_vector_4 rotati
     *position = (RI_vector_3){rotation.x, rotation.y, rotation.z};
 }
 
+__kernel void transformer(__global RI_face *faces, __global RI_vector_3 *vertecies, __global RI_vector_3 *normals, __global RI_vector_2 *uvs, __global RI_renderable_face *renderable_faces, double actor_x, double actor_y, double actor_z, double actor_r_w, double actor_r_x, double actor_r_y, double actor_r_z, double actor_s_x, double actor_s_y, double actor_s_z, int has_normals, int has_uvs, int face_array_offset_index, int face_count, int width, int height, double horizontal_fov_factor, double vertical_fov_factor, float min_clip, float max_clip, double camera_x, double camera_y, double camera_z, double camera_r_w, double camera_r_x, double camera_r_y, double camera_r_z, int renderable_face_offset){
+    int face_index = get_global_id(0); if (face_index >= face_count) return;
 
-__kernel void transformer(__global RI_face *faces, __global RI_vector_3 *vertecies, __global RI_vector_3 *normals, __global RI_vector_2 *uvs, __global RI_renderable_face *renderable_faces, RI_actor current_actor, RI_camera camera, int current_actor_index, int num_faces, int width, int height, double horizontal_fov_factor, double vertical_fov_factor){
-    int face_index = get_global_id(0);
-    
-    __global RI_face *cur_face = &faces[face_index + current_actor.face_index];
+    RI_vector_3 current_actor_position = (RI_vector_3){actor_x, actor_y, actor_z};
+    RI_vector_4 current_actor_rotation = (RI_vector_4){actor_r_w, actor_r_x, actor_r_y, actor_r_z};
+    RI_vector_3 current_actor_scale = (RI_vector_3){actor_s_x, actor_s_y, actor_s_z};
+    RI_vector_3 camera_position = (RI_vector_3){camera_x, camera_y, camera_z};
+    RI_vector_4 camera_rotation = (RI_vector_4){camera_r_w, camera_r_x, camera_r_y, camera_r_z};
 
-    __global RI_renderable_face *cur_r_face = &renderable_faces[face_index];
-    
-    renderable_faces[num_faces + face_index].should_render = 0;
+    __global RI_face *cur_face = &faces[face_index + face_array_offset_index];
+
+    __global RI_renderable_face *cur_r_face = &renderable_faces[face_index * 2 + renderable_face_offset];
+
+    // set split face not to render
+    renderable_faces[face_index * 2 + renderable_face_offset + 1].should_render = 0;
 
     if (!cur_face->should_render){
         cur_r_face->should_render = 0;
@@ -300,47 +306,47 @@ __kernel void transformer(__global RI_face *faces, __global RI_vector_3 *verteci
     cur_r_face->normal_1 = normals[normal_1_index];
     cur_r_face->normal_2 = normals[normal_2_index];
 
-    if (current_actor.has_uvs){
+    if (has_uvs){
         cur_r_face->uv_0 = uvs[uv_0_index];
         cur_r_face->uv_1 = uvs[uv_1_index];
         cur_r_face->uv_2 = uvs[uv_2_index];
     }
 
     // scale
-    global_vector_3_hadamard(&cur_r_face->position_0, current_actor.scale);
-    global_vector_3_hadamard(&cur_r_face->position_1, current_actor.scale);
-    global_vector_3_hadamard(&cur_r_face->position_2, current_actor.scale);
+    global_vector_3_hadamard(&cur_r_face->position_0, current_actor_scale);
+    global_vector_3_hadamard(&cur_r_face->position_1, current_actor_scale);
+    global_vector_3_hadamard(&cur_r_face->position_2, current_actor_scale);
 
     // actor rotation
-    global_quaternion_rotate(&cur_r_face->position_0, current_actor.rotation);
-    global_quaternion_rotate(&cur_r_face->position_1, current_actor.rotation);
-    global_quaternion_rotate(&cur_r_face->position_2, current_actor.rotation);
+    global_quaternion_rotate(&cur_r_face->position_0, current_actor_rotation);
+    global_quaternion_rotate(&cur_r_face->position_1, current_actor_rotation);
+    global_quaternion_rotate(&cur_r_face->position_2, current_actor_rotation);
 
-    global_quaternion_rotate(&cur_r_face->normal_0, current_actor.rotation);
-    global_quaternion_rotate(&cur_r_face->normal_1, current_actor.rotation);
-    global_quaternion_rotate(&cur_r_face->normal_2, current_actor.rotation);
+    global_quaternion_rotate(&cur_r_face->normal_0, current_actor_rotation);
+    global_quaternion_rotate(&cur_r_face->normal_1, current_actor_rotation);
+    global_quaternion_rotate(&cur_r_face->normal_2, current_actor_rotation);
     
     // object position
-    global_vector_3_element_wise_add(&cur_r_face->position_0, current_actor.position);
-    global_vector_3_element_wise_add(&cur_r_face->position_1, current_actor.position);
-    global_vector_3_element_wise_add(&cur_r_face->position_2, current_actor.position);    
+    global_vector_3_element_wise_add(&cur_r_face->position_0, current_actor_position);
+    global_vector_3_element_wise_add(&cur_r_face->position_1, current_actor_position);
+    global_vector_3_element_wise_add(&cur_r_face->position_2, current_actor_position);    
 
     // camera position & rotation
-    global_vector_3_element_wise_subtract(&cur_r_face->position_0, camera.position);
-    global_vector_3_element_wise_subtract(&cur_r_face->position_1, camera.position);
-    global_vector_3_element_wise_subtract(&cur_r_face->position_2, camera.position);
+    global_vector_3_element_wise_subtract(&cur_r_face->position_0, camera_position);
+    global_vector_3_element_wise_subtract(&cur_r_face->position_1, camera_position);
+    global_vector_3_element_wise_subtract(&cur_r_face->position_2, camera_position);
 
-    global_quaternion_rotate(&cur_r_face->position_0, camera.rotation);
-    global_quaternion_rotate(&cur_r_face->position_1, camera.rotation);
-    global_quaternion_rotate(&cur_r_face->position_2, camera.rotation);        
+    global_quaternion_rotate(&cur_r_face->position_0, camera_rotation);
+    global_quaternion_rotate(&cur_r_face->position_1, camera_rotation);
+    global_quaternion_rotate(&cur_r_face->position_2, camera_rotation);        
 
     __global RI_vector_3 *pos_0 = &cur_r_face->position_0;
     __global RI_vector_3 *pos_1 = &cur_r_face->position_1;
     __global RI_vector_3 *pos_2 = &cur_r_face->position_2;
 
-    int is_0_clipped = pos_0->z < camera.min_clip;
-    int is_1_clipped = pos_1->z < camera.min_clip;
-    int is_2_clipped = pos_2->z < camera.min_clip;
+    int is_0_clipped = pos_0->z < min_clip;
+    int is_1_clipped = pos_1->z < min_clip;
+    int is_2_clipped = pos_2->z < min_clip;
 
     int clip_count = is_0_clipped + is_1_clipped + is_2_clipped;
 
@@ -397,8 +403,8 @@ __kernel void transformer(__global RI_face *faces, __global RI_vector_3 *verteci
                 uv_b = &cur_r_face->uv_1;
             }
         
-            double fraction_a_to_unclip = (camera.min_clip - unclipped_point->z) / (point_a->z - unclipped_point->z);                          
-            double fraction_b_to_unclip = (camera.min_clip - unclipped_point->z) / (point_b->z - unclipped_point->z);  
+            double fraction_a_to_unclip = (min_clip - unclipped_point->z) / (point_a->z - unclipped_point->z);                          
+            double fraction_b_to_unclip = (min_clip - unclipped_point->z) / (point_b->z - unclipped_point->z);  
 
             global_vector_3_lerp(*unclipped_point, *point_a, point_a, fraction_a_to_unclip);
             global_vector_3_lerp(*unclipped_point, *point_b, point_b, fraction_b_to_unclip);
@@ -460,8 +466,8 @@ __kernel void transformer(__global RI_face *faces, __global RI_vector_3 *verteci
                 uv_b = cur_r_face->uv_1;
             }
 
-            double fraction_a_to_clip = (camera.min_clip - clipped_point.z) / (point_a.z - clipped_point.z);                        
-            double fraction_b_to_clip = (camera.min_clip - clipped_point.z) / (point_b.z - clipped_point.z);                        
+            double fraction_a_to_clip = (min_clip - clipped_point.z) / (point_a.z - clipped_point.z);                        
+            double fraction_b_to_clip = (min_clip - clipped_point.z) / (point_b.z - clipped_point.z);                        
 
             RI_vector_3 new_point_a, new_point_b;  // the new points that move along the polygon's edge to match the z value of min_clip.
             RI_vector_3 new_normal_a, new_normal_b;  // they come from the clipped point which was originally only 1
@@ -479,7 +485,7 @@ __kernel void transformer(__global RI_face *faces, __global RI_vector_3 *verteci
             // okay, now we have a quad (in clockwise order, point a, point b, new point b, new point a)
             // quads are easy to turn into tris >w<
 
-            __global RI_renderable_face *cur_r_split_face = &renderable_faces[num_faces + face_index];
+            __global RI_renderable_face *cur_r_split_face = &renderable_faces[face_index * 2 + renderable_face_offset + 1];
 
             // cur_r_split_face->parent_actor = current_actor;
 
@@ -583,9 +589,9 @@ __kernel void rasterizer(__global RI_renderable_face *renderable_faces, __global
 
     double z = INFINITY;
 
-    uint pixel_color = 0xFFFFFFFF;
+    uint pixel_color = 0;
 
-    for (int face_i = 0; face_i < number_of_renderable_faces + number_of_split_renderable_faces; ++face_i){
+    for (int face_i = 0; face_i < number_of_renderable_faces * 2; ++face_i){
         __global RI_renderable_face *current_face = &renderable_faces[face_i];
         
         if (!current_face->should_render) continue;

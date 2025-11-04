@@ -13,6 +13,8 @@ int main(){
         return 1;
     }
 
+    context->should_debug = ri_false;
+
     RI_scene *scene = RI_new_scene();
 
     RI_actor *actor = RI_new_actor();
@@ -40,7 +42,7 @@ int main(){
         
         RI_render(NULL, scene);
 
-        actor->position = (RI_vector_3){0, 0, 1000};
+        actor->position = (RI_vector_3){0, 0, 500};
 
         RI_euler_rotation_to_quaternion(&actor->rotation, (RI_vector_3){context->current_frame * 0.001, context->current_frame * 0.001, context->current_frame * 0.001});
         
