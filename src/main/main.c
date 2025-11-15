@@ -393,11 +393,15 @@ void RI_render(RI_texture *target_texture, RI_scene *scene){
         
         int face_sqrt = ceil(sqrt(scene->actors[actor_index]->face_count));
 
-        const size_t t_global_work_size[2] = {local_group_size_x * ceil(face_sqrt / (float)local_group_size_x), local_group_size_x * ceil(face_sqrt / (float)local_group_size_y)};
+        int local_t_size = (int)fmin(face_sqrt, local_group_size_x);
+
+        const size_t t_global_work_size[2] = {local_t_size * ceil(face_sqrt / (float)local_t_size), local_t_size * ceil(face_sqrt / (float)local_t_size)};
         const size_t t_local_work_size[2] = {(int)fmin(face_sqrt, local_group_size_x), (int)fmin(face_sqrt, local_group_size_y)};
 
         debug("transformer global work size: {%d, %d}", t_global_work_size[0], t_global_work_size[1]);    
         debug("transformer local work size: {%d, %d}", t_local_work_size[0], t_local_work_size[1]);
+
+        debug("(%d extra work items; %d items (%dx%d) - %d faces)", t_global_work_size[0] * t_global_work_size[1] - scene->actors[actor_index]->face_count, t_global_work_size[0] * t_global_work_size[1], t_global_work_size[0], t_global_work_size[1], scene->actors[actor_index]->face_count);
 
         // 5, double actor_x
         clSetKernelArg(context.opencl.transformation_kernel, 5, sizeof(double), &actor->position.x);
