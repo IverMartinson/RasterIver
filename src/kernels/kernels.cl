@@ -265,8 +265,8 @@ void global_quaternion_rotate(__global RI_vector_3 *position, RI_vector_4 rotati
     *position = (RI_vector_3){rotation.x, rotation.y, rotation.z};
 }
 
-__kernel void transformer(__global RI_face *faces, __global RI_vector_3 *vertecies, __global RI_vector_3 *normals, __global RI_vector_2 *uvs, __global RI_renderable_face *renderable_faces, double actor_x, double actor_y, double actor_z, double actor_r_w, double actor_r_x, double actor_r_y, double actor_r_z, double actor_s_x, double actor_s_y, double actor_s_z, int has_normals, int has_uvs, int face_array_offset_index, int face_count, int width, int height, double horizontal_fov_factor, double vertical_fov_factor, float min_clip, float max_clip, double camera_x, double camera_y, double camera_z, double camera_r_w, double camera_r_x, double camera_r_y, double camera_r_z, int renderable_face_offset){
-    int face_index = get_global_id(0); if (face_index >= face_count) return;
+__kernel void transformer(__global RI_face *faces, __global RI_vector_3 *vertecies, __global RI_vector_3 *normals, __global RI_vector_2 *uvs, __global RI_renderable_face *renderable_faces, double actor_x, double actor_y, double actor_z, double actor_r_w, double actor_r_x, double actor_r_y, double actor_r_z, double actor_s_x, double actor_s_y, double actor_s_z, int has_normals, int has_uvs, int face_array_offset_index, int face_count, int width, int height, double horizontal_fov_factor, double vertical_fov_factor, float min_clip, float max_clip, double camera_x, double camera_y, double camera_z, double camera_r_w, double camera_r_x, double camera_r_y, double camera_r_z, int renderable_face_offset, int face_sqrt){
+    int face_index = get_global_id(1) * face_sqrt + get_global_id(0); if (face_index >= face_count) return;
 
     RI_vector_3 current_actor_position = (RI_vector_3){actor_x, actor_y, actor_z};
     RI_vector_4 current_actor_rotation = (RI_vector_4){actor_r_w, actor_r_x, actor_r_y, actor_r_z};

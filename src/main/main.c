@@ -391,11 +391,13 @@ void RI_render(RI_texture *target_texture, RI_scene *scene){
 
         if (scene->actors[actor_index]->face_count <= 0) continue;
         
-        const size_t t_global_work_size[1] = {(int)ceil(scene->actors[actor_index]->face_count / (float)local_group_size_y) * scene->actors[actor_index]->face_count};
-        const size_t t_local_work_size[1] = {(int)fmin(scene->actors[actor_index]->face_count, local_group_size_x)};
+        int face_sqrt = ceil(sqrt(scene->actors[actor_index]->face_count));
 
-        debug("transformer global work size: {%d}", scene->actors[actor_index]->face_count);    
-        debug("transformer local work size: {%d}", (int)fmin(scene->actors[actor_index]->face_count, local_group_size_y));
+        const size_t t_global_work_size[2] = {local_group_size_x * ceil(face_sqrt / (float)local_group_size_x), local_group_size_x * ceil(face_sqrt / (float)local_group_size_y)};
+        const size_t t_local_work_size[2] = {(int)fmin(face_sqrt, local_group_size_x), (int)fmin(face_sqrt, local_group_size_y)};
+
+        debug("transformer global work size: {%d, %d}", t_global_work_size[0], t_global_work_size[1]);    
+        debug("transformer local work size: {%d, %d}", t_local_work_size[0], t_local_work_size[1]);
 
         // 5, double actor_x
         clSetKernelArg(context.opencl.transformation_kernel, 5, sizeof(double), &actor->position.x);
@@ -431,10 +433,13 @@ void RI_render(RI_texture *target_texture, RI_scene *scene){
 
         // 32, int renderable_face_offset
         clSetKernelArg(context.opencl.transformation_kernel, 32, sizeof(int), &renderable_face_index);
+        
+        // 33, int face_sqrt
+        clSetKernelArg(context.opencl.transformation_kernel, 33, sizeof(int), &face_sqrt);
 
         debug("running kernel...");
 
-        clEnqueueNDRangeKernel(context.opencl.queue, context.opencl.transformation_kernel, 1, NULL, t_global_work_size, t_local_work_size, 0, NULL, &event);
+        clEnqueueNDRangeKernel(context.opencl.queue, context.opencl.transformation_kernel, 2, NULL, t_global_work_size, t_local_work_size, 0, NULL, &event);
         clFinish(context.opencl.queue);
 
         clGetEventProfilingInfo(event, CL_PROFILING_COMMAND_START, sizeof(start), &start, NULL);
@@ -796,9 +801,11 @@ int RI_init(){
     // clSetKernelArg(context.opencl.transformation_kernel, 30, sizeof(double), &camera_r_y);
     // // 31, double camera_r_z
     // clSetKernelArg(context.opencl.transformation_kernel, 31, sizeof(double), &camera_r_z);
+    
     // // 32, int renderable_face_offset
     // clSetKernelArg(context.opencl.transformation_kernel, 32, sizeof(int), &renderable_face_offset);
-
+    // // 33, int face_sqrt
+    // clSetKernelArg(context.opencl.transformation_kernel, 33, sizeof(int), &face_sqrt);
 
     RI_load_mesh("objects/cube.obj", context.defaults.default_actor);
 
