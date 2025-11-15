@@ -4,6 +4,7 @@
 #include <SDL2/SDL.h>
 #include "../headers/rasteriver.h"
 #include "../headers/memory.h"
+#include <time.h>
 
 RI_context context;
 
@@ -80,6 +81,10 @@ RI_scene *RI_new_scene(){
 }
 
 RI_mesh *RI_load_mesh(char *filename, RI_actor *actor){
+    clock_t start_time, end_time;
+    
+    start_time = clock();
+
     int previous_face_count = context.opencl.face_count;
     int previous_vertecies_count = context.opencl.vertex_count;
     int previous_normals_count = context.opencl.normal_count;
@@ -308,9 +313,17 @@ RI_mesh *RI_load_mesh(char *filename, RI_actor *actor){
     }
 
     fclose(file);
+    
+    end_time = clock();
+
+    debug("Done! loading mesh took %lf seconds", (double)(end_time - start_time) / CLOCKS_PER_SEC);
 }
 
 void RI_render(RI_texture *target_texture, RI_scene *scene){
+    clock_t start_time, end_time;
+    
+    start_time = clock();
+    
     if (!target_texture){
         target_texture = context.sdl.frame_buffer;
     }
@@ -450,7 +463,7 @@ void RI_render(RI_texture *target_texture, RI_scene *scene){
         clGetEventProfilingInfo(event, CL_PROFILING_COMMAND_END, sizeof(end), &end, NULL);
 
         double ns = (double)(end - start);
-        printf("actor #%d's transformation kernel: %f ms\n", actor_index, ns / 1e6);
+        printf("actor #%d's transformation kernel took %f seconds\n", actor_index, ns / 1e6);
         
         debug("done");
     
@@ -502,12 +515,20 @@ void RI_render(RI_texture *target_texture, RI_scene *scene){
     clGetEventProfilingInfo(event, CL_PROFILING_COMMAND_END, sizeof(end), &end, NULL);
 
     double ns = (double)(end - start);
-    printf("rasterization kernel: %f ms\n", ns / 1e6);
+    printf("rasterization kernel took %f seconds\n", ns / 1e6);
 
     debug("done");
+
+    end_time = clock();
+
+    debug("Done! rendering took %lf seconds", (double)(end_time - start_time) / CLOCKS_PER_SEC);
 }
 
 void RI_tick(){
+    clock_t start_time, end_time;
+    
+    start_time = clock();
+    
     SDL_Event event;
 
     while (SDL_PollEvent(&event)){
@@ -534,6 +555,10 @@ void RI_tick(){
     SDL_RenderPresent(context.sdl.renderer);
 
     ++context.current_frame;
+
+    end_time = clock();
+
+    debug("Done! ticking took %lf seconds", (double)(end_time - start_time) / CLOCKS_PER_SEC);
 
     return;
 }
