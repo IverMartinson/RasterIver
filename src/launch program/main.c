@@ -4,8 +4,8 @@
 int main(){
     RI_context* context = RI_get_context();
     
-    context->window.width = 700;
-    context->window.height = 700;
+    context->window.width = 600;
+    context->window.height = 600;
     context->window.title = "This is RasterIver 3.0!!!!!!!";
     
     if (RI_init() != 0){

@@ -627,6 +627,9 @@ __kernel void rasterizer(__global RI_renderable_face *renderable_faces, __global
         double denominator, w0, w1, w2;
 
         denominator = (pos_1.y - pos_2.y) * (pos_0.x - pos_2.x) + (pos_2.x - pos_1.x) * (pos_0.y - pos_2.y);
+        
+        if (denominator >= 0) continue; 
+        
         w0 = ((pos_1.y - pos_2.y) * (x - pos_2.x) + (pos_2.x - pos_1.x) * (y - pos_2.y)) / denominator;
         w1 = ((pos_2.y - pos_0.y) * (x - pos_0.x) + (pos_0.x - pos_2.x) * (y - pos_0.y)) / denominator; 
         w2 = 1.0 - w0 - w1; 
