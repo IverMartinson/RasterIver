@@ -80,10 +80,12 @@ RI_scene *RI_new_scene(){
     return new_scene;
 }
 
-RI_mesh *RI_load_mesh(char *filename, RI_actor *actor){
+RI_mesh *RI_load_mesh(char *filename){
     clock_t start_time, end_time;
     
     start_time = clock();
+
+    RI_mesh *new_mesh = RI_malloc(sizeof(RI_mesh));
 
     int previous_face_count = context.opencl.face_count;
     int previous_vertecies_count = context.opencl.vertex_count;
@@ -234,11 +236,11 @@ RI_mesh *RI_load_mesh(char *filename, RI_actor *actor){
     
     if (!has_normals || !has_uvs) debug("[Mesh Loader] Notice! Mesh \"%s\" is missing %s", filename, loading_mesh_notice_string);
     
-    actor->has_normals = has_normals;
-    actor->has_uvs = has_uvs;
+    new_mesh->has_normals = has_normals;
+    new_mesh->has_uvs = has_uvs;
 
-    actor->face_count = context.opencl.face_count - previous_face_count;
-    actor->face_index = previous_face_count;
+    new_mesh->face_count = context.opencl.face_count - previous_face_count;
+    new_mesh->face_index = previous_face_count;
 
     debug("[Mesh Loader] Loaded mesh \"%s\"! %d faces, %d verticies, %d normals, %d uvs", filename, current_face_index, current_vertex_index, current_normal_index, current_uv_index); 
 
@@ -317,6 +319,8 @@ RI_mesh *RI_load_mesh(char *filename, RI_actor *actor){
     end_time = clock();
 
     debug("Done! loading mesh took %lf seconds", (double)(end_time - start_time) / CLOCKS_PER_SEC);
+
+    return new_mesh;
 }
 
 void RI_render(RI_texture *target_texture, RI_scene *scene){
@@ -369,17 +373,40 @@ void RI_render(RI_texture *target_texture, RI_scene *scene){
     // count faces
     scene->face_count = 0;
     for (int actor_index = 0; actor_index < scene->length_of_actors_array; ++actor_index){
-        scene->face_count += scene->actors[actor_index]->face_count;
+        scene->face_count += scene->actors[actor_index]->mesh->face_count;
     }
 
 
     // allocate faces_to_render if face count increases
-    if (scene->face_count > context.opencl.length_of_renderable_faces_array){
+    if (scene->face_count * 2 > context.opencl.length_of_renderable_faces_array){
         context.opencl.faces_to_render = RI_realloc(context.opencl.faces_to_render, sizeof(RI_renderable_face) * scene->face_count * 2); // x2 because faces can be split
     
-        context.opencl.length_of_renderable_faces_array = scene->face_count;
-    }
+        context.opencl.length_of_renderable_faces_array = scene->face_count * 2;
 
+        debug("old renderable faces count (%d) less than current (%d). Reallocating...", context.opencl.length_of_renderable_faces_array, scene->face_count * 2);
+
+        debug("reallocating %f mb", sizeof(RI_renderable_face) * context.opencl.length_of_renderable_faces_array / 1048576.0);
+
+        context.opencl.faces_to_render = RI_malloc(sizeof(RI_renderable_face) * context.opencl.length_of_renderable_faces_array);
+
+        cl_int error;
+
+        error = clReleaseMemObject(context.opencl.renderable_faces_mem_buffer);
+
+        if (error != CL_SUCCESS){
+            debug("couldn't free renderable faces memory buffer (error %d)", error);
+            
+            exit(1);
+        }
+
+        context.opencl.renderable_faces_mem_buffer = clCreateBuffer(context.opencl.context, CL_MEM_READ_WRITE, sizeof(RI_renderable_face) * context.opencl.length_of_renderable_faces_array, NULL, &error);
+
+        if (error != CL_SUCCESS){
+            debug("couldn't reallocate renderable faces memory buffer (error %d)", error);
+
+            exit(1);
+        }
+    }
     
     // set faces_to_render to zero
     memset(context.opencl.faces_to_render, 0, sizeof(RI_renderable_face) * scene->face_count * 2);
@@ -400,11 +427,11 @@ void RI_render(RI_texture *target_texture, RI_scene *scene){
     for (int actor_index = 0; actor_index < scene->length_of_actors_array; ++actor_index){
         RI_actor *actor = scene->actors[actor_index];
         
-        debug("actor index: %d face count: %d", actor_index, actor->face_count);
+        debug("actor index: %d face count: %d", actor_index, actor->mesh->face_count);
 
-        if (scene->actors[actor_index]->face_count <= 0) continue;
+        if (scene->actors[actor_index]->mesh->face_count <= 0) continue;
         
-        int face_sqrt = ceil(sqrt(scene->actors[actor_index]->face_count));
+        int face_sqrt = ceil(sqrt(scene->actors[actor_index]->mesh->face_count));
 
         int local_t_size = (int)fmin(face_sqrt, local_group_size_x);
 
@@ -414,7 +441,7 @@ void RI_render(RI_texture *target_texture, RI_scene *scene){
         debug("transformer global work size: {%d, %d}", t_global_work_size[0], t_global_work_size[1]);    
         debug("transformer local work size: {%d, %d}", t_local_work_size[0], t_local_work_size[1]);
 
-        debug("(%d extra work items; %d items (%dx%d) - %d faces)", t_global_work_size[0] * t_global_work_size[1] - scene->actors[actor_index]->face_count, t_global_work_size[0] * t_global_work_size[1], t_global_work_size[0], t_global_work_size[1], scene->actors[actor_index]->face_count);
+        debug("(%d extra work items; %d items (%dx%d) - %d faces)", t_global_work_size[0] * t_global_work_size[1] - scene->actors[actor_index]->mesh->face_count, t_global_work_size[0] * t_global_work_size[1], t_global_work_size[0], t_global_work_size[1], scene->actors[actor_index]->mesh->face_count);
 
         // 5, double actor_x
         clSetKernelArg(context.opencl.transformation_kernel, 5, sizeof(double), &actor->position.x);
@@ -440,13 +467,13 @@ void RI_render(RI_texture *target_texture, RI_scene *scene){
         clSetKernelArg(context.opencl.transformation_kernel, 14, sizeof(double), &actor->scale.z);
 
         // 15, int has_normals
-        clSetKernelArg(context.opencl.transformation_kernel, 15, sizeof(int), &actor->has_normals);
+        clSetKernelArg(context.opencl.transformation_kernel, 15, sizeof(int), &actor->mesh->has_normals);
         // 16, int has_uvs
-        clSetKernelArg(context.opencl.transformation_kernel, 16, sizeof(int), &actor->has_uvs);
+        clSetKernelArg(context.opencl.transformation_kernel, 16, sizeof(int), &actor->mesh->has_uvs);
         // 17, int face_array_offset_index
-        clSetKernelArg(context.opencl.transformation_kernel, 17, sizeof(int), &actor->face_index);
+        clSetKernelArg(context.opencl.transformation_kernel, 17, sizeof(int), &actor->mesh->face_index);
         // 18, int face_count
-        clSetKernelArg(context.opencl.transformation_kernel, 18, sizeof(int), &actor->face_count);
+        clSetKernelArg(context.opencl.transformation_kernel, 18, sizeof(int), &actor->mesh->face_count);
 
         // 32, int renderable_face_offset
         clSetKernelArg(context.opencl.transformation_kernel, 32, sizeof(int), &renderable_face_index);
@@ -467,7 +494,7 @@ void RI_render(RI_texture *target_texture, RI_scene *scene){
         
         debug("done");
     
-        renderable_face_index += actor->face_count * 2;
+        renderable_face_index += actor->mesh->face_count * 2;
     }
 
     debug("done");    
@@ -836,7 +863,7 @@ int RI_init(){
     // // 33, int face_sqrt
     // clSetKernelArg(context.opencl.transformation_kernel, 33, sizeof(int), &face_sqrt);
 
-    RI_load_mesh("objects/cube.obj", context.defaults.default_actor);
+    context.defaults.default_actor->mesh = RI_load_mesh("objects/cube.obj");
 
 
     return 0;

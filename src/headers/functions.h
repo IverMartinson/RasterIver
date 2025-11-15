@@ -18,7 +18,7 @@ void RI_tick();
 void RI_render(RI_texture* texture, RI_scene *scene);
 
 // loads an OBJ file into memory as a mesh
-RI_mesh *RI_load_mesh(char* filename, RI_actor *actor);
+RI_mesh *RI_load_mesh(char* filename);
 
 // allocates and returns a pointer to a new scene
 RI_scene *RI_new_scene();

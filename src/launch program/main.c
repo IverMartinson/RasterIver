@@ -24,8 +24,11 @@ int main(){
     RI_actor *cube = RI_new_actor();
     RI_actor *triangle = RI_new_actor();
 
-    RI_load_mesh("objects/homer.obj", cube);
-    RI_load_mesh("objects/teapot.obj", triangle);
+    RI_mesh *homer_mesh = RI_load_mesh("objects/homer.obj");
+    RI_mesh *teapot_mesh = RI_load_mesh("objects/teapot.obj");
+
+    cube->mesh = homer_mesh;
+    triangle->mesh = homer_mesh;
 
     cube->scale = (RI_vector_3){80, 80, 80};
     cube->position = (RI_vector_3){-20, -30, 100};
@@ -40,7 +43,7 @@ int main(){
     scene->actors[0] = cube;
     scene->actors[1] = triangle;
 
-    scene->length_of_actors_array = 1;
+    scene->length_of_actors_array = 2;
 
     long int start, end;
     double fps = 0;

@@ -32,12 +32,10 @@ typedef struct {
 } RI_face;
 
 typedef struct {
-    RI_face *faces;
-    RI_vector_3 *vertex_positions;
-    RI_vector_3 *normals;
-    RI_vector_2 *uvs;
-    cl_uint face_count, vertex_count, normal_count, uv_count;
-    cl_uint has_normals, has_uvs;
+    int face_count;
+    int face_index;
+    ri_bool has_normals;
+    ri_bool has_uvs;
 } RI_mesh;
 
 typedef struct {
@@ -52,12 +50,9 @@ typedef struct {
     RI_vector_3 position;
     RI_vector_4 rotation;
     RI_vector_3 scale;
+    RI_mesh *mesh;
     ri_bool active;
-    ri_bool has_normals;
-    ri_bool has_uvs;
     int material_index;
-    int face_index;
-    int face_count;
 } RI_actor;
 
 typedef struct {
