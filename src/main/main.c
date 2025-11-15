@@ -247,6 +247,34 @@ RI_mesh *RI_load_mesh(char *filename, RI_actor *actor){
         clEnqueueWriteBuffer(context.opencl.queue, context.opencl.faces_mem_buffer, CL_TRUE, 0, sizeof(RI_face) * context.opencl.face_count, context.opencl.faces, 0, NULL, NULL);
 
         clSetKernelArg(context.opencl.transformation_kernel, 0, sizeof(cl_mem), &context.opencl.faces_mem_buffer);
+    
+        if (context.opencl.face_count * 2 > context.opencl.length_of_renderable_faces_array){
+            debug("old renderable faces count (%d) less than current (%d). Reallocating...", context.opencl.length_of_renderable_faces_array, context.opencl.face_count * 2);
+
+            context.opencl.length_of_renderable_faces_array = context.opencl.face_count * 2;
+            
+            debug("reallocating %f mb", sizeof(RI_renderable_face) * context.opencl.length_of_renderable_faces_array / 1048576.0);
+
+            context.opencl.faces_to_render = RI_malloc(sizeof(RI_renderable_face) * context.opencl.length_of_renderable_faces_array);
+
+            cl_int error;
+
+            error = clReleaseMemObject(context.opencl.renderable_faces_mem_buffer);
+
+            if (error != CL_SUCCESS){
+                debug("couldn't free renderable faces memory buffer (error %d)", error);
+                
+                exit(1);
+            }
+
+            context.opencl.renderable_faces_mem_buffer = clCreateBuffer(context.opencl.context, CL_MEM_READ_WRITE, sizeof(RI_renderable_face) * context.opencl.length_of_renderable_faces_array, NULL, &error);
+    
+            if (error != CL_SUCCESS){
+                debug("couldn't reallocate renderable faces memory buffer (error %d)", error);
+
+                exit(1);
+            }
+        }
     }
 
     if (previous_vertecies_count != context.opencl.vertex_count) {
@@ -322,6 +350,9 @@ void RI_render(RI_texture *target_texture, RI_scene *scene){
     clSetKernelArg(context.opencl.transformation_kernel, 31, sizeof(double), &scene->camera.rotation.z);
 
 
+    int local_group_size_x = 16;
+    int local_group_size_y = 16;
+
     // count faces
     scene->face_count = 0;
     for (int actor_index = 0; actor_index < scene->length_of_actors_array; ++actor_index){
@@ -349,6 +380,9 @@ void RI_render(RI_texture *target_texture, RI_scene *scene){
 
     int renderable_face_index = 0;
 
+    cl_event event;
+    cl_ulong start, end;
+
     // transform polygons
     for (int actor_index = 0; actor_index < scene->length_of_actors_array; ++actor_index){
         RI_actor *actor = scene->actors[actor_index];
@@ -357,11 +391,11 @@ void RI_render(RI_texture *target_texture, RI_scene *scene){
 
         if (scene->actors[actor_index]->face_count <= 0) continue;
         
-        const size_t t_global_work_size[1] = {scene->actors[actor_index]->face_count};
-        const size_t t_local_work_size[1] = {(int)fmin(scene->actors[actor_index]->face_count, 32)};
+        const size_t t_global_work_size[1] = {(int)ceil(scene->actors[actor_index]->face_count / (float)local_group_size_y) * scene->actors[actor_index]->face_count};
+        const size_t t_local_work_size[1] = {(int)fmin(scene->actors[actor_index]->face_count, local_group_size_x)};
 
         debug("transformer global work size: {%d}", scene->actors[actor_index]->face_count);    
-        debug("transformer local work size: {%d}", (int)fmin(scene->actors[actor_index]->face_count, 32));
+        debug("transformer local work size: {%d}", (int)fmin(scene->actors[actor_index]->face_count, local_group_size_y));
 
         // 5, double actor_x
         clSetKernelArg(context.opencl.transformation_kernel, 5, sizeof(double), &actor->position.x);
@@ -400,9 +434,15 @@ void RI_render(RI_texture *target_texture, RI_scene *scene){
 
         debug("running kernel...");
 
-        clEnqueueNDRangeKernel(context.opencl.queue, context.opencl.transformation_kernel, 1, NULL, t_global_work_size, t_local_work_size, 0, NULL, NULL);
+        clEnqueueNDRangeKernel(context.opencl.queue, context.opencl.transformation_kernel, 1, NULL, t_global_work_size, t_local_work_size, 0, NULL, &event);
         clFinish(context.opencl.queue);
-    
+
+        clGetEventProfilingInfo(event, CL_PROFILING_COMMAND_START, sizeof(start), &start, NULL);
+        clGetEventProfilingInfo(event, CL_PROFILING_COMMAND_END, sizeof(end), &end, NULL);
+
+        double ns = (double)(end - start);
+        printf("actor #%d's transformation kernel: %f ms\n", actor_index, ns / 1e6);
+        
         debug("done");
     
         renderable_face_index += actor->face_count * 2;
@@ -417,20 +457,20 @@ void RI_render(RI_texture *target_texture, RI_scene *scene){
     int x = context.window.width;
     int y = context.window.height;
 
-    int x_div_32 = ceil(context.window.width / 32.0);
-    int y_div_32 = ceil(context.window.height / 32.0);
+    int x_div_32 = ceil(context.window.width / (float)local_group_size_x);
+    int y_div_32 = ceil(context.window.height / (float)local_group_size_y);
 
-    if (context.window.width % 32 != 0)
-        x = 32 * x_div_32;
+    if (context.window.width % local_group_size_x != 0)
+        x = local_group_size_x * x_div_32;
 
-    if (context.window.height % 32 != 0)
-        y = 32 * y_div_32;
+    if (context.window.height % local_group_size_y != 0)
+        y = local_group_size_y * y_div_32;
 
     const size_t r_global_work_size[2] = {x, y};
-    const size_t r_local_work_size[2] = {32, 32};
+    const size_t r_local_work_size[2] = {local_group_size_x, local_group_size_y};
 
     debug("rasterizer global work size: {%d, %d}", x, y);    
-    debug("rasterizer local work size: {%d, %d}", 32, 32);    
+    debug("rasterizer local work size: {%d, %d}", local_group_size_x, local_group_size_y);    
 
     // kernel args
     clSetKernelArg(context.opencl.rasterization_kernel, 0, sizeof(cl_mem), &context.opencl.renderable_faces_mem_buffer);
@@ -446,8 +486,14 @@ void RI_render(RI_texture *target_texture, RI_scene *scene){
     debug("done\ncopying frame buffer...");
 
     // put GPU frame buffer into CPU
-    clEnqueueReadBuffer(context.opencl.queue, context.opencl.frame_buffer_mem_buffer, CL_TRUE, 0, context.window.width * context.window.height * sizeof(uint32_t), context.sdl.frame_buffer->image_buffer, 0, NULL, NULL);
+    clEnqueueReadBuffer(context.opencl.queue, context.opencl.frame_buffer_mem_buffer, CL_TRUE, 0, context.window.width * context.window.height * sizeof(uint32_t), context.sdl.frame_buffer->image_buffer, 0, NULL, &event);
     clFinish(context.opencl.queue);
+
+    clGetEventProfilingInfo(event, CL_PROFILING_COMMAND_START, sizeof(start), &start, NULL);
+    clGetEventProfilingInfo(event, CL_PROFILING_COMMAND_END, sizeof(end), &end, NULL);
+
+    double ns = (double)(end - start);
+    printf("rasterization kernel: %f ms\n", ns / 1e6);
 
     debug("done");
 }
@@ -529,11 +575,9 @@ int RI_init(){
 
     context.defaults.default_actor = RI_new_actor();
     
-    RI_load_mesh("objects/cube.obj", context.defaults.default_actor);
-
     // init OpenCL
  
-    context.opencl.length_of_renderable_faces_array = 10000; // allocate 10,000 faces so we dont have to worry about it
+    context.opencl.length_of_renderable_faces_array = 1;
     context.opencl.face_count = 0;
     context.opencl.vertex_count = 0;
     context.opencl.normal_count = 0;
@@ -567,7 +611,7 @@ int RI_init(){
         devices = malloc(sizeof(cl_device_id) * num_devices);
         error = clGetDeviceIDs(platforms[i], CL_DEVICE_TYPE_ALL, num_devices, devices, NULL);
 
-        if (i == 1){
+        if (i == 0){
             context.opencl.device = devices[0];
         }
 
@@ -582,14 +626,18 @@ int RI_init(){
         free(devices);
     }
 
-    clGetPlatformInfo(chosen_platform, CL_PLATFORM_NAME, sizeof(pname), pname, NULL);
-
     context.opencl.platform = platforms[0];
 
     debug("device id: %u", context.opencl.device);
 
     context.opencl.context = clCreateContext(NULL, 1, &context.opencl.device, NULL, NULL, NULL);
-    context.opencl.queue = clCreateCommandQueue(context.opencl.context, context.opencl.device, 0, &error);
+    context.opencl.queue = clCreateCommandQueue(context.opencl.context, context.opencl.device, CL_QUEUE_PROFILING_ENABLE, &error);
+
+    if (!context.opencl.context){
+        debug("failed to create OpenCL context");
+    
+        exit(1);
+    }
 
     // build programs
 
@@ -597,12 +645,14 @@ int RI_init(){
     cl_program rasterization_program = clCreateProgramWithSource(context.opencl.context, 1, (const char**)&program_source, NULL, NULL);
     free(program_source);
 
-    cl_int result = clBuildProgram(rasterization_program, 1, &context.opencl.device, "-g -cl-std=CL3.0", NULL, NULL);
+    cl_int result = clBuildProgram(rasterization_program, 1, &context.opencl.device, "", NULL, NULL);
 
     if (result != CL_SUCCESS){
         char log[256];
 
-        debug("rasterization program build failed (%d). Log: \n  %s", clGetProgramBuildInfo(rasterization_program, context.opencl.device, CL_PROGRAM_BUILD_LOG, 10000, log, NULL), log);
+        clGetProgramBuildInfo(rasterization_program, context.opencl.device, CL_PROGRAM_BUILD_LOG, 10000, log, NULL);
+
+        debug("rasterization program build failed (%d). Log: \n  %s", result, log);
     
         return 1;
     }
@@ -748,6 +798,10 @@ int RI_init(){
     // clSetKernelArg(context.opencl.transformation_kernel, 31, sizeof(double), &camera_r_z);
     // // 32, int renderable_face_offset
     // clSetKernelArg(context.opencl.transformation_kernel, 32, sizeof(int), &renderable_face_offset);
+
+
+    RI_load_mesh("objects/cube.obj", context.defaults.default_actor);
+
 
     return 0;
 }

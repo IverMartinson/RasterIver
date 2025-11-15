@@ -74,6 +74,13 @@ void global_vector_2_times(__global RI_vector_2 *vector, double value){
     vector->y *= value;
 }
 
+// set all values of a vector 3
+void vector_3_memset(RI_vector_3 *vector, double value){
+    vector->x = value;
+    vector->y = value;
+    vector->z = value;
+}
+
 // value-wise multiplacation.
 // multiply the whole vector by 1 value
 void vector_3_times(RI_vector_3 *vector, double value){
@@ -210,7 +217,7 @@ void global_vector_2_lerp(RI_vector_2 vector_a, RI_vector_2 vector_b, __global R
 void vector_3_lerp(RI_vector_3 vector_a, RI_vector_3 vector_b, RI_vector_3 *result, double w1){
     double w0 = 1.0 - w1;
 
-    vector_3_times(result, 0);
+    vector_3_memset(result, 0);
 
     vector_3_times(&vector_a, w0);
     vector_3_times(&vector_b, w1);
@@ -274,11 +281,7 @@ __kernel void transformer(__global RI_face *faces, __global RI_vector_3 *verteci
     // set split face not to render
     renderable_faces[face_index * 2 + renderable_face_offset + 1].should_render = 0;
 
-    if (!cur_face->should_render){
-        cur_r_face->should_render = 0;
-
-        return;
-    }
+    cur_r_face->should_render = 1;
 
     int vert_pos_0_index = cur_face->position_0_index;
     int vert_pos_1_index = cur_face->position_1_index;
@@ -472,7 +475,7 @@ __kernel void transformer(__global RI_face *faces, __global RI_vector_3 *verteci
             RI_vector_3 new_point_a, new_point_b;  // the new points that move along the polygon's edge to match the z value of min_clip.
             RI_vector_3 new_normal_a, new_normal_b;  // they come from the clipped point which was originally only 1
             RI_vector_2 new_uv_a, new_uv_b;
-            
+
             vector_3_lerp(clipped_point, point_a, &new_point_a, fraction_a_to_clip);
             vector_3_lerp(clipped_point, point_b, &new_point_b, fraction_b_to_clip);
             
@@ -489,9 +492,8 @@ __kernel void transformer(__global RI_face *faces, __global RI_vector_3 *verteci
 
             // cur_r_split_face->parent_actor = current_actor;
 
-            cur_r_split_face->should_render = 1;
-
             // cur_r_split_face->material = cur_r_face->material;
+
 
             cur_r_face->position_0 = point_a;
             cur_r_face->position_1 = point_b;
@@ -505,8 +507,8 @@ __kernel void transformer(__global RI_face *faces, __global RI_vector_3 *verteci
             cur_r_face->uv_1 = uv_b;
             cur_r_face->uv_2 = new_uv_a;
 
-            cur_r_split_face->position_0 = point_b;
-            cur_r_split_face->position_1 = new_point_b;
+            cur_r_split_face->position_1 = point_b;
+            cur_r_split_face->position_0 = new_point_b;
             cur_r_split_face->position_2 = new_point_a;
 
             cur_r_split_face->normal_0 = normal_b;
@@ -546,6 +548,8 @@ __kernel void transformer(__global RI_face *faces, __global RI_vector_3 *verteci
             if (cur_r_split_face->position_2.y > cur_r_split_face->max_screen_y) cur_r_split_face->max_screen_y = cur_r_split_face->position_2.y;
             cur_r_split_face->max_screen_y = min(cur_r_split_face->max_screen_y, height / 2); 
 
+            cur_r_split_face->should_render = 1;
+
             break;
         }
 
@@ -555,6 +559,15 @@ __kernel void transformer(__global RI_face *faces, __global RI_vector_3 *verteci
     }
 
     // current_actor.material->vertex_shader(&cur_r_face->position_0, &cur_r_face->position_1, &cur_r_face->position_2, horizontal_fov_factor, vertical_fov_factor);
+
+    cur_r_face->position_0.x = cur_r_face->position_0.x / cur_r_face->position_0.z * horizontal_fov_factor;
+    cur_r_face->position_0.y = cur_r_face->position_0.y / cur_r_face->position_0.z * vertical_fov_factor;
+    
+    cur_r_face->position_1.x = cur_r_face->position_1.x / cur_r_face->position_1.z * horizontal_fov_factor;
+    cur_r_face->position_1.y = cur_r_face->position_1.y / cur_r_face->position_1.z * vertical_fov_factor;
+
+    cur_r_face->position_2.x = cur_r_face->position_2.x / cur_r_face->position_2.z * horizontal_fov_factor;
+    cur_r_face->position_2.y = cur_r_face->position_2.y / cur_r_face->position_2.z * vertical_fov_factor;
 
     cur_r_face->min_screen_x = pos_0->x; 
     if (pos_1->x < cur_r_face->min_screen_x) cur_r_face->min_screen_x = pos_1->x;
@@ -585,11 +598,11 @@ __kernel void rasterizer(__global RI_renderable_face *renderable_faces, __global
     int idx = pixel_y * width + pixel_x;
 
     int x = pixel_x - half_width;
-    int y = pixel_y - half_height;
+    int y = height - pixel_y - half_height;
 
     double z = INFINITY;
 
-    uint pixel_color = 0;
+    uint pixel_color = 0x11111111;
 
     for (int face_i = 0; face_i < number_of_renderable_faces * 2; ++face_i){
         __global RI_renderable_face *current_face = &renderable_faces[face_i];
@@ -640,7 +653,7 @@ __kernel void rasterizer(__global RI_renderable_face *renderable_faces, __global
         interpolated_normal.y = (w0 * (normal_0.y / pos_0.z) + w1 * (normal_1.y / pos_1.z) + w2 * (normal_2.y / pos_2.z)) / w_over_z;        
         interpolated_normal.z = (w0 * (normal_0.z / pos_0.z) + w1 * (normal_1.z / pos_1.z) + w2 * (normal_2.z / pos_2.z)) / w_over_z;        
         
-        pixel_color = 255 << 24 | (int)((interpolated_normal.x + 1.0) * 127.5) << 16 | (int)((interpolated_normal.y + 1.0) * 127.5) << 8 | (int)((interpolated_normal.z + 1.0) * 127.5);
+        pixel_color = 255 << 24 | (int)((w0 + 1.0) * 127.5) << 16 | (int)((w1 + 1.0) * 127.5) << 8 | (int)((w2 + 1.0) * 127.5);
         z = interpolated_z;
     }
     

@@ -4,32 +4,43 @@
 int main(){
     RI_context* context = RI_get_context();
     
-    context->window.width = 800;
-    context->window.height = 800;
+    context->window.width = 700;
+    context->window.height = 700;
     context->window.title = "This is RasterIver 3.0!!!!!!!";
     
     if (RI_init() != 0){
         printf("failed to init RI\n");
+        
         return 1;
     }
-
-    context->should_debug = ri_false;
-
+    
+    context->should_debug = ri_true;
+    
     RI_scene *scene = RI_new_scene();
 
-    RI_actor *actor = RI_new_actor();
+    scene->camera.FOV = 1.5;
+    scene->camera.min_clip = 0.01;
 
-    RI_load_mesh("objects/cube.obj", actor);
+    RI_actor *cube = RI_new_actor();
+    RI_actor *triangle = RI_new_actor();
+
+    RI_load_mesh("objects/homer.obj", cube);
+    RI_load_mesh("objects/teapot.obj", triangle);
+
+    cube->scale = (RI_vector_3){80, 80, 80};
+    cube->position = (RI_vector_3){-20, -30, 100};
+    cube->rotation = (RI_vector_4){1, 0, 0, 0};
+
+    triangle->scale = (RI_vector_3){10, 10, 10};
+    triangle->position = (RI_vector_3){20, 0, 100};
+    triangle->rotation = (RI_vector_4){1, 0, 0, 0};
     
-    actor->scale = (RI_vector_3){100, 100, 100};
-    actor->position = (RI_vector_3){0, 0, 0};
-    actor->rotation = (RI_vector_4){1, 0, 0, 0};
-
     scene->actors = malloc(sizeof(RI_actor) * 10);
 
-    scene->actors[0] = actor;
+    scene->actors[0] = cube;
+    scene->actors[1] = triangle;
 
-    scene->length_of_actors_array = 1;
+    scene->length_of_actors_array = 2;
 
     long int start, end;
     double fps = 0;
@@ -40,11 +51,12 @@ int main(){
     while (context->is_running){
         start = clock();
         
+        // scene->camera.FOV = context->current_frame;
+
         RI_render(NULL, scene);
 
-        actor->position = (RI_vector_3){0, 0, 500};
-
-        RI_euler_rotation_to_quaternion(&actor->rotation, (RI_vector_3){context->current_frame * 0.001, context->current_frame * 0.001, context->current_frame * 0.001});
+        RI_euler_rotation_to_quaternion(&triangle->rotation, (RI_vector_3){context->current_frame * 0.01, context->current_frame * 0.1, context->current_frame * 0.01});
+        RI_euler_rotation_to_quaternion(&cube->rotation, (RI_vector_3){context->current_frame * 0.0, context->current_frame * 0.1, context->current_frame * 0.0});
         
         RI_tick();
 
