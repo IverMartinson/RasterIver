@@ -29,17 +29,17 @@ typedef struct {
 } RI_renderable_face;
 
 typedef struct {
-    int position_0_index;
-    int position_1_index;
-    int position_2_index;
+    RI_vector_3 position_0;
+    RI_vector_3 position_1;
+    RI_vector_3 position_2;
 
-    int normal_0_index;
-    int normal_1_index;
-    int normal_2_index;
+    RI_vector_3 normal_0;
+    RI_vector_3 normal_1;
+    RI_vector_3 normal_2;
 
-    int uv_0_index;
-    int uv_1_index;
-    int uv_2_index;
+    RI_vector_2 uv_0;
+    RI_vector_2 uv_1;
+    RI_vector_2 uv_2;
 
     int should_render;
 } RI_face;
@@ -265,7 +265,7 @@ void global_quaternion_rotate(__global RI_vector_3 *position, RI_vector_4 rotati
     *position = (RI_vector_3){rotation.x, rotation.y, rotation.z};
 }
 
-__kernel void transformer(__global RI_face *faces, __global RI_vector_3 *vertecies, __global RI_vector_3 *normals, __global RI_vector_2 *uvs, __global RI_renderable_face *renderable_faces, double actor_x, double actor_y, double actor_z, double actor_r_w, double actor_r_x, double actor_r_y, double actor_r_z, double actor_s_x, double actor_s_y, double actor_s_z, int has_normals, int has_uvs, int face_array_offset_index, int face_count, int width, int height, double horizontal_fov_factor, double vertical_fov_factor, float min_clip, float max_clip, double camera_x, double camera_y, double camera_z, double camera_r_w, double camera_r_x, double camera_r_y, double camera_r_z, int renderable_face_offset, int face_sqrt){
+__kernel void transformer(__global RI_face *faces, __global RI_renderable_face *renderable_faces, double actor_x, double actor_y, double actor_z, double actor_r_w, double actor_r_x, double actor_r_y, double actor_r_z, double actor_s_x, double actor_s_y, double actor_s_z, int has_normals, int has_uvs, int face_array_offset_index, int face_count, int width, int height, double horizontal_fov_factor, double vertical_fov_factor, float min_clip, float max_clip, double camera_x, double camera_y, double camera_z, double camera_r_w, double camera_r_x, double camera_r_y, double camera_r_z, int renderable_face_offset, int face_sqrt){
     int face_index = get_global_id(1) * face_sqrt + get_global_id(0); if (face_index >= face_count) return;
 
     RI_vector_3 current_actor_position = (RI_vector_3){actor_x, actor_y, actor_z};
@@ -283,36 +283,24 @@ __kernel void transformer(__global RI_face *faces, __global RI_vector_3 *verteci
 
     cur_r_face->should_render = 1;
 
-    int vert_pos_0_index = cur_face->position_0_index;
-    int vert_pos_1_index = cur_face->position_1_index;
-    int vert_pos_2_index = cur_face->position_2_index;
-    
-    int normal_0_index = cur_face->normal_0_index;
-    int normal_1_index = cur_face->normal_1_index;
-    int normal_2_index = cur_face->normal_2_index;
-
-    int uv_0_index = cur_face->uv_0_index;
-    int uv_1_index = cur_face->uv_1_index;
-    int uv_2_index = cur_face->uv_2_index;
-
     // cur_r_face->parent_actor = current_actor;
     cur_r_face->shrunk = 0;
     cur_r_face->split = 0;
 
     // cur_r_face->material = current_actor.material;
 
-    cur_r_face->position_0 = vertecies[vert_pos_0_index];
-    cur_r_face->position_1 = vertecies[vert_pos_1_index];
-    cur_r_face->position_2 = vertecies[vert_pos_2_index];
+    cur_r_face->position_0 = cur_face->position_0;
+    cur_r_face->position_1 = cur_face->position_1;
+    cur_r_face->position_2 = cur_face->position_2;
 
-    cur_r_face->normal_0 = normals[normal_0_index];
-    cur_r_face->normal_1 = normals[normal_1_index];
-    cur_r_face->normal_2 = normals[normal_2_index];
+    cur_r_face->normal_0 = cur_face->normal_0;
+    cur_r_face->normal_1 = cur_face->normal_1;
+    cur_r_face->normal_2 = cur_face->normal_2;
 
     if (has_uvs){
-        cur_r_face->uv_0 = uvs[uv_0_index];
-        cur_r_face->uv_1 = uvs[uv_1_index];
-        cur_r_face->uv_2 = uvs[uv_2_index];
+        cur_r_face->uv_0 = cur_face->uv_0;
+        cur_r_face->uv_1 = cur_face->uv_1;
+        cur_r_face->uv_2 = cur_face->uv_2;
     }
 
     // scale

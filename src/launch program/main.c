@@ -25,17 +25,17 @@ int main(){
     RI_actor *triangle = RI_new_actor();
 
     RI_mesh *homer_mesh = RI_load_mesh("objects/homer.obj");
-    RI_mesh *teapot_mesh = RI_load_mesh("objects/teapot.obj");
+    RI_mesh *teapot_mesh = RI_load_mesh("objects/stanford_bunny.obj");
 
     cube->mesh = homer_mesh;
-    triangle->mesh = homer_mesh;
+    triangle->mesh = teapot_mesh;
 
     cube->scale = (RI_vector_3){80, 80, 80};
     cube->position = (RI_vector_3){-20, -30, 100};
     cube->rotation = (RI_vector_4){1, 0, 0, 0};
 
-    triangle->scale = (RI_vector_3){10, 10, 10};
-    triangle->position = (RI_vector_3){20, 0, 100};
+    triangle->scale = (RI_vector_3){300, 300, 300};
+    triangle->position = (RI_vector_3){20, -20, 100};
     triangle->rotation = (RI_vector_4){1, 0, 0, 0};
     
     scene->actors = malloc(sizeof(RI_actor) * 10);
@@ -47,6 +47,8 @@ int main(){
 
     long int start, end;
     double fps = 0;
+
+    float total_fps = 0;
 
     double delta_time = 0;
     double delta_min = 0.00001;
@@ -68,7 +70,9 @@ int main(){
         delta_time = fmin(fmax((double)(end - start) / (double)(CLOCKS_PER_SEC), delta_min), delta_max);
         fps = 1.0 / delta_time;
 
-        printf("%f\n", fps);
+        total_fps += fps;
+
+        printf("fps: %f average fps: %f\n", fps, total_fps / context->current_frame);
     }
 
     free(scene->actors);

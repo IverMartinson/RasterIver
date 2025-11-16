@@ -103,35 +103,47 @@ RI_mesh *RI_load_mesh(char *filename){
     
     int face_count = 0;
 
+    int object_face_count = 0;
+    int object_vertecies_count = 0;
+    int object_normals_count = 0;
+    int object_uvs_count = 0;
+
     while (fgets(line, sizeof(line), file)) {
         if (line[0] == 'f' && line[1] == ' ') { // face
             ++face_count;
             ++context.opencl.face_count;
+            ++object_face_count;
         }
         else if (line[0] == 'v'){
             if (line[1] == ' ') { // vertex
                 ++context.opencl.vertex_count;
+                ++object_vertecies_count;
             }
             else if (line[1] == 'n') { // normal
                 ++context.opencl.normal_count;
+                ++object_normals_count;
             }
             else if (line[1] == 't') { // UV
                 ++context.opencl.uv_count;
+                ++object_uvs_count;
             }
         }
     }
 
     rewind(file);
 
-    context.opencl.faces = RI_realloc(context.opencl.faces, sizeof(RI_face) * context.opencl.face_count);
-    context.opencl.vertecies = RI_realloc(context.opencl.vertecies, sizeof(RI_vector_3) * context.opencl.vertex_count);
-    context.opencl.normals = RI_realloc(context.opencl.normals, sizeof(RI_vector_3) * context.opencl.normal_count);
-    context.opencl.uvs = RI_realloc(context.opencl.uvs, sizeof(RI_vector_2) * context.opencl.uv_count);
+    debug("%d faces %d vertecies %d normals %d uvs", object_face_count, object_vertecies_count, object_normals_count, object_uvs_count);
 
-    int current_face_index = previous_face_count;
-    int current_vertex_index = previous_vertecies_count;
-    int current_normal_index = previous_normals_count;
-    int current_uv_index = previous_uvs_count;
+    context.opencl.faces = RI_realloc(context.opencl.faces, sizeof(RI_face) * context.opencl.face_count);
+    context.opencl.temp_faces = RI_malloc(sizeof(RI_face) * object_face_count);
+    context.opencl.temp_vertecies = RI_malloc(sizeof(RI_vector_3) * object_vertecies_count);
+    if (object_normals_count > 0) context.opencl.temp_normals = RI_malloc(sizeof(RI_vector_3) * object_normals_count);
+    if (object_uvs_count > 0) context.opencl.temp_uvs = RI_malloc(sizeof(RI_vector_2) * object_uvs_count);
+
+    int current_face_index = 0;
+    int current_vertex_index = 0;
+    int current_normal_index = 0;
+    int current_uv_index = 0;
 
     int has_normals, has_uvs;
     has_normals = has_uvs = 0;
@@ -177,17 +189,17 @@ RI_mesh *RI_load_mesh(char *filename){
                 has_normals = has_uvs = 1;
             }
 
-            context.opencl.faces[current_face_index].position_0_index = vertex_0_index - 1 + previous_vertecies_count;
-            context.opencl.faces[current_face_index].position_1_index = vertex_1_index - 1 + previous_vertecies_count;
-            context.opencl.faces[current_face_index].position_2_index = vertex_2_index - 1 + previous_vertecies_count;
+            context.opencl.temp_faces[current_face_index].position_0_index = vertex_0_index - 1;
+            context.opencl.temp_faces[current_face_index].position_1_index = vertex_1_index - 1;
+            context.opencl.temp_faces[current_face_index].position_2_index = vertex_2_index - 1;
 
-            context.opencl.faces[current_face_index].normal_0_index = normal_0_index - 1 + previous_normals_count;
-            context.opencl.faces[current_face_index].normal_1_index = normal_1_index - 1 + previous_normals_count;
-            context.opencl.faces[current_face_index].normal_2_index = normal_2_index - 1 + previous_normals_count;
+            context.opencl.temp_faces[current_face_index].normal_0_index = normal_0_index - 1;
+            context.opencl.temp_faces[current_face_index].normal_1_index = normal_1_index - 1;
+            context.opencl.temp_faces[current_face_index].normal_2_index = normal_2_index - 1;
             
-            context.opencl.faces[current_face_index].uv_0_index = uv_0_index - 1 + previous_uvs_count;
-            context.opencl.faces[current_face_index].uv_1_index = uv_1_index - 1 + previous_uvs_count;
-            context.opencl.faces[current_face_index].uv_2_index = uv_2_index - 1 + previous_uvs_count;
+            context.opencl.temp_faces[current_face_index].uv_0_index = uv_0_index - 1;
+            context.opencl.temp_faces[current_face_index].uv_1_index = uv_1_index - 1;
+            context.opencl.temp_faces[current_face_index].uv_2_index = uv_2_index - 1;
 
             context.opencl.faces[current_face_index].should_render = 1;
 
@@ -198,9 +210,9 @@ RI_mesh *RI_load_mesh(char *filename){
             
             sscanf(line, "v %lf %lf %lf", &x, &y, &z);
 
-            context.opencl.vertecies[current_vertex_index].x = x;
-            context.opencl.vertecies[current_vertex_index].y = y;
-            context.opencl.vertecies[current_vertex_index].z = z;
+            context.opencl.temp_vertecies[current_vertex_index].x = x;
+            context.opencl.temp_vertecies[current_vertex_index].y = y;
+            context.opencl.temp_vertecies[current_vertex_index].z = z;
 
             ++current_vertex_index;
         } 
@@ -209,9 +221,9 @@ RI_mesh *RI_load_mesh(char *filename){
             
             sscanf(line, "vn %lf %lf %lf", &x, &y, &z);
 
-            context.opencl.normals[current_normal_index].x = x;
-            context.opencl.normals[current_normal_index].y = y;
-            context.opencl.normals[current_normal_index].z = z;
+            context.opencl.temp_normals[current_normal_index].x = x;
+            context.opencl.temp_normals[current_normal_index].y = y;
+            context.opencl.temp_normals[current_normal_index].z = z;
 
             ++current_normal_index;
         }
@@ -220,13 +232,32 @@ RI_mesh *RI_load_mesh(char *filename){
 
             sscanf(line, "vt %lf %lf %lf", &x, &y, &z);
 
-            context.opencl.uvs[current_uv_index].x = x;
-            context.opencl.uvs[current_uv_index].y = y;
+            context.opencl.temp_uvs[current_uv_index].x = x;
+            context.opencl.temp_uvs[current_uv_index].y = y;
             // UVS are almost always 2D so we don't need Z (the type itself is a vector 2f, not 3f) 
 
             ++current_uv_index;
         } 
     }
+
+    for (int i = 0; i < object_face_count; ++i){
+        context.opencl.faces[i + previous_face_count].position_0 = context.opencl.temp_vertecies[context.opencl.temp_faces[i].position_0_index];
+        context.opencl.faces[i + previous_face_count].position_1 = context.opencl.temp_vertecies[context.opencl.temp_faces[i].position_1_index];
+        context.opencl.faces[i + previous_face_count].position_2 = context.opencl.temp_vertecies[context.opencl.temp_faces[i].position_2_index];
+
+        context.opencl.faces[i + previous_face_count].normal_0 = context.opencl.temp_normals[context.opencl.temp_faces[i].normal_0_index];
+        context.opencl.faces[i + previous_face_count].normal_1 = context.opencl.temp_normals[context.opencl.temp_faces[i].normal_1_index];
+        context.opencl.faces[i + previous_face_count].normal_2 = context.opencl.temp_normals[context.opencl.temp_faces[i].normal_2_index];
+
+        context.opencl.faces[i + previous_face_count].uv_0 = context.opencl.temp_uvs[context.opencl.temp_faces[i].uv_0_index];
+        context.opencl.faces[i + previous_face_count].uv_1 = context.opencl.temp_uvs[context.opencl.temp_faces[i].uv_1_index];
+        context.opencl.faces[i + previous_face_count].uv_2 = context.opencl.temp_uvs[context.opencl.temp_faces[i].uv_2_index];
+    }
+
+    free(context.opencl.temp_faces);
+    free(context.opencl.temp_vertecies);
+    if (object_normals_count > 0) free(context.opencl.temp_normals);
+    if (object_uvs_count > 0) free(context.opencl.temp_uvs);
 
     char* loading_mesh_notice_string;
 
@@ -239,7 +270,7 @@ RI_mesh *RI_load_mesh(char *filename){
     new_mesh->has_normals = has_normals;
     new_mesh->has_uvs = has_uvs;
 
-    new_mesh->face_count = context.opencl.face_count - previous_face_count;
+    new_mesh->face_count = object_face_count;
     new_mesh->face_index = previous_face_count;
 
     debug("[Mesh Loader] Loaded mesh \"%s\"! %d faces, %d verticies, %d normals, %d uvs", filename, current_face_index, current_vertex_index, current_normal_index, current_uv_index); 
@@ -260,7 +291,7 @@ RI_mesh *RI_load_mesh(char *filename){
 
             context.opencl.length_of_renderable_faces_array = context.opencl.face_count * 2;
             
-            debug("reallocating %f mb", sizeof(RI_renderable_face) * context.opencl.length_of_renderable_faces_array / 1048576.0);
+            debug("reallocating %f mb (%d renderable faces)", sizeof(RI_renderable_face) * context.opencl.length_of_renderable_faces_array / 1048576.0, context.opencl.length_of_renderable_faces_array);
 
             context.opencl.faces_to_render = RI_malloc(sizeof(RI_renderable_face) * context.opencl.length_of_renderable_faces_array);
 
@@ -282,36 +313,6 @@ RI_mesh *RI_load_mesh(char *filename){
                 exit(1);
             }
         }
-    }
-
-    if (previous_vertecies_count != context.opencl.vertex_count) {
-        if (context.opencl.vertecies_mem_buffer) clReleaseMemObject(context.opencl.vertecies_mem_buffer);
-
-        context.opencl.vertecies_mem_buffer = clCreateBuffer(context.opencl.context, CL_MEM_READ_WRITE, sizeof(RI_vector_3) * context.opencl.vertex_count, NULL, NULL);
-        
-        clEnqueueWriteBuffer(context.opencl.queue, context.opencl.vertecies_mem_buffer, CL_TRUE, 0, sizeof(RI_vector_3) * context.opencl.vertex_count, context.opencl.vertecies, 0, NULL, NULL);
-
-        clSetKernelArg(context.opencl.transformation_kernel, 1, sizeof(cl_mem), &context.opencl.vertecies_mem_buffer);
-    }
-
-    if (previous_normals_count != context.opencl.normal_count) {
-        if (context.opencl.normals_mem_buffer) clReleaseMemObject(context.opencl.normals_mem_buffer);
-
-        context.opencl.normals_mem_buffer = clCreateBuffer(context.opencl.context, CL_MEM_READ_WRITE, sizeof(RI_vector_3) * context.opencl.normal_count, NULL, NULL);
-        
-        clEnqueueWriteBuffer(context.opencl.queue, context.opencl.normals_mem_buffer, CL_TRUE, 0, sizeof(RI_vector_3) * context.opencl.normal_count, context.opencl.normals, 0, NULL, NULL);
-
-        clSetKernelArg(context.opencl.transformation_kernel, 2, sizeof(cl_mem), &context.opencl.normals_mem_buffer);
-    }
-
-    if (previous_uvs_count != context.opencl.uv_count) {
-        if (context.opencl.uvs_mem_buffer) clReleaseMemObject(context.opencl.uvs_mem_buffer);
-
-        context.opencl.uvs_mem_buffer = clCreateBuffer(context.opencl.context, CL_MEM_READ_WRITE, sizeof(RI_vector_2) * context.opencl.uv_count, NULL, NULL);
-        
-        clEnqueueWriteBuffer(context.opencl.queue, context.opencl.uvs_mem_buffer, CL_TRUE, 0, sizeof(RI_vector_2) * context.opencl.uv_count, context.opencl.uvs, 0, NULL, NULL);
-
-        clSetKernelArg(context.opencl.transformation_kernel, 3, sizeof(cl_mem), &context.opencl.uvs_mem_buffer);
     }
 
     fclose(file);
@@ -341,30 +342,30 @@ void RI_render(RI_texture *target_texture, RI_scene *scene){
     // kernel args    
     
     // 21, double horizontal_fov_factor
-    clSetKernelArg(context.opencl.transformation_kernel, 21, sizeof(double), &horizontal_fov_factor);
+    clSetKernelArg(context.opencl.transformation_kernel, 18, sizeof(double), &horizontal_fov_factor);
     // 22, double vertical_fov_factor
-    clSetKernelArg(context.opencl.transformation_kernel, 22, sizeof(double), &vertical_fov_factor);
+    clSetKernelArg(context.opencl.transformation_kernel, 19, sizeof(double), &vertical_fov_factor);
 
     // 23, double min_clip
-    clSetKernelArg(context.opencl.transformation_kernel, 23, sizeof(float), &scene->camera.min_clip);
+    clSetKernelArg(context.opencl.transformation_kernel, 20, sizeof(float), &scene->camera.min_clip);
     // 24, double max_clip
-    clSetKernelArg(context.opencl.transformation_kernel, 24, sizeof(float), &scene->camera.max_clip);
+    clSetKernelArg(context.opencl.transformation_kernel, 21, sizeof(float), &scene->camera.max_clip);
 
     // 25, double camera_x
-    clSetKernelArg(context.opencl.transformation_kernel, 25, sizeof(double), &scene->camera.position.x);
+    clSetKernelArg(context.opencl.transformation_kernel, 22, sizeof(double), &scene->camera.position.x);
     // 26, double camera_y
-    clSetKernelArg(context.opencl.transformation_kernel, 26, sizeof(double), &scene->camera.position.y);
+    clSetKernelArg(context.opencl.transformation_kernel, 23, sizeof(double), &scene->camera.position.y);
     // 27, double camera_z
-    clSetKernelArg(context.opencl.transformation_kernel, 27, sizeof(double), &scene->camera.position.z);
+    clSetKernelArg(context.opencl.transformation_kernel, 24, sizeof(double), &scene->camera.position.z);
 
     // 28, double camera_r_w
-    clSetKernelArg(context.opencl.transformation_kernel, 28, sizeof(double), &scene->camera.rotation.w);
+    clSetKernelArg(context.opencl.transformation_kernel, 25, sizeof(double), &scene->camera.rotation.w);
     // 29, double camera_r_x
-    clSetKernelArg(context.opencl.transformation_kernel, 29, sizeof(double), &scene->camera.rotation.x);
+    clSetKernelArg(context.opencl.transformation_kernel, 26, sizeof(double), &scene->camera.rotation.x);
     // 30, double camera_r_y
-    clSetKernelArg(context.opencl.transformation_kernel, 30, sizeof(double), &scene->camera.rotation.y);
+    clSetKernelArg(context.opencl.transformation_kernel, 27, sizeof(double), &scene->camera.rotation.y);
     // 31, double camera_r_z
-    clSetKernelArg(context.opencl.transformation_kernel, 31, sizeof(double), &scene->camera.rotation.z);
+    clSetKernelArg(context.opencl.transformation_kernel, 28, sizeof(double), &scene->camera.rotation.z);
 
 
     int local_group_size_x = 16;
@@ -411,7 +412,7 @@ void RI_render(RI_texture *target_texture, RI_scene *scene){
     // set faces_to_render to zero
     memset(context.opencl.faces_to_render, 0, sizeof(RI_renderable_face) * scene->face_count * 2);
 
-    clSetKernelArg(context.opencl.transformation_kernel, 4, sizeof(cl_mem), &context.opencl.renderable_faces_mem_buffer);
+    clSetKernelArg(context.opencl.transformation_kernel, 1, sizeof(cl_mem), &context.opencl.renderable_faces_mem_buffer);
 
     context.current_renderable_face_index = 0;
     context.current_split_renderable_face_index = 0;
@@ -444,46 +445,48 @@ void RI_render(RI_texture *target_texture, RI_scene *scene){
         debug("(%d extra work items; %d items (%dx%d) - %d faces)", t_global_work_size[0] * t_global_work_size[1] - scene->actors[actor_index]->mesh->face_count, t_global_work_size[0] * t_global_work_size[1], t_global_work_size[0], t_global_work_size[1], scene->actors[actor_index]->mesh->face_count);
 
         // 5, double actor_x
-        clSetKernelArg(context.opencl.transformation_kernel, 5, sizeof(double), &actor->position.x);
+        clSetKernelArg(context.opencl.transformation_kernel, 2, sizeof(double), &actor->position.x);
         // 6, double actor_y
-        clSetKernelArg(context.opencl.transformation_kernel, 6, sizeof(double), &actor->position.y);
+        clSetKernelArg(context.opencl.transformation_kernel, 3, sizeof(double), &actor->position.y);
         // 7, double actor_z
-        clSetKernelArg(context.opencl.transformation_kernel, 7, sizeof(double), &actor->position.z);
+        clSetKernelArg(context.opencl.transformation_kernel, 4, sizeof(double), &actor->position.z);
 
         // 8, double actor_r_w
-        clSetKernelArg(context.opencl.transformation_kernel, 8, sizeof(double), &actor->rotation.w);
+        clSetKernelArg(context.opencl.transformation_kernel, 5, sizeof(double), &actor->rotation.w);
         // 9, double actor_r_x
-        clSetKernelArg(context.opencl.transformation_kernel, 9, sizeof(double), &actor->rotation.x);
+        clSetKernelArg(context.opencl.transformation_kernel, 6, sizeof(double), &actor->rotation.x);
         // 10, double actor_r_y
-        clSetKernelArg(context.opencl.transformation_kernel, 10, sizeof(double), &actor->rotation.y);
+        clSetKernelArg(context.opencl.transformation_kernel, 7, sizeof(double), &actor->rotation.y);
         // 11, double actor_r_z
-        clSetKernelArg(context.opencl.transformation_kernel, 11, sizeof(double), &actor->rotation.z);
+        clSetKernelArg(context.opencl.transformation_kernel, 8, sizeof(double), &actor->rotation.z);
 
         // 12, double actor_s_x
-        clSetKernelArg(context.opencl.transformation_kernel, 12, sizeof(double), &actor->scale.x);
+        clSetKernelArg(context.opencl.transformation_kernel, 9, sizeof(double), &actor->scale.x);
         // 13, double actor_s_y
-        clSetKernelArg(context.opencl.transformation_kernel, 13, sizeof(double), &actor->scale.y);
+        clSetKernelArg(context.opencl.transformation_kernel, 10, sizeof(double), &actor->scale.y);
         // 14, double actor_s_z
-        clSetKernelArg(context.opencl.transformation_kernel, 14, sizeof(double), &actor->scale.z);
+        clSetKernelArg(context.opencl.transformation_kernel, 11, sizeof(double), &actor->scale.z);
 
         // 15, int has_normals
-        clSetKernelArg(context.opencl.transformation_kernel, 15, sizeof(int), &actor->mesh->has_normals);
+        clSetKernelArg(context.opencl.transformation_kernel, 12, sizeof(int), &actor->mesh->has_normals);
         // 16, int has_uvs
-        clSetKernelArg(context.opencl.transformation_kernel, 16, sizeof(int), &actor->mesh->has_uvs);
+        clSetKernelArg(context.opencl.transformation_kernel, 13, sizeof(int), &actor->mesh->has_uvs);
         // 17, int face_array_offset_index
-        clSetKernelArg(context.opencl.transformation_kernel, 17, sizeof(int), &actor->mesh->face_index);
+        clSetKernelArg(context.opencl.transformation_kernel, 14, sizeof(int), &actor->mesh->face_index);
         // 18, int face_count
-        clSetKernelArg(context.opencl.transformation_kernel, 18, sizeof(int), &actor->mesh->face_count);
+        clSetKernelArg(context.opencl.transformation_kernel, 15, sizeof(int), &actor->mesh->face_count);
 
         // 32, int renderable_face_offset
-        clSetKernelArg(context.opencl.transformation_kernel, 32, sizeof(int), &renderable_face_index);
+        clSetKernelArg(context.opencl.transformation_kernel, 29, sizeof(int), &renderable_face_index);
         
         // 33, int face_sqrt
-        clSetKernelArg(context.opencl.transformation_kernel, 33, sizeof(int), &face_sqrt);
+        clSetKernelArg(context.opencl.transformation_kernel, 30, sizeof(int), &face_sqrt);
 
         debug("running kernel...");
 
-        clEnqueueNDRangeKernel(context.opencl.queue, context.opencl.transformation_kernel, 2, NULL, t_global_work_size, t_local_work_size, 0, NULL, &event);
+        cl_int error = clEnqueueNDRangeKernel(context.opencl.queue, context.opencl.transformation_kernel, 2, NULL, t_global_work_size, t_local_work_size, 0, NULL, &event);
+
+        if (error != CL_SUCCESS) debug("error enqueing kernel (%d)", error);
         clFinish(context.opencl.queue);
 
         clGetEventProfilingInfo(event, CL_PROFILING_COMMAND_START, sizeof(start), &start, NULL);
@@ -784,84 +787,80 @@ int RI_init(){
     // double camera_x, double camera_y, double camera_z, 
     // double camera_r_w, double camera_r_x, double camera_r_y, double camera_r_z
 
-    // // 0, __global RI_face *faces
+    // // 0: __global RI_face *faces
     // clSetKernelArg(context.opencl.transformation_kernel, 0, sizeof(cl_mem), &context.opencl.faces_mem_buffer);
-    // // 1, __global RI_vector_3 *vertecies
-    // clSetKernelArg(context.opencl.transformation_kernel, 1, sizeof(cl_mem), &context.opencl.vertecies_mem_buffer);
-    // // 2, __global RI_vector_3 *normals
-    // clSetKernelArg(context.opencl.transformation_kernel, 2, sizeof(cl_mem), &context.opencl.normals_mem_buffer);
-    // // 3, __global RI_vector_2 *uvs
-    // clSetKernelArg(context.opencl.transformation_kernel, 3, sizeof(cl_mem), &context.opencl.uvs_mem_buffer);
-    // // 4, __global RI_renderable_face *renderable_faces
-    // clSetKernelArg(context.opencl.transformation_kernel, 4, sizeof(cl_mem), &context.opencl.renderable_faces_mem_buffer);
 
-    // // 5, double actor_x
-    // clSetKernelArg(context.opencl.transformation_kernel, 5, sizeof(double), &actor_x);
-    // // 6, double actor_y
-    // clSetKernelArg(context.opencl.transformation_kernel, 6, sizeof(double), &actor_y);
-    // // 7, double actor_z
-    // clSetKernelArg(context.opencl.transformation_kernel, 7, sizeof(double), &actor_z);
+    // // 1: __global RI_renderable_face *renderable_faces
+    // clSetKernelArg(context.opencl.transformation_kernel, 1, sizeof(cl_mem), &context.opencl.renderable_faces_mem_buffer);
 
-    // // 8, double actor_r_w
-    // clSetKernelArg(context.opencl.transformation_kernel, 8, sizeof(double), &actor_r_w);
-    // // 9, double actor_r_x
-    // clSetKernelArg(context.opencl.transformation_kernel, 9, sizeof(double), &actor_r_x);
-    // // 10, double actor_r_y
-    // clSetKernelArg(context.opencl.transformation_kernel, 10, sizeof(double), &actor_r_y);
-    // // 11, double actor_r_z
-    // clSetKernelArg(context.opencl.transformation_kernel, 11, sizeof(double), &actor_r_z);
+    // // 2: double actor_x
+    // clSetKernelArg(context.opencl.transformation_kernel, 2, sizeof(double), &actor_x);
+    // // 3: double actor_y
+    // clSetKernelArg(context.opencl.transformation_kernel, 3, sizeof(double), &actor_y);
+    // // 4: double actor_z
+    // clSetKernelArg(context.opencl.transformation_kernel, 4, sizeof(double), &actor_z);
 
-    // // 12, double actor_s_x
-    // clSetKernelArg(context.opencl.transformation_kernel, 12, sizeof(double), &actor_s_x);
-    // // 13, double actor_s_y
-    // clSetKernelArg(context.opencl.transformation_kernel, 13, sizeof(double), &actor_s_y);
-    // // 14, double actor_s_z
-    // clSetKernelArg(context.opencl.transformation_kernel, 14, sizeof(double), &actor_s_z);
+    // // 5: double actor_r_w
+    // clSetKernelArg(context.opencl.transformation_kernel, 5, sizeof(double), &actor_r_w);
+    // // 6: double actor_r_x
+    // clSetKernelArg(context.opencl.transformation_kernel, 6, sizeof(double), &actor_r_x);
+    // // 7: double actor_r_y
+    // clSetKernelArg(context.opencl.transformation_kernel, 7, sizeof(double), &actor_r_y);
+    // // 8: double actor_r_z
+    // clSetKernelArg(context.opencl.transformation_kernel, 8, sizeof(double), &actor_r_z);
 
-    // // 15, int has_normals
-    // clSetKernelArg(context.opencl.transformation_kernel, 15, sizeof(int), &has_normals);
-    // // 16, int has_uvs
-    // clSetKernelArg(context.opencl.transformation_kernel, 16, sizeof(int), &has_uvs);
-    // // 17, int face_array_offset_index
-    // clSetKernelArg(context.opencl.transformation_kernel, 17, sizeof(int), &face_array_offset_index);
-    // // 18, int face_count
-    // clSetKernelArg(context.opencl.transformation_kernel, 18, sizeof(int), &face_count);
+    // // 9: double actor_s_x
+    // clSetKernelArg(context.opencl.transformation_kernel, 9, sizeof(double), &actor_s_x);
+    // // 10: double actor_s_y
+    // clSetKernelArg(context.opencl.transformation_kernel, 10, sizeof(double), &actor_s_y);
+    // // 11: double actor_s_z
+    // clSetKernelArg(context.opencl.transformation_kernel, 11, sizeof(double), &actor_s_z);
 
-    // // 19, int width
-    clSetKernelArg(context.opencl.transformation_kernel, 19, sizeof(int), &context.window.width);
-    // // 20, int height
-    clSetKernelArg(context.opencl.transformation_kernel, 20, sizeof(int), &context.window.height);
+    // // 12: int has_normals
+    // clSetKernelArg(context.opencl.transformation_kernel, 12, sizeof(int), &has_normals);
+    // // 13: int has_uvs
+    // clSetKernelArg(context.opencl.transformation_kernel, 13, sizeof(int), &has_uvs);
 
-    // // 21, double horizontal_fov_factor
-    // clSetKernelArg(context.opencl.transformation_kernel, 21, sizeof(double), &horizontal_fov_factor);
-    // // 22, double vertical_fov_factor
-    // clSetKernelArg(context.opencl.transformation_kernel, 22, sizeof(double), &vertical_fov_factor);
+    // // 14: int face_array_offset_index
+    // clSetKernelArg(context.opencl.transformation_kernel, 14, sizeof(int), &face_array_offset_index);
+    // // 15: int face_count
+    // clSetKernelArg(context.opencl.transformation_kernel, 15, sizeof(int), &face_count);
 
-    // // 23, double min_clip
-    // clSetKernelArg(context.opencl.transformation_kernel, 23, sizeof(double), &min_clip);
-    // // 24, double max_clip
-    // clSetKernelArg(context.opencl.transformation_kernel, 24, sizeof(double), &max_clip);
+    // // 16: int width
+    clSetKernelArg(context.opencl.transformation_kernel, 16, sizeof(int), &context.window.width);
+    // // 17: int height
+    clSetKernelArg(context.opencl.transformation_kernel, 17, sizeof(int), &context.window.height);
 
-    // // 25, double camera_x
-    // clSetKernelArg(context.opencl.transformation_kernel, 25, sizeof(double), &camera_x);
-    // // 26, double camera_y
-    // clSetKernelArg(context.opencl.transformation_kernel, 26, sizeof(double), &camera_y);
-    // // 27, double camera_z
-    // clSetKernelArg(context.opencl.transformation_kernel, 27, sizeof(double), &camera_z);
+    // // 18: double horizontal_fov_factor
+    // clSetKernelArg(context.opencl.transformation_kernel, 18, sizeof(double), &horizontal_fov_factor);
+    // // 19: double vertical_fov_factor
+    // clSetKernelArg(context.opencl.transformation_kernel, 19, sizeof(double), &vertical_fov_factor);
 
-    // // 28, double camera_r_w
-    // clSetKernelArg(context.opencl.transformation_kernel, 28, sizeof(double), &camera_r_w);
-    // // 29, double camera_r_x
-    // clSetKernelArg(context.opencl.transformation_kernel, 29, sizeof(double), &camera_r_x);
-    // // 30, double camera_r_y
-    // clSetKernelArg(context.opencl.transformation_kernel, 30, sizeof(double), &camera_r_y);
-    // // 31, double camera_r_z
-    // clSetKernelArg(context.opencl.transformation_kernel, 31, sizeof(double), &camera_r_z);
-    
-    // // 32, int renderable_face_offset
-    // clSetKernelArg(context.opencl.transformation_kernel, 32, sizeof(int), &renderable_face_offset);
-    // // 33, int face_sqrt
-    // clSetKernelArg(context.opencl.transformation_kernel, 33, sizeof(int), &face_sqrt);
+    // // 20: float min_clip
+    // clSetKernelArg(context.opencl.transformation_kernel, 20, sizeof(float), &min_clip_f);
+    // // 21: float max_clip
+    // clSetKernelArg(context.opencl.transformation_kernel, 21, sizeof(float), &max_clip_f);
+
+    // // 22: double camera_x
+    // clSetKernelArg(context.opencl.transformation_kernel, 22, sizeof(double), &camera_x);
+    // // 23: double camera_y
+    // clSetKernelArg(context.opencl.transformation_kernel, 23, sizeof(double), &camera_y);
+    // // 24: double camera_z
+    // clSetKernelArg(context.opencl.transformation_kernel, 24, sizeof(double), &camera_z);
+
+    // // 25: double camera_r_w
+    // clSetKernelArg(context.opencl.transformation_kernel, 25, sizeof(double), &camera_r_w);
+    // // 26: double camera_r_x
+    // clSetKernelArg(context.opencl.transformation_kernel, 26, sizeof(double), &camera_r_x);
+    // // 27: double camera_r_y
+    // clSetKernelArg(context.opencl.transformation_kernel, 27, sizeof(double), &camera_r_y);
+    // // 28: double camera_r_z
+    // clSetKernelArg(context.opencl.transformation_kernel, 28, sizeof(double), &camera_r_z);
+
+    // // 29: int renderable_face_offset
+    // clSetKernelArg(context.opencl.transformation_kernel, 29, sizeof(int), &renderable_face_offset);
+    // // 30: int face_sqrt
+    // clSetKernelArg(context.opencl.transformation_kernel, 30, sizeof(int), &face_sqrt);
 
     context.defaults.default_actor->mesh = RI_load_mesh("objects/cube.obj");
 

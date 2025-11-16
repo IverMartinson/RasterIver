@@ -16,20 +16,34 @@ typedef struct { // A loaded texture file
 } RI_texture;
 
 typedef struct {
-    cl_uint position_0_index;
-    cl_uint position_1_index;
-    cl_uint position_2_index;
+    RI_vector_3 position_0;
+    RI_vector_3 position_1;
+    RI_vector_3 position_2;
 
-    cl_uint normal_0_index;
-    cl_uint normal_1_index;
-    cl_uint normal_2_index;
+    RI_vector_3 normal_0;
+    RI_vector_3 normal_1;
+    RI_vector_3 normal_2;
 
-    cl_uint uv_0_index;
-    cl_uint uv_1_index;
-    cl_uint uv_2_index;
+    RI_vector_2 uv_0;
+    RI_vector_2 uv_1;
+    RI_vector_2 uv_2;
 
     cl_uint should_render;
 } RI_face;
+
+typedef struct {
+    int position_0_index;
+    int position_1_index;
+    int position_2_index;
+
+    int normal_0_index;
+    int normal_1_index;
+    int normal_2_index;
+
+    int uv_0_index;
+    int uv_1_index;
+    int uv_2_index;
+} RI_temp_face;
 
 typedef struct {
     int face_count;
@@ -116,9 +130,10 @@ typedef struct {
     cl_mem uvs_mem_buffer;
     RI_renderable_face *faces_to_render;
     RI_face *faces;
-    RI_vector_3 *vertecies;
-    RI_vector_3 *normals;
-    RI_vector_2 *uvs;
+    RI_temp_face *temp_faces;
+    RI_vector_3 *temp_vertecies;
+    RI_vector_3 *temp_normals;
+    RI_vector_2 *temp_uvs;
     int face_count;
     int vertex_count;
     int normal_count;
