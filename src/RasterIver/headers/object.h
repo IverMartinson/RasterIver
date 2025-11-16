@@ -8,14 +8,17 @@ typedef struct {
     float y;
 } Vec2;
 
-Vec2 lerp(Vec2 pos1, Vec2 pos2, float fraction){
-    Vec2 result;
+// linealerly interpolates from point 1 to point 2
+// if fraction is 0, it returns point 1
+Vec3 lerp3(Vec3 pos1, Vec3 pos2, float fraction){
+    Vec3 result;
 
     float w0 = 1.0 - fraction;
     float w1 = fraction;
 
     result.x = pos1.x * w0 + pos2.x * w1;
     result.y = pos1.y * w0 + pos2.y * w1;
+    result.z = pos1.z * w0 + pos2.z * w1;
 
     return result;
 
@@ -78,5 +81,29 @@ typedef struct __attribute__((aligned(16))) {
     cl_int _pad2;          // 4 (pad to make Object size 128 bytes)
     cl_int _pad3;          // 4
 } Object; // total: 64 + 40 + 4 + 4 + 8 + 4 + 4 = 128 bytes
+
+
+
+typedef struct {
+    Vec3 point0;
+    Vec3 point1;
+    Vec3 point2;
+    cl_float frac_0;
+    cl_float frac_1;
+    cl_float frac_2;
+    cl_int should_render;
+} Triangle;
+
+typedef struct {
+    cl_int vertex0;
+    cl_int vertex1;
+    cl_int vertex2;
+    cl_int uv0;
+    cl_int uv1;
+    cl_int uv2;
+    cl_int normal0;
+    cl_int normal1;
+    cl_int normal2;
+} TriangleData;
 
 #endif

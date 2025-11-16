@@ -3,8 +3,8 @@
 #include <time.h>
 #include <stdlib.h>
 
-int width = 400;
-int height = 400;
+int width = 200;
+int height = 200;
 
 int main(){ 
     srand(time(NULL));                                                         
@@ -35,58 +35,58 @@ int main(){
     }
 
     RI_newObject object_buffer[9] = {
-        {10, 0, 100,          
+        {0, 0,100,        
+            0, 0, 0, 0,          
+            10, 10, 10,        
+            RI_PMP_TEXTURED, 
+            "objects/cube.obj", 
+            "textures/bill_mcdinner.png"},
+        {10, 0, 109,          
             -0.3, 0, 0, 0,          
             5, 10, 30,       
-            RI_MATERIAL_HAS_TEXTURE, 
+            RI_MATERIAL_HAS_TEXTURE | RI_MATERIAL_DOUBLE_SIDED, 
             "objects/cube.obj", 
             "textures/bill_mcdinner.png"},
-        {50, 0, 100,        
-            0, 0, 0, 0,          
-            10, 10, 10,        
-            RI_PMP_TEXTURED, 
-            "objects/cube.obj", 
-            "textures/bill_mcdinner.png"},
-        {-50, 0, 100,         
+        {0, 0, 107,         
             0, 0, 0, 0,          
             10, 10, 10,      
-            RI_PMP_TEXTURED, 
+            RI_PMP_TEXTURED | RI_MATERIAL_DOUBLE_SIDED, 
             "objects/cube.obj", 
             "textures/bill_mcdinner.png"},
-        {0, 50, 100,       
+        {0, 0, 106,       
             0, 0, 0, 0,          
             10, 10, 10,          
-            RI_PMP_TEXTURED, 
+            RI_PMP_TEXTURED | RI_MATERIAL_DOUBLE_SIDED, 
             "objects/cube.obj", 
             "textures/bill_mcdinner.png"},
-        {0, -50, 100,       
+        {0, 0, 105,       
+            0, 0,0, 0,          
+            10, 10, 10,         
+            RI_PMP_TEXTURED | RI_MATERIAL_DOUBLE_SIDED, 
+            "objects/cube.obj", 
+            "textures/bill_mcdinner.png"},
+        {0, 0, 104,       
             0, 0, 0, 0,          
             10, 10, 10,         
-            RI_PMP_TEXTURED, 
+            RI_PMP_TEXTURED | RI_MATERIAL_DOUBLE_SIDED, 
             "objects/cube.obj", 
             "textures/bill_mcdinner.png"},
-        {-50, 50, 100,       
-            0, 0, 0, 0,          
-            10, 10, 10,         
-            RI_PMP_TEXTURED, 
-            "objects/cube.obj", 
-            "textures/bill_mcdinner.png"},
-        {-50, -50, 100,          
+        {0, 0, 103,          
             0, 0, 0, 0,          
             10, 10, 10,      
-            RI_PMP_TEXTURED, 
+            RI_PMP_TEXTURED | RI_MATERIAL_DOUBLE_SIDED, 
             "objects/cube.obj", 
             "textures/bill_mcdinner.png"},
-        {50, 50, 100,          
+        {0, 0, 102,          
             0, 0, 0, 0,          
             10, 10, 10,       
-            RI_PMP_TEXTURED, 
+            RI_PMP_TEXTURED | RI_MATERIAL_DOUBLE_SIDED, 
             "objects/cube.obj", 
             "textures/bill_mcdinner.png"},
-        {50, -50, 100,        
+        {0, 0, 101,        
             0, 0, 0, 0,          
             10, 10, 10,        
-            RI_PMP_TEXTURED, 
+            RI_PMP_TEXTURED | RI_MATERIAL_DOUBLE_SIDED, 
             "objects/cube.obj", 
             "textures/bill_mcdinner.png"},
         };
@@ -105,11 +105,14 @@ int main(){
         float frame = 0;
         SDL_Event event;
 
+        objects[0].transform.rotation.x = -0.7;
+
+
         int selected_triangle = -1;
+        while (RI_IsRunning() == RI_RUNNING){        
         RI_SetValue(RI_VALUE_SELECTED_TRIANGLE, selected_triangle);
-    while (RI_IsRunning() == RI_RUNNING){        
-        // objects[0].transform.rotation.x += rand() % 100 * 0.01;
-        // objects[0].transform.rotation.y += rand() % 100 * 0.02;
+        // objects[0].transform.rotation.x += 0.1;
+        // objects[0].transform.rotation.y += 0.02;
         // objects[0].transform.rotation.z += rand() % 100 * 0.03;
         while( SDL_PollEvent( &event ) ){
                 
@@ -130,13 +133,11 @@ int main(){
             }
 
         }
-        for (int i = 0; i < objects_to_request; i++){
-        objects[0].transform.rotation.x += 0.05;
 
-            objects[i].transform.position.z = 110 + sin(frame) * 20;
-        }
+        frame -= 0.1;
 
-        frame -= 0.05;
+       objects[0].transform.position.z = 100 + sin(frame) * 5;
+
 
         RI_Tick();
     }

@@ -91,6 +91,7 @@ typedef enum {
     RI_BUFFER_Z         = 1,
     RI_BUFFER_NORMAL    = 2,
     RI_BUFFER_UV        = 3,
+    RI_BUFFER_OVERDRAW  = 4,
 } RI_buffer_enum;
 
 // RI_DEBUG
