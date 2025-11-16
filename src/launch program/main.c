@@ -24,13 +24,13 @@ int main(){
     RI_actor *cube = RI_new_actor();
     RI_actor *triangle = RI_new_actor();
 
-    RI_mesh *homer_mesh = RI_load_mesh("objects/homer.obj");
-    RI_mesh *teapot_mesh = RI_load_mesh("objects/stanford_bunny.obj");
+    RI_mesh *homer_mesh = RI_load_mesh("objects/cube.obj");
+    RI_mesh *teapot_mesh = RI_load_mesh("objects/cube.obj");
 
     cube->mesh = homer_mesh;
     triangle->mesh = teapot_mesh;
 
-    cube->scale = (RI_vector_3){80, 80, 80};
+    cube->scale = (RI_vector_3){10, 10, 10};
     cube->position = (RI_vector_3){-20, -30, 100};
     cube->rotation = (RI_vector_4){1, 0, 0, 0};
 
@@ -43,7 +43,7 @@ int main(){
     scene->actors[0] = cube;
     scene->actors[1] = triangle;
 
-    scene->length_of_actors_array = 2;
+    scene->length_of_actors_array = 1;
 
     long int start, end;
     double fps = 0;
@@ -61,7 +61,7 @@ int main(){
         RI_render(NULL, scene);
 
         RI_euler_rotation_to_quaternion(&triangle->rotation, (RI_vector_3){context->current_frame * 0.01, context->current_frame * 0.1, context->current_frame * 0.01});
-        RI_euler_rotation_to_quaternion(&cube->rotation, (RI_vector_3){context->current_frame * 0.0, context->current_frame * 0.1, context->current_frame * 0.0});
+        RI_euler_rotation_to_quaternion(&cube->rotation, (RI_vector_3){context->current_frame * 0.01, context->current_frame * 0.01, context->current_frame * 0.01});
         
         RI_tick();
 

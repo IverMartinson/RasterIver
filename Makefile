@@ -1,5 +1,5 @@
 COMPILER=gcc
-FLAGS_ALL=-g -Wall -Wextra -Wno-unused-variable -Wno-unused-parameter
+FLAGS_ALL=-g -Wall -Wextra -Wno-unused-variable -Wno-unused-parameter -DCL_TARGET_OPENCL_VERSION=300
 FLAGS_EXAMPLE=-Lbuilds/ -lrasteriver -Wl,-rpath=builds/ -lm -lSDL2
 FLAGS_LIB=-fPIC -shared -lc -lSDL2 -lm -lOpenCL
 
