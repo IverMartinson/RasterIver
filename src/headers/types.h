@@ -139,6 +139,7 @@ typedef struct {
     int normal_count;
     int uv_count;
     int length_of_renderable_faces_array;
+    int number_of_faces_just_rendered;
 } RI_CL;
 
 typedef struct {

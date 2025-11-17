@@ -4,8 +4,8 @@
 int main(){
     RI_context* context = RI_get_context();
     
-    context->window.width = 700;
-    context->window.height = 700;
+    context->window.width = 400;
+    context->window.height = 400;
     context->window.title = "This is RasterIver 3.0!!!!!!!";
     
     if (RI_init() != 0){
@@ -14,36 +14,45 @@ int main(){
         return 1;
     }
     
-    context->should_debug = ri_true;
+    context->should_debug = ri_false;
     
     RI_scene *scene = RI_new_scene();
 
     scene->camera.FOV = 1.5;
-    scene->camera.min_clip = 0.01;
+    scene->camera.min_clip = 0.1;
 
-    RI_actor *cube = RI_new_actor();
-    RI_actor *triangle = RI_new_actor();
+    RI_mesh *cube_mesh = RI_load_mesh("objects/cube.obj");
 
-    RI_mesh *homer_mesh = RI_load_mesh("objects/cube.obj");
-    RI_mesh *teapot_mesh = RI_load_mesh("objects/cube.obj");
+    int actor_count = 10 * 10;
 
-    cube->mesh = homer_mesh;
-    triangle->mesh = teapot_mesh;
+    scene->actors = malloc(sizeof(RI_actor) * actor_count);
 
-    cube->scale = (RI_vector_3){10, 10, 10};
-    cube->position = (RI_vector_3){-20, -30, 100};
-    cube->rotation = (RI_vector_4){1, 0, 0, 0};
+    float min_x = -100;
+    float max_x = 100;
+    float min_y = -100;
+    float max_y = 100;
 
-    triangle->scale = (RI_vector_3){300, 300, 300};
-    triangle->position = (RI_vector_3){20, -20, 100};
-    triangle->rotation = (RI_vector_4){1, 0, 0, 0};
-    
-    scene->actors = malloc(sizeof(RI_actor) * 10);
+    for (int i = 0; i < (int)sqrt(actor_count); ++i){
+        for (int j = 0; j < (int)sqrt(actor_count); ++j){
+            scene->actors[i * (int)sqrt(actor_count) + j] = RI_new_actor();
+         
+            scene->actors[i * (int)sqrt(actor_count) + j]->mesh = cube_mesh;
+         
+            float offset_x = fabs(min_x - max_x) / ((int)sqrt(actor_count) - 1) * i;
+            float offset_y = fabs(min_y - max_y) / ((int)sqrt(actor_count) - 1) * j;
 
-    scene->actors[0] = cube;
-    scene->actors[1] = triangle;
+            printf("%f %f\n", offset_x, offset_y);
 
-    scene->length_of_actors_array = 1;
+            scene->actors[i * (int)sqrt(actor_count) + j]->scale = (RI_vector_3){100, 100, 100};
+            scene->actors[i * (int)sqrt(actor_count) + j]->position = (RI_vector_3){
+                min_x + offset_x, 
+                min_y + offset_y, 
+                600
+            };
+        }
+    }
+
+    scene->length_of_actors_array = actor_count;
 
     long int start, end;
     double fps = 0;
@@ -52,17 +61,22 @@ int main(){
 
     double delta_time = 0;
     double delta_min = 0.00001;
-    double delta_max = 1;
+    double delta_max = 100000;
     while (context->is_running){
         start = clock();
         
         // scene->camera.FOV = context->current_frame;
+        
+        for (int i = 0; i < (int)sqrt(actor_count); ++i){
+            for (int j = 0; j < (int)sqrt(actor_count); ++j){
+                RI_euler_rotation_to_quaternion(&scene->actors[i * (int)sqrt(actor_count) + j]->rotation, (RI_vector_3){context->current_frame * 0.01 * (i + 1), context->current_frame * 0.01 * (j + 1), context->current_frame * 0.001});
+                
+
+            }
+        }
 
         RI_render(NULL, scene);
 
-        RI_euler_rotation_to_quaternion(&triangle->rotation, (RI_vector_3){context->current_frame * 0.01, context->current_frame * 0.1, context->current_frame * 0.01});
-        RI_euler_rotation_to_quaternion(&cube->rotation, (RI_vector_3){context->current_frame * 0.01, context->current_frame * 0.01, context->current_frame * 0.01});
-        
         RI_tick();
 
         end = clock();

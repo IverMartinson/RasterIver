@@ -495,8 +495,8 @@ __kernel void transformer(__global RI_face *faces, __global RI_renderable_face *
             cur_r_face->uv_1 = uv_b;
             cur_r_face->uv_2 = new_uv_a;
 
-            cur_r_split_face->position_1 = point_b;
-            cur_r_split_face->position_0 = new_point_b;
+            cur_r_split_face->position_0 = point_b;
+            cur_r_split_face->position_1 = new_point_b;
             cur_r_split_face->position_2 = new_point_a;
 
             cur_r_split_face->normal_0 = normal_b;
@@ -585,7 +585,7 @@ __kernel void rasterizer(__global RI_renderable_face *renderable_faces, __global
     int pixel_y = get_global_id(1); if (pixel_y >= height) return;
     int idx = pixel_y * width + pixel_x;
 
-    int x = pixel_x - half_width;
+    int x = width - pixel_x - half_width;
     int y = height - pixel_y - half_height;
 
     double z = INFINITY;
