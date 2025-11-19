@@ -3,9 +3,9 @@
 
 int main(){
     RI_context* context = RI_get_context();
-    
-    context->window.width = 400;
-    context->window.height = 400;
+        
+    context->window.width = 600;
+    context->window.height = 600;
     context->window.title = "This is RasterIver 3.0!!!!!!!";
     
     if (RI_init() != 0){
@@ -13,9 +13,7 @@ int main(){
         
         return 1;
     }
-    
-    context->should_debug = ri_false;
-    
+
     RI_scene *scene = RI_new_scene();
 
     scene->camera.FOV = 1.5;
@@ -40,8 +38,6 @@ int main(){
          
             float offset_x = fabs(min_x - max_x) / ((int)sqrt(actor_count) - 1) * i;
             float offset_y = fabs(min_y - max_y) / ((int)sqrt(actor_count) - 1) * j;
-
-            printf("%f %f\n", offset_x, offset_y);
 
             scene->actors[i * (int)sqrt(actor_count) + j]->scale = (RI_vector_3){100, 100, 100};
             scene->actors[i * (int)sqrt(actor_count) + j]->position = (RI_vector_3){

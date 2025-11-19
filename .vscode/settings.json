@@ -1,5 +1,6 @@
 {
     "files.associations": {
+        "*.cl": "opencl",
         "rasteriver.h": "c",
         "type_traits": "c",
         "ratio": "c",
@@ -13,7 +14,6 @@
         "stdint.h": "c",
         "cmath": "c",
         "time.h": "c",
-        "*.cl": "opencl",
         "sdl_ttf.h": "c",
         "types.h": "c",
         "__hash_table": "c",
@@ -24,6 +24,8 @@
         "chrono": "c",
         "random": "c",
         "limits": "c",
-        "queue": "c"
+        "queue": "c",
+        "math.h": "c",
+        "sdl.h": "c"
     }
 }

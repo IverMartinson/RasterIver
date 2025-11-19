@@ -5,6 +5,99 @@
 #include <CL/cl.h>
 #include "math.h"
 
+enum {
+    RI_DEBUG_NONE = 0,
+
+    // frame-level
+    RI_DEBUG_FRAME_START_END_MARKERS     = 1 << 0,
+    RI_DEBUG_TICK_TIME                   = 1 << 1,
+    RI_DEBUG_KERNEL_LOADER_ERROR         = 1 << 2,
+
+    // transformer
+    RI_DEBUG_TRANSFORMER_CURRENT_ACTOR   = 1 << 3,
+    RI_DEBUG_TRANSFORMER_GLOBAL_SIZE     = 1 << 5,
+    RI_DEBUG_TRANSFORMER_LOCAL_SIZE      = 1 << 6,
+    RI_DEBUG_TRANSFORMER_EXTRA_WORK_ITEMS= 1 << 7,
+    RI_DEBUG_TRANSFORMER_TIME            = 1 << 8,
+    RI_DEBUG_TRANSFORMER_MESSAGE         = 1 << 9,
+    RI_DEBUG_TRANSFORMER_ERROR           = 1 << 11,
+
+    RI_DEBUG_TRANSFORMER_ALL = (
+        RI_DEBUG_TRANSFORMER_CURRENT_ACTOR |
+        RI_DEBUG_TRANSFORMER_GLOBAL_SIZE |
+        RI_DEBUG_TRANSFORMER_LOCAL_SIZE |
+        RI_DEBUG_TRANSFORMER_EXTRA_WORK_ITEMS |
+        RI_DEBUG_TRANSFORMER_TIME |
+        RI_DEBUG_TRANSFORMER_MESSAGE |
+        RI_DEBUG_TRANSFORMER_ERROR ),
+
+    // rasterizer
+    RI_DEBUG_RASTERIZER_TIME             = 1 << 12,
+    RI_DEBUG_RASTERIZER_GLOBAL_SIZE      = 1 << 13,
+    RI_DEBUG_RASTERIZER_LOCAL_SIZE       = 1 << 14,
+    RI_DEBUG_RASTERIZER_MESSAGE          = 1 << 15,
+    RI_DEBUG_RASTERIZER_                 = 1 << 16,
+
+    RI_DEBUG_RASTERIZER_ALL = (
+        RI_DEBUG_RASTERIZER_TIME |
+        RI_DEBUG_RASTERIZER_GLOBAL_SIZE |
+        RI_DEBUG_RASTERIZER_LOCAL_SIZE |
+        RI_DEBUG_RASTERIZER_MESSAGE |
+        RI_DEBUG_RASTERIZER_ ),
+
+    // mesh loader
+    RI_DEBUG_MESH_LOADER_ERROR           = 1 << 17,
+    RI_DEBUG_MESH_LOADER_LOADED_MESH     = 1 << 18,
+    RI_DEBUG_MESH_LOADER_REALLOCATION    = 1 << 19,
+    RI_DEBUG_MESH_LOADER_TIME            = 1 << 20,
+    RI_DEBUG_MESH_LOADER_FACE_VERT_NORM_UV_COUNT = 1 << 28,
+
+    RI_DEBUG_MESH_LOADER_ALL = (
+        RI_DEBUG_MESH_LOADER_ERROR |
+        RI_DEBUG_MESH_LOADER_LOADED_MESH |
+        RI_DEBUG_MESH_LOADER_REALLOCATION |
+        RI_DEBUG_MESH_LOADER_TIME |
+        RI_DEBUG_MESH_LOADER_FACE_VERT_NORM_UV_COUNT ),
+
+    // render function
+    RI_DEBUG_RENDER_REALLOCATION         = 1 << 21,
+    RI_DEBUG_RENDER_ERROR                = 1 << 22,
+    RI_DEBUG_RENDER_FRAME_BUFFER_READ_TIME = 1 << 23,
+    RI_DEBUG_RENDER_TIME                 = 1 << 24,
+
+    RI_DEBUG_RENDER_ALL = (
+        RI_DEBUG_RENDER_REALLOCATION |
+        RI_DEBUG_RENDER_ERROR |
+        RI_DEBUG_RENDER_FRAME_BUFFER_READ_TIME |
+        RI_DEBUG_RENDER_TIME ),
+
+    // OpenCL
+    RI_DEBUG_OPENCL_ERROR                = 1 << 25,
+
+    // init
+    RI_DEBUG_INIT_PLATFORMS              = 1 << 26,
+    RI_DEBUG_INIT_ERROR                  = (1 << 27) | RI_DEBUG_OPENCL_ERROR,
+
+    // multi-flags
+    RI_DEBUG_ETC = (
+        RI_DEBUG_FRAME_START_END_MARKERS |
+        RI_DEBUG_TICK_TIME |
+        RI_DEBUG_KERNEL_LOADER_ERROR ),
+
+    RI_DEBUG_ERRORS = (
+        RI_DEBUG_TRANSFORMER_ERROR |
+        RI_DEBUG_MESH_LOADER_ERROR |
+        RI_DEBUG_RENDER_ERROR |
+        RI_DEBUG_INIT_ERROR ),
+
+    RI_DEBUG_ALL = (
+        RI_DEBUG_ETC |
+        RI_DEBUG_TRANSFORMER_ALL |
+        RI_DEBUG_MESH_LOADER_ALL |
+        RI_DEBUG_RASTERIZER_ALL |
+        RI_DEBUG_RENDER_ALL )
+};
+
 typedef enum {
     ri_true = 1,
     ri_false = 0,
@@ -48,8 +141,8 @@ typedef struct {
 typedef struct {
     int face_count;
     int face_index;
-    ri_bool has_normals;
-    ri_bool has_uvs;
+    int has_normals;
+    int has_uvs;
 } RI_mesh;
 
 typedef struct {
@@ -65,7 +158,7 @@ typedef struct {
     RI_vector_4 rotation;
     RI_vector_3 scale;
     RI_mesh *mesh;
-    ri_bool active;
+    int active;
     int material_index;
 } RI_actor;
 
@@ -143,7 +236,7 @@ typedef struct {
 } RI_CL;
 
 typedef struct {
-    ri_bool debug_memory;
+    int debug_memory;
     RI_memory_allocation *allocation_table;
     int current_allocation_index;
     int allocation_search_limit;
@@ -160,12 +253,12 @@ typedef struct {
     RI_CL opencl;
     RI_memory memory;
     RI_defaults defaults;
-    ri_bool is_running;
+    int is_running;
     char* debug_prefix;
-    ri_bool should_debug;   
     int current_renderable_face_index;
     int current_split_renderable_face_index;
     int current_frame;
+    int debug_flags;
 } RI_context;
 
 #endif
