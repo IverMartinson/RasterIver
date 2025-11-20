@@ -28,16 +28,13 @@
  - [ ] Custom TTF parser, SourParse, will be implemented
     - GPU font renderer
 
+ - [ ] Animated textures will support GIF
+
 ### By End of April, 2026
 
  - [ ] Font renderer will use more efficent method
     - maybe polygons?
     - anything but the last implementation of ray-line intersection
-
-### By End of May, 2026
-
- - [ ] Animated textures will support GIF
-
 
 ### By End of June, 2026
 
