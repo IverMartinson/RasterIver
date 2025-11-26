@@ -21,34 +21,24 @@ int main(){
 
     RI_mesh *cube_mesh = RI_load_mesh("objects/cube.obj");
 
-    int actor_count = 10 * 10;
-
-    scene->actors = malloc(sizeof(RI_actor) * actor_count);
+    scene->actors = malloc(sizeof(RI_actor));
 
     float min_x = -100;
     float max_x = 100;
     float min_y = -100;
     float max_y = 100;
 
-    for (int i = 0; i < (int)sqrt(actor_count); ++i){
-        for (int j = 0; j < (int)sqrt(actor_count); ++j){
-            scene->actors[i * (int)sqrt(actor_count) + j] = RI_new_actor();
-         
-            scene->actors[i * (int)sqrt(actor_count) + j]->mesh = cube_mesh;
-         
-            float offset_x = fabs(min_x - max_x) / ((int)sqrt(actor_count) - 1) * i;
-            float offset_y = fabs(min_y - max_y) / ((int)sqrt(actor_count) - 1) * j;
+    RI_texture* texture = RI_load_image("textures/test_texture_4_cube.bmp");
 
-            scene->actors[i * (int)sqrt(actor_count) + j]->scale = (RI_vector_3){100, 100, 100};
-            scene->actors[i * (int)sqrt(actor_count) + j]->position = (RI_vector_3){
-                min_x + offset_x, 
-                min_y + offset_y, 
-                600
-            };
-        }
-    }
-
-    scene->length_of_actors_array = actor_count;
+    scene->actors[0] = RI_new_actor();
+         
+    scene->actors[0]->mesh = cube_mesh;
+    scene->actors[0]->texture = texture;
+         
+    scene->actors[0]->scale = (RI_vector_3){50, 50, 50};
+    scene->actors[0]->position = (RI_vector_3){0, 0, 300};
+    
+    scene->length_of_actors_array = 1;
 
     long int start, end;
     double fps = 0;
@@ -56,22 +46,21 @@ int main(){
     float total_fps = 0;
 
     double delta_time = 0;
-    double delta_min = 0.00001;
+    double delta_min = 0.0001;
     double delta_max = 100000;
+    
+    double rotation = 0;
+    
     while (context->is_running){
         start = clock();
         
         // scene->camera.FOV = context->current_frame;
         
-        for (int i = 0; i < (int)sqrt(actor_count); ++i){
-            for (int j = 0; j < (int)sqrt(actor_count); ++j){
-                RI_euler_rotation_to_quaternion(&scene->actors[i * (int)sqrt(actor_count) + j]->rotation, (RI_vector_3){context->current_frame * 0.01 * (i + 1), context->current_frame * 0.01 * (j + 1), context->current_frame * 0.001});
-                
+        RI_euler_rotation_to_quaternion(&scene->actors[0]->rotation, (RI_vector_3){rotation, rotation, rotation});
 
-            }
-        }
+        rotation += delta_time;
 
-        RI_render(NULL, scene);
+        RI_render(scene);
 
         RI_tick();
 

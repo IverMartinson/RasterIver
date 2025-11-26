@@ -22,10 +22,10 @@ typedef struct {
     RI_vector_3 position_0, position_1, position_2;
     RI_vector_3 normal_0, normal_1, normal_2;
     RI_vector_2 uv_0, uv_1, uv_2;
-    int min_screen_x, max_screen_x, min_screen_y, max_screen_y;
-    int should_render;
-    int shrunk;
-    int split;
+    short min_screen_x, max_screen_x, min_screen_y, max_screen_y;
+    uchar should_render;
+    ushort texture_width, texture_height;
+    uint texture_index;
 } RI_renderable_face;
 
 typedef struct {
@@ -41,19 +41,19 @@ typedef struct {
     RI_vector_2 uv_1;
     RI_vector_2 uv_2;
 
-    int should_render;
+    uchar should_render;
 } RI_face;
 
 typedef struct {
     RI_vector_3 position;
     RI_vector_4 rotation;
     RI_vector_3 scale;;
-    int active;
-    int has_normals;
-    int has_uvs;
-    int material_index;
-    int face_index;
-    int face_count;
+    uchar active;
+    uchar has_normals;
+    uchar has_uvs;
+    ushort material_index;
+    uint face_index;
+    uint face_count;
 } RI_actor;
 
 typedef struct {
@@ -265,7 +265,7 @@ void global_quaternion_rotate(__global RI_vector_3 *position, RI_vector_4 rotati
     *position = (RI_vector_3){rotation.x, rotation.y, rotation.z};
 }
 
-__kernel void transformer(__global RI_face *faces, __global RI_renderable_face *renderable_faces, double actor_x, double actor_y, double actor_z, double actor_r_w, double actor_r_x, double actor_r_y, double actor_r_z, double actor_s_x, double actor_s_y, double actor_s_z, int has_normals, int has_uvs, int face_array_offset_index, int face_count, int width, int height, double horizontal_fov_factor, double vertical_fov_factor, float min_clip, float max_clip, double camera_x, double camera_y, double camera_z, double camera_r_w, double camera_r_x, double camera_r_y, double camera_r_z, int renderable_face_offset, int face_sqrt){
+__kernel void transformer(__global RI_face *faces, __global RI_renderable_face *renderable_faces, double actor_x, double actor_y, double actor_z, double actor_r_w, double actor_r_x, double actor_r_y, double actor_r_z, double actor_s_x, double actor_s_y, double actor_s_z, int has_normals, int has_uvs, int face_array_offset_index, int face_count, int width, int height, double horizontal_fov_factor, double vertical_fov_factor, float min_clip, float max_clip, double camera_x, double camera_y, double camera_z, double camera_r_w, double camera_r_x, double camera_r_y, double camera_r_z, int renderable_face_offset, int face_sqrt, ushort texture_width, ushort texture_height, uint texture_index){
     int face_index = get_global_id(1) * face_sqrt + get_global_id(0); if (face_index >= face_count) return;
 
     RI_vector_3 current_actor_position = (RI_vector_3){actor_x, actor_y, actor_z};
@@ -283,10 +283,6 @@ __kernel void transformer(__global RI_face *faces, __global RI_renderable_face *
 
     cur_r_face->should_render = 1;
 
-    // cur_r_face->parent_actor = current_actor;
-    cur_r_face->shrunk = 0;
-    cur_r_face->split = 0;
-
     // cur_r_face->material = current_actor.material;
 
     cur_r_face->position_0 = cur_face->position_0;
@@ -302,6 +298,10 @@ __kernel void transformer(__global RI_face *faces, __global RI_renderable_face *
         cur_r_face->uv_1 = cur_face->uv_1;
         cur_r_face->uv_2 = cur_face->uv_2;
     }
+
+    cur_r_face->texture_width = texture_width;
+    cur_r_face->texture_height = texture_height;
+    cur_r_face->texture_index = texture_index;
 
     // scale
     global_vector_3_hadamard(&cur_r_face->position_0, current_actor_scale);
@@ -406,16 +406,12 @@ __kernel void transformer(__global RI_face *faces, __global RI_renderable_face *
             global_vector_2_lerp(*unclipped_uv, *uv_a, uv_a, fraction_a_to_unclip);
             global_vector_2_lerp(*unclipped_uv, *uv_b, uv_b, fraction_b_to_unclip);
 
-            cur_r_face->shrunk = 1;     
-
             break;}
 
         case 1: {// split polygon
             RI_vector_3 clipped_point, point_a, point_b;
             RI_vector_3 clipped_normal, normal_a, normal_b;
             RI_vector_2 clipped_uv, uv_a, uv_b;
-
-            cur_r_face->split = 1;
 
             if (is_0_clipped){ 
                 clipped_point = cur_r_face->position_0;
@@ -519,24 +515,28 @@ __kernel void transformer(__global RI_face *faces, __global RI_renderable_face *
             cur_r_split_face->min_screen_x = cur_r_split_face->position_0.x; 
             if (cur_r_split_face->position_1.x < cur_r_split_face->min_screen_x) cur_r_split_face->min_screen_x = cur_r_split_face->position_1.x;
             if (cur_r_split_face->position_2.x < cur_r_split_face->min_screen_x) cur_r_split_face->min_screen_x = cur_r_split_face->position_2.x;
-            cur_r_split_face->min_screen_x = max(cur_r_split_face->min_screen_x, -width / 2); 
+            cur_r_split_face->min_screen_x = max(cur_r_split_face->min_screen_x, (short)(-width / 2)); 
 
             cur_r_split_face->max_screen_x = cur_r_split_face->position_0.x; 
             if (cur_r_split_face->position_1.x > cur_r_split_face->max_screen_x) cur_r_split_face->max_screen_x = cur_r_split_face->position_1.x;
             if (cur_r_split_face->position_2.x > cur_r_split_face->max_screen_x) cur_r_split_face->max_screen_x = cur_r_split_face->position_2.x;
-            cur_r_split_face->max_screen_x = min(cur_r_split_face->max_screen_x, width / 2); 
+            cur_r_split_face->max_screen_x = min(cur_r_split_face->max_screen_x, (short)(width / 2)); 
 
             cur_r_split_face->min_screen_y = cur_r_split_face->position_0.y; 
             if (cur_r_split_face->position_1.y < cur_r_split_face->min_screen_y) cur_r_split_face->min_screen_y = cur_r_split_face->position_1.y;
             if (cur_r_split_face->position_2.y < cur_r_split_face->min_screen_y) cur_r_split_face->min_screen_y = cur_r_split_face->position_2.y;
-            cur_r_split_face->min_screen_y = max(cur_r_split_face->min_screen_y, -height / 2); 
+            cur_r_split_face->min_screen_y = max(cur_r_split_face->min_screen_y, (short)(-height / 2)); 
 
             cur_r_split_face->max_screen_y = cur_r_split_face->position_0.y; 
             if (cur_r_split_face->position_1.y > cur_r_split_face->max_screen_y) cur_r_split_face->max_screen_y = cur_r_split_face->position_1.y;
             if (cur_r_split_face->position_2.y > cur_r_split_face->max_screen_y) cur_r_split_face->max_screen_y = cur_r_split_face->position_2.y;
-            cur_r_split_face->max_screen_y = min(cur_r_split_face->max_screen_y, height / 2); 
+            cur_r_split_face->max_screen_y = min(cur_r_split_face->max_screen_y, (short)(height / 2)); 
 
             cur_r_split_face->should_render = 1;
+
+            cur_r_split_face->texture_width = texture_width;
+            cur_r_split_face->texture_height = texture_height;
+            cur_r_split_face->texture_index = texture_index;
 
             break;
         }
@@ -560,32 +560,32 @@ __kernel void transformer(__global RI_face *faces, __global RI_renderable_face *
     cur_r_face->min_screen_x = pos_0->x; 
     if (pos_1->x < cur_r_face->min_screen_x) cur_r_face->min_screen_x = pos_1->x;
     if (pos_2->x < cur_r_face->min_screen_x) cur_r_face->min_screen_x = pos_2->x;
-    cur_r_face->min_screen_x = max(cur_r_face->min_screen_x, -width / 2); 
+    cur_r_face->min_screen_x = max(cur_r_face->min_screen_x, (short)(-width / 2)); 
 
     cur_r_face->max_screen_x = pos_0->x; 
     if (pos_1->x > cur_r_face->max_screen_x) cur_r_face->max_screen_x = pos_1->x;
     if (pos_2->x > cur_r_face->max_screen_x) cur_r_face->max_screen_x = pos_2->x;
-    cur_r_face->max_screen_x = min(cur_r_face->max_screen_x, width / 2); 
+    cur_r_face->max_screen_x = min(cur_r_face->max_screen_x, (short)(width / 2)); 
 
     cur_r_face->min_screen_y = pos_0->y; 
     if (pos_1->y < cur_r_face->min_screen_y) cur_r_face->min_screen_y = pos_1->y;
     if (pos_2->y < cur_r_face->min_screen_y) cur_r_face->min_screen_y = pos_2->y;
-    cur_r_face->min_screen_y = max(cur_r_face->min_screen_y, -height / 2); 
+    cur_r_face->min_screen_y = max(cur_r_face->min_screen_y, (short)(-height / 2)); 
 
     cur_r_face->max_screen_y = pos_0->y; 
     if (pos_1->y > cur_r_face->max_screen_y) cur_r_face->max_screen_y = pos_1->y;
     if (pos_2->y > cur_r_face->max_screen_y) cur_r_face->max_screen_y = pos_2->y;
-    cur_r_face->max_screen_y = min(cur_r_face->max_screen_y, height / 2); 
+    cur_r_face->max_screen_y = min(cur_r_face->max_screen_y, (short)(height / 2)); 
     
     return;
 }
 
-__kernel void rasterizer(__global RI_renderable_face *renderable_faces, __global uint *frame_buffer, int width, int height, int half_width, int half_height, int number_of_renderable_faces, int number_of_split_renderable_faces){
+__kernel void rasterizer(__global RI_renderable_face *renderable_faces, __global uint* textures, __global uint *frame_buffer, int width, int height, int half_width, int half_height, int number_of_renderable_faces, int number_of_split_renderable_faces){
     int pixel_x = get_global_id(0); if (pixel_x >= width) return;
     int pixel_y = get_global_id(1); if (pixel_y >= height) return;
     int idx = pixel_y * width + pixel_x;
 
-    int x = width - pixel_x - half_width;
+    int x = pixel_x - half_width;
     int y = height - pixel_y - half_height;
 
     double z = INFINITY;
@@ -635,16 +635,19 @@ __kernel void rasterizer(__global RI_renderable_face *renderable_faces, __global
         
         double alpha = 1;
         
-        double ux, uy;
-        ux = uy = -1;
-        
+        float ux = (w0 * (uv_0.x / pos_0.z) + w1 * (uv_1.x / pos_1.z) + w2 * (uv_2.x / pos_2.z)) / w_over_z;
+        float uy = (w0 * (uv_0.y / pos_0.z) + w1 * (uv_1.y / pos_1.z) + w2 * (uv_2.y / pos_2.z)) / w_over_z;    
+
         RI_vector_3 interpolated_normal = {0};
         
-        interpolated_normal.x = (w0 * (normal_0.x / pos_0.z) + w1 * (normal_1.x / pos_1.z) + w2 * (normal_2.x / pos_2.z)) / w_over_z;    
-        interpolated_normal.y = (w0 * (normal_0.y / pos_0.z) + w1 * (normal_1.y / pos_1.z) + w2 * (normal_2.y / pos_2.z)) / w_over_z;        
-        interpolated_normal.z = (w0 * (normal_0.z / pos_0.z) + w1 * (normal_1.z / pos_1.z) + w2 * (normal_2.z / pos_2.z)) / w_over_z;        
-        
-        pixel_color = 255 << 24 | (int)((w0 + 1.0) * 127.5) << 16 | (int)((w1 + 1.0) * 127.5) << 8 | (int)((w2 + 1.0) * 127.5);
+        uint texel_x = current_face->texture_width * ux;
+        uint texel_y = current_face->texture_height * uy;
+
+        uint texel_index = current_face->texture_index + 
+            texel_y * current_face->texture_width + texel_x;
+
+        pixel_color = textures[texel_index];
+
         z = interpolated_z;
     }
     

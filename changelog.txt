@@ -1,0 +1,5 @@
+-integrated PitMap
+-added RI_load_image function
+-fixed wrong arg indecies in setKernelArg comments in RI_render
+-removed grid example scene
+-ADDED TEXTURESS !!!! IT WORKS !!!!! FIRST !!! TRY !!! OMGG!!!!!! >W<

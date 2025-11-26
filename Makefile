@@ -1,13 +1,16 @@
 COMPILER=gcc
 FLAGS_ALL=-g -Wall -Wextra -Wno-unused-variable -Wno-unused-parameter -DCL_TARGET_OPENCL_VERSION=300
-FLAGS_EXAMPLE=-Lbuilds/ -lrasteriver -Wl,-rpath=builds/ -lm -lSDL2
-FLAGS_LIB=-fPIC -shared -lc -lSDL2 -lm -lOpenCL
+FLAGS_EXAMPLE=-Lbuilds/ -lrasteriver -lpitmap -Wl,-rpath=builds/ -lm -lSDL2
+FLAGS_LIB=-fPIC -shared -lc -lSDL2 -lm -lOpenCL 
 
-main.bin: rasteriver.so
+main.bin: rasteriver.so pitmap.so
 	$(COMPILER) $(FLAGS_ALL) src/launch\ program/main.c -o builds/main.bin $(FLAGS_EXAMPLE) 
 
 rasteriver.so:
 	$(COMPILER) $(FLAGS_ALL) src/main/main.c -o builds/librasteriver.so $(FLAGS_LIB) 
+
+pitmap.so:
+	cp src/libraries/libpitmap.so builds/
 
 clean:
 	rm builds/*

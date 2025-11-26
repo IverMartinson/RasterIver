@@ -4,6 +4,7 @@
 #include <SDL2/SDL.h>
 #include "../headers/rasteriver.h"
 #include "../headers/memory.h"
+#include "../headers/pitmap.h"
 #include <time.h>
 
 cl_int clerror;
@@ -38,14 +39,57 @@ void debug(char *string, int debug_flag, ...){
     va_end(args);
 }
 
-RI_texture *RI_new_texture(int width, int height){
-    RI_texture *new_texture = RI_malloc(sizeof(RI_texture));
+RI_texture* RI_load_image(char* filename){
+    PM_image* image = PM_load_image(filename);
 
-    new_texture->image_buffer = RI_malloc(sizeof(uint32_t) * width * height);
-    new_texture->resolution.x = width;
-    new_texture->resolution.y = height;
+    RI_texture* texture = RI_malloc(sizeof(RI_texture));
 
-    return new_texture;
+    int previous_length_of_textures_array = context.opencl.length_of_textures_array;
+
+    texture->width = image->width;
+    texture->height = image->height;
+    texture->index = previous_length_of_textures_array;
+
+    context.opencl.length_of_textures_array += image->width * image->height;
+
+    context.opencl.textures = RI_realloc(context.opencl.textures, context.opencl.length_of_textures_array * sizeof(uint32_t));
+
+    printf("%d\n", previous_length_of_textures_array);
+
+    memcpy(context.opencl.textures + previous_length_of_textures_array, image->frame_buffer, sizeof(uint32_t) * image->width * image->height);
+
+    if (context.opencl.textures_mem_buffer) clReleaseMemObject(context.opencl.textures_mem_buffer);
+
+    context.opencl.textures_mem_buffer = clCreateBuffer(
+        context.opencl.context, 
+        CL_MEM_READ_WRITE, 
+        sizeof(uint32_t) * context.opencl.length_of_textures_array, 
+        NULL, NULL
+    );
+    
+    clEnqueueWriteBuffer(
+        context.opencl.queue, 
+        context.opencl.textures_mem_buffer, 
+        CL_TRUE, 
+        0, 
+        sizeof(uint32_t) * context.opencl.length_of_textures_array, 
+        context.opencl.textures, 
+        0, NULL, NULL
+    );
+    
+    clFinish(context.opencl.queue);
+
+    clSetKernelArg(
+        context.opencl.rasterization_kernel, 
+        1, 
+        sizeof(cl_mem), 
+        &context.opencl.textures_mem_buffer
+    );
+
+    free(image->frame_buffer);
+    free(image);
+
+    return texture;
 }
 
 RI_material *RI_new_material(){
@@ -331,6 +375,9 @@ RI_mesh *RI_load_mesh(char *filename){
             0, NULL, NULL
         );
 
+    clFinish(context.opencl.queue);
+
+
         clSetKernelArg(
             context.opencl.transformation_kernel, 
             0, 
@@ -397,7 +444,7 @@ RI_mesh *RI_load_mesh(char *filename){
     return new_mesh;
 }
 
-void RI_render(RI_texture *target_texture, RI_scene *scene){
+void RI_render(RI_scene *scene){
     clock_t start_time, end_time;
     
     start_time = clock();
@@ -406,42 +453,38 @@ void RI_render(RI_texture *target_texture, RI_scene *scene){
         RI_DEBUG_FRAME_START_END_MARKERS
     );
 
-    if (!target_texture){
-        target_texture = context.sdl.frame_buffer;
-    }
-
     // transformer 
     
-    double horizontal_fov_factor = (double)target_texture->resolution.x / tanf(0.5 * scene->camera.FOV);
-    double vertical_fov_factor = (double)target_texture->resolution.y / tanf(0.5 * scene->camera.FOV);
+    double horizontal_fov_factor = (double)context.window.width / tanf(0.5 * scene->camera.FOV);
+    double vertical_fov_factor = (double)context.window.height / tanf(0.5 * scene->camera.FOV);
     
 
     // kernel args    
     
-    // 21, double horizontal_fov_factor
+    // 18, double horizontal_fov_factor
     clSetKernelArg(context.opencl.transformation_kernel, 18, sizeof(double), &horizontal_fov_factor);
-    // 22, double vertical_fov_factor
+    // 19, double vertical_fov_factor
     clSetKernelArg(context.opencl.transformation_kernel, 19, sizeof(double), &vertical_fov_factor);
 
-    // 23, double min_clip
+    // 20, double min_clip
     clSetKernelArg(context.opencl.transformation_kernel, 20, sizeof(float), &scene->camera.min_clip);
-    // 24, double max_clip
+    // 21, double max_clip
     clSetKernelArg(context.opencl.transformation_kernel, 21, sizeof(float), &scene->camera.max_clip);
 
-    // 25, double camera_x
+    // 22, double camera_x
     clSetKernelArg(context.opencl.transformation_kernel, 22, sizeof(double), &scene->camera.position.x);
-    // 26, double camera_y
+    // 23, double camera_y
     clSetKernelArg(context.opencl.transformation_kernel, 23, sizeof(double), &scene->camera.position.y);
-    // 27, double camera_z
+    // 24, double camera_z
     clSetKernelArg(context.opencl.transformation_kernel, 24, sizeof(double), &scene->camera.position.z);
 
-    // 28, double camera_r_w
+    // 25, double camera_r_w
     clSetKernelArg(context.opencl.transformation_kernel, 25, sizeof(double), &scene->camera.rotation.w);
-    // 29, double camera_r_x
+    // 26, double camera_r_x
     clSetKernelArg(context.opencl.transformation_kernel, 26, sizeof(double), &scene->camera.rotation.x);
-    // 30, double camera_r_y
+    // 27, double camera_r_y
     clSetKernelArg(context.opencl.transformation_kernel, 27, sizeof(double), &scene->camera.rotation.y);
-    // 31, double camera_r_z
+    // 28, double camera_r_z
     clSetKernelArg(context.opencl.transformation_kernel, 28, sizeof(double), &scene->camera.rotation.z);
 
 
@@ -567,43 +610,52 @@ void RI_render(RI_texture *target_texture, RI_scene *scene){
             scene->actors[actor_index]->mesh->face_count
         );
 
-        // 5, double actor_x
+        // 2, double actor_x
         clSetKernelArg(context.opencl.transformation_kernel, 2, sizeof(double), &actor->position.x);
-        // 6, double actor_y
+        // 3, double actor_y
         clSetKernelArg(context.opencl.transformation_kernel, 3, sizeof(double), &actor->position.y);
-        // 7, double actor_z
+        // 4, double actor_z
         clSetKernelArg(context.opencl.transformation_kernel, 4, sizeof(double), &actor->position.z);
 
-        // 8, double actor_r_w
+        // 5, double actor_r_w
         clSetKernelArg(context.opencl.transformation_kernel, 5, sizeof(double), &actor->rotation.w);
-        // 9, double actor_r_x
+        // 6, double actor_r_x
         clSetKernelArg(context.opencl.transformation_kernel, 6, sizeof(double), &actor->rotation.x);
-        // 10, double actor_r_y
+        // 7, double actor_r_y
         clSetKernelArg(context.opencl.transformation_kernel, 7, sizeof(double), &actor->rotation.y);
-        // 11, double actor_r_z
+        // 8, double actor_r_z
         clSetKernelArg(context.opencl.transformation_kernel, 8, sizeof(double), &actor->rotation.z);
 
-        // 12, double actor_s_x
+        // 9, double actor_s_x
         clSetKernelArg(context.opencl.transformation_kernel, 9, sizeof(double), &actor->scale.x);
-        // 13, double actor_s_y
+        // 10, double actor_s_y
         clSetKernelArg(context.opencl.transformation_kernel, 10, sizeof(double), &actor->scale.y);
-        // 14, double actor_s_z
+        // 11, double actor_s_z
         clSetKernelArg(context.opencl.transformation_kernel, 11, sizeof(double), &actor->scale.z);
 
-        // 15, int has_normals
+        // 12, int has_normals
         clSetKernelArg(context.opencl.transformation_kernel, 12, sizeof(int), &actor->mesh->has_normals);
-        // 16, int has_uvs
+        // 13, int has_uvs
         clSetKernelArg(context.opencl.transformation_kernel, 13, sizeof(int), &actor->mesh->has_uvs);
-        // 17, int face_array_offset_index
+        // 14, int face_array_offset_index
         clSetKernelArg(context.opencl.transformation_kernel, 14, sizeof(int), &actor->mesh->face_index);
-        // 18, int face_count
+        // 15, int face_count
         clSetKernelArg(context.opencl.transformation_kernel, 15, sizeof(int), &actor->mesh->face_count);
 
-        // 32, int renderable_face_offset
+        // 29, int renderable_face_offset
         clSetKernelArg(context.opencl.transformation_kernel, 29, sizeof(int), &renderable_face_index);
         
-        // 33, int face_sqrt
+        // 30, int face_sqrt
         clSetKernelArg(context.opencl.transformation_kernel, 30, sizeof(int), &face_sqrt);
+
+        debug("texture width: %d texture height: %d texture index %d", RI_DEBUG_TRANSFORMER_TEXTURE, actor->texture->width, actor->texture->height, actor->texture->index);
+
+        // 31: uint16_t texture_width
+        clSetKernelArg(context.opencl.transformation_kernel, 31, sizeof(uint16_t), &actor->texture->width);
+        // 32: uint16_t texture_height
+        clSetKernelArg(context.opencl.transformation_kernel, 32, sizeof(uint16_t), &actor->texture->height);
+        // 33: uint32_t texture_index
+        clSetKernelArg(context.opencl.transformation_kernel, 33, sizeof(uint32_t), &actor->texture->index);
 
         debug("running actor #%d's transformation kernel...", 
             RI_DEBUG_TRANSFORMER_MESSAGE, 
@@ -678,10 +730,10 @@ void RI_render(RI_texture *target_texture, RI_scene *scene){
         sizeof(cl_mem), 
         &context.opencl.renderable_faces_mem_buffer
     );
-    clSetKernelArg(context.opencl.rasterization_kernel, 6, sizeof(int), &scene->face_count);
+    clSetKernelArg(context.opencl.rasterization_kernel, 7, sizeof(int), &scene->face_count);
     clSetKernelArg(
         context.opencl.rasterization_kernel, 
-        7, 
+        8, 
         sizeof(int), 
         &context.current_split_renderable_face_index
     );
@@ -715,7 +767,7 @@ void RI_render(RI_texture *target_texture, RI_scene *scene){
         CL_TRUE, 
         0, 
         context.window.width * context.window.height * sizeof(uint32_t), 
-        context.sdl.frame_buffer->image_buffer, 
+        context.sdl.frame_buffer, 
         0, NULL, &clevent
     );
     clFinish(context.opencl.queue);
@@ -762,14 +814,8 @@ void RI_tick(){
     SDL_LockTexture(
         context.sdl.frame_buffer_texture, 
         NULL, 
-        (void*)&context.sdl.frame_buffer_intermediate, 
+        (void*)&context.sdl.frame_buffer, 
         &context.sdl.pitch
-    );
-
-    memcpy(
-        context.sdl.frame_buffer_intermediate, 
-        context.sdl.frame_buffer->image_buffer, 
-        context.window.width * context.window.height * sizeof(uint32_t)
     );
 
     SDL_UnlockTexture(context.sdl.frame_buffer_texture);
@@ -798,8 +844,8 @@ void RI_tick(){
 }
 
 RI_context *RI_get_context(){
-    context.sdl = (RI_SDL){NULL, NULL, NULL, NULL, NULL, -1};
-    context.opencl = (RI_CL){NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, 0, 0, 0, 1, 0};
+    context.sdl = (RI_SDL){NULL, NULL, NULL, NULL, -1};
+    context.opencl = (RI_CL){NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, 0, 0, 0, 1, 0, 0};
     context.window = (RI_window){800, 800, 400, 400, "RasterIver Window"};
     
     context.debug_flags = RI_DEBUG_ERRORS;
@@ -846,16 +892,15 @@ int RI_init(){
     context.sdl.renderer = SDL_CreateRenderer(context.sdl.window, -1, SDL_RENDERER_ACCELERATED);
     context.sdl.frame_buffer_texture = SDL_CreateTexture(
         context.sdl.renderer, 
-        SDL_PIXELFORMAT_ARGB8888, 
+        SDL_PIXELFORMAT_BGRA8888, 
         SDL_TEXTUREACCESS_STREAMING, 
         context.window.width, 
         context.window.height
     );
 
-    context.sdl.frame_buffer_intermediate = malloc(
+    context.sdl.frame_buffer = malloc(
         sizeof(uint32_t) * context.window.width * context.window.height
     );
-    context.sdl.frame_buffer = RI_new_texture(context.window.width, context.window.height);
     
     if (!context.debug_flags)
         context.debug_flags = RI_DEBUG_ERRORS;
@@ -940,7 +985,7 @@ int RI_init(){
     cl_int result = clBuildProgram(rasterization_program, 1, &context.opencl.device, "", NULL, NULL);
 
     if (result != CL_SUCCESS){
-        char log[256];
+        char log[10001];
 
         clGetProgramBuildInfo(
             rasterization_program, 
@@ -993,18 +1038,30 @@ int RI_init(){
         return 1;
     }
 
+    context.opencl.textures_mem_buffer = clCreateBuffer(
+        context.opencl.context, 
+        CL_MEM_READ_WRITE, 
+        1, 
+        NULL, &clerror);
+
+    if (clerror != CL_SUCCESS || !context.opencl.textures_mem_buffer){
+        debug("couldn't create textures memory buffer", RI_DEBUG_OPENCL_ERROR);
+        return 1;
+    }
+
 // rasterizer(__global RI_renderable_face *renderable_faces, __global uint *frame_buffer, 
 //            int width, int height, int half_width, int half_height, int number_of_renderable_faces, 
 //            int number_of_split_renderable_faces)
 
     clSetKernelArg(context.opencl.rasterization_kernel, 0, sizeof(cl_mem), &context.opencl.renderable_faces_mem_buffer);
-    clSetKernelArg(context.opencl.rasterization_kernel, 1, sizeof(cl_mem), &context.opencl.frame_buffer_mem_buffer);
-    clSetKernelArg(context.opencl.rasterization_kernel, 2, sizeof(int), &context.window.width);
-    clSetKernelArg(context.opencl.rasterization_kernel, 3, sizeof(int), &context.window.height);
-    clSetKernelArg(context.opencl.rasterization_kernel, 4, sizeof(int), &context.window.half_width);
-    clSetKernelArg(context.opencl.rasterization_kernel, 5, sizeof(int), &context.window.half_height);
-    clSetKernelArg(context.opencl.rasterization_kernel, 6, sizeof(int), &context.current_renderable_face_index);
-    clSetKernelArg(context.opencl.rasterization_kernel, 7, sizeof(int), &context.current_split_renderable_face_index);
+    clSetKernelArg(context.opencl.rasterization_kernel, 1, sizeof(cl_mem), &context.opencl.textures_mem_buffer);
+    clSetKernelArg(context.opencl.rasterization_kernel, 2, sizeof(cl_mem), &context.opencl.frame_buffer_mem_buffer);
+    clSetKernelArg(context.opencl.rasterization_kernel, 3, sizeof(int), &context.window.width);
+    clSetKernelArg(context.opencl.rasterization_kernel, 4, sizeof(int), &context.window.height);
+    clSetKernelArg(context.opencl.rasterization_kernel, 5, sizeof(int), &context.window.half_width);
+    clSetKernelArg(context.opencl.rasterization_kernel, 6, sizeof(int), &context.window.half_height);
+    clSetKernelArg(context.opencl.rasterization_kernel, 7, sizeof(int), &context.current_renderable_face_index);
+    clSetKernelArg(context.opencl.rasterization_kernel, 8, sizeof(int), &context.current_split_renderable_face_index);
 
     // transformer
 
@@ -1096,9 +1153,14 @@ int RI_init(){
     // clSetKernelArg(context.opencl.transformation_kernel, 29, sizeof(int), &renderable_face_offset);
     // // 30: int face_sqrt
     // clSetKernelArg(context.opencl.transformation_kernel, 30, sizeof(int), &face_sqrt);
+    // // 31: uint16_t texture_width
+    // clSetKernelArg(context.opencl.transformation_kernel, 31, sizeof(uint16_t), &texture_width);
+    // // 32: uint16_t texture_height
+    // clSetKernelArg(context.opencl.transformation_kernel, 32, sizeof(uint16_t), &texture_height);
+    // // 33: uint32_t texture_index
+    // clSetKernelArg(context.opencl.transformation_kernel, 33, sizeof(uint32_t), &texture_index);
 
     context.defaults.default_actor->mesh = RI_load_mesh("objects/error_object.obj");
-
 
     return 0;
 }

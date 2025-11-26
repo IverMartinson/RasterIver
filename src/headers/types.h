@@ -21,6 +21,7 @@ enum {
     RI_DEBUG_TRANSFORMER_TIME            = 1 << 8,
     RI_DEBUG_TRANSFORMER_MESSAGE         = 1 << 9,
     RI_DEBUG_TRANSFORMER_ERROR           = 1 << 11,
+    RI_DEBUG_TRANSFORMER_TEXTURE         = 1 << 29,
 
     RI_DEBUG_TRANSFORMER_ALL = (
         RI_DEBUG_TRANSFORMER_CURRENT_ACTOR |
@@ -29,7 +30,8 @@ enum {
         RI_DEBUG_TRANSFORMER_EXTRA_WORK_ITEMS |
         RI_DEBUG_TRANSFORMER_TIME |
         RI_DEBUG_TRANSFORMER_MESSAGE |
-        RI_DEBUG_TRANSFORMER_ERROR ),
+        RI_DEBUG_TRANSFORMER_ERROR |
+        RI_DEBUG_TRANSFORMER_TEXTURE ),
 
     // rasterizer
     RI_DEBUG_RASTERIZER_TIME             = 1 << 12,
@@ -103,9 +105,10 @@ typedef enum {
     ri_false = 0,
 } ri_bool;
 
-typedef struct { // A loaded texture file
-    uint32_t *image_buffer;
-    RI_vector_2i resolution;
+typedef struct {
+    uint16_t width;
+    uint16_t height;
+    uint32_t index;
 } RI_texture;
 
 typedef struct {
@@ -158,6 +161,7 @@ typedef struct {
     RI_vector_4 rotation;
     RI_vector_3 scale;
     RI_mesh *mesh;
+    RI_texture* texture;
     int active;
     int material_index;
 } RI_actor;
@@ -166,10 +170,10 @@ typedef struct {
     RI_vector_3 position_0, position_1, position_2;
     RI_vector_3 normal_0, normal_1, normal_2;
     RI_vector_2 uv_0, uv_1, uv_2;
-    int min_screen_x, max_screen_x, min_screen_y, max_screen_y;
-    int should_render;
-    int shrunk;
-    int split;
+    int16_t min_screen_x, max_screen_x, min_screen_y, max_screen_y;
+    unsigned char should_render;
+    uint16_t texture_width, height;
+    uint32_t texture_index;
 } RI_renderable_face;
 
 typedef struct {
@@ -203,8 +207,7 @@ typedef struct {
     SDL_Window *window;
     SDL_Renderer *renderer;
     SDL_Texture *frame_buffer_texture;
-    uint32_t *frame_buffer_intermediate;
-    RI_texture *frame_buffer;
+    uint32_t *frame_buffer;
     int pitch;
 } RI_SDL;
 
@@ -215,6 +218,7 @@ typedef struct {
     cl_command_queue queue;
     cl_kernel rasterization_kernel;
     cl_kernel transformation_kernel;
+    cl_mem textures_mem_buffer;
     cl_mem renderable_faces_mem_buffer;
     cl_mem faces_mem_buffer;
     cl_mem frame_buffer_mem_buffer;
@@ -227,12 +231,14 @@ typedef struct {
     RI_vector_3 *temp_vertecies;
     RI_vector_3 *temp_normals;
     RI_vector_2 *temp_uvs;
+    uint32_t* textures;
     int face_count;
     int vertex_count;
     int normal_count;
     int uv_count;
     int length_of_renderable_faces_array;
     int number_of_faces_just_rendered;
+    int length_of_textures_array;
 } RI_CL;
 
 typedef struct {

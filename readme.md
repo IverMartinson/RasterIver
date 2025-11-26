@@ -2,7 +2,7 @@
 
 ## Roadmap
 
-### By End of December, 2026
+### By End of December, 2025
 
  - [ ] Basic texture support
     - using custom image parser, PitMap
