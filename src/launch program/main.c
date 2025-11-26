@@ -28,7 +28,7 @@ int main(){
     float min_y = -100;
     float max_y = 100;
 
-    RI_texture* texture = RI_load_image("textures/test_texture_4_cube.bmp");
+    RI_texture* texture = RI_load_image("textures/test_texture_4_cube_8192x8192.bmp");
 
     scene->actors[0] = RI_new_actor();
          
