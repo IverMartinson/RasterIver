@@ -1,5 +1,1 @@
--added checker texture
--added desert panorama and blue gradient skybox textures
--added skybox example
--fixed vector 2 lerp function by changing multiply 0 to memset 0
--added vector 2 memset
+-added window modes: stretch, letterbox

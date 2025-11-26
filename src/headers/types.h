@@ -6,6 +6,11 @@
 #include "math.h"
 
 enum {
+    RI_ASPECT_MODE_STRETCH = 1 << 0,
+    RI_ASPECT_MODE_LETTERBOX = 1 << 1,
+};
+
+enum {
     RI_DEBUG_NONE = 0,
 
     // frame-level
@@ -201,6 +206,7 @@ typedef struct {
 typedef struct {
     int width, height, half_width, half_height;
     char* title;
+    unsigned char aspect_mode;
 } RI_window;
 
 typedef struct {

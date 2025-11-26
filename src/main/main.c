@@ -457,7 +457,8 @@ void RI_render(RI_scene *scene){
     
     double horizontal_fov_factor = (double)context.window.width / tanf(0.5 * scene->camera.FOV);
     double vertical_fov_factor = (double)context.window.height / tanf(0.5 * scene->camera.FOV);
-    
+
+    if (context.window.aspect_mode == RI_ASPECT_MODE_LETTERBOX) horizontal_fov_factor /= horizontal_fov_factor / vertical_fov_factor;
 
     // kernel args    
     
@@ -846,7 +847,7 @@ void RI_tick(){
 RI_context *RI_get_context(){
     context.sdl = (RI_SDL){NULL, NULL, NULL, NULL, -1};
     context.opencl = (RI_CL){NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, 0, 0, 0, 1, 0, 0};
-    context.window = (RI_window){800, 800, 400, 400, "RasterIver Window"};
+    context.window = (RI_window){800, 800, 400, 400, "RasterIver Window", RI_ASPECT_MODE_LETTERBOX};
     
     context.debug_flags = RI_DEBUG_ERRORS;
     context.current_frame = 0;
