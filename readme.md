@@ -4,7 +4,7 @@
 
 ### By End of December, 2025
 
- - [ ] Basic texture support
+ - [x] Basic texture support **`finished on November 25, 2025`**
     - using custom image parser, PitMap
     - objects can have at least 1 texture
     - no animated textures yet
