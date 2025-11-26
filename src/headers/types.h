@@ -124,7 +124,7 @@ typedef struct {
     RI_vector_2 uv_1;
     RI_vector_2 uv_2;
 
-    cl_uint should_render;
+    unsigned char should_render;
 } RI_face;
 
 typedef struct {

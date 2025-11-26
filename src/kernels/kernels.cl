@@ -81,6 +81,12 @@ void vector_3_memset(RI_vector_3 *vector, double value){
     vector->z = value;
 }
 
+// set all values of a vector 2
+void vector_2_memset(RI_vector_2 *vector, double value){
+    vector->x = value;
+    vector->y = value;
+}
+
 // value-wise multiplacation.
 // multiply the whole vector by 1 value
 void vector_3_times(RI_vector_3 *vector, double value){
@@ -192,7 +198,7 @@ void global_quaternion_multiply(__global RI_vector_4* a, RI_vector_4 b){
 void vector_2_lerp(RI_vector_2 vector_a, RI_vector_2 vector_b, RI_vector_2 *result, double w1){
     double w0 = 1.0 - w1;
 
-    vector_2_times(result, 0);
+    vector_2_memset(result, 0);
 
     vector_2_times(&vector_a, w0);
     vector_2_times(&vector_b, w1);

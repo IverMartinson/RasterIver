@@ -16,28 +16,26 @@ int main(){
 
     RI_scene *scene = RI_new_scene();
 
-    scene->camera.FOV = 1.5;
+    scene->camera.FOV = 2.1;
     scene->camera.min_clip = 0.1;
 
+    RI_mesh *skybox_mesh = RI_load_mesh("objects/skybox.obj");
     RI_mesh *cube_mesh = RI_load_mesh("objects/cube.obj");
 
     scene->actors = malloc(sizeof(RI_actor));
 
-    float min_x = -100;
-    float max_x = 100;
-    float min_y = -100;
-    float max_y = 100;
-
-    RI_texture* texture = RI_load_image("textures/test_texture_4_cube_8192x8192.bmp");
+    RI_texture* texture = RI_load_image("textures/desert_skybox_1000x1000.bmp");
 
     scene->actors[0] = RI_new_actor();
          
-    scene->actors[0]->mesh = cube_mesh;
+    scene->actors[0]->mesh = skybox_mesh;
     scene->actors[0]->texture = texture;
          
-    scene->actors[0]->scale = (RI_vector_3){50, 50, 50};
-    scene->actors[0]->position = (RI_vector_3){0, 0, 300};
+    scene->actors[0]->scale = (RI_vector_3){10000, 10000, 10000};
+    scene->actors[0]->position = (RI_vector_3){0, 0, 0};
     
+    RI_euler_rotation_to_quaternion(&scene->actors[0]->rotation, (RI_vector_3){0, 0, 0});
+
     scene->length_of_actors_array = 1;
 
     long int start, end;
@@ -56,7 +54,7 @@ int main(){
         
         // scene->camera.FOV = context->current_frame;
         
-        RI_euler_rotation_to_quaternion(&scene->actors[0]->rotation, (RI_vector_3){rotation, rotation, rotation});
+        RI_euler_rotation_to_quaternion(&scene->camera.rotation, (RI_vector_3){0, rotation, 0});
 
         rotation += delta_time;
 
@@ -71,7 +69,7 @@ int main(){
 
         total_fps += fps;
 
-        printf("fps: %f average fps: %f\n", fps, total_fps / context->current_frame);
+        printf("frame %d fps: %f average fps: %f\n", context->current_frame, fps, total_fps / context->current_frame);
     }
 
     free(scene->actors);

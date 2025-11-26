@@ -1,5 +1,5 @@
--integrated PitMap
--added RI_load_image function
--fixed wrong arg indecies in setKernelArg comments in RI_render
--removed grid example scene
--ADDED TEXTURESS !!!! IT WORKS !!!!! FIRST !!! TRY !!! OMGG!!!!!! >W<
+-added checker texture
+-added desert panorama and blue gradient skybox textures
+-added skybox example
+-fixed vector 2 lerp function by changing multiply 0 to memset 0
+-added vector 2 memset
