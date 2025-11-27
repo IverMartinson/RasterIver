@@ -19,11 +19,12 @@
  - [ ] Normal maps
 
 ### By End of February, 2026
+ - [ ] MTL support
+
+### By End of March, 2026
 
  - [ ] Rasterizer will use some sort of tree system for performance
     - quad tree, K-D tree, et cetera
-
-### By End of March, 2026
 
  - [ ] Custom TTF parser, SourParse, will be implemented
     - GPU font renderer

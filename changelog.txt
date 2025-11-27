@@ -1,1 +1,4 @@
--added window modes: stretch, letterbox
+-added latest PitMap verison (8bit RLE compression)
+-added gordon freeman example scene
+-split gordon_freeman.obj into 2 seperate objects
+-added gordon textures
