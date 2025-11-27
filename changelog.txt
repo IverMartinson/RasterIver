@@ -1,4 +1,7 @@
--added latest PitMap verison (8bit RLE compression)
--added gordon freeman example scene
--split gordon_freeman.obj into 2 seperate objects
--added gordon textures
+-added latest PitMap verison (bug fixes)
+-new text obj
+-added missing texture texture
+-proper default object system
+-added happy blue emoji texture
+-new scene
+-removed some extra debugging

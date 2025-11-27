@@ -54,8 +54,6 @@ RI_texture* RI_load_image(char* filename){
 
     context.opencl.textures = RI_realloc(context.opencl.textures, context.opencl.length_of_textures_array * sizeof(uint32_t));
 
-    printf("%d\n", previous_length_of_textures_array);
-
     memcpy(context.opencl.textures + previous_length_of_textures_array, image->frame_buffer, sizeof(uint32_t) * image->width * image->height);
 
     if (context.opencl.textures_mem_buffer) clReleaseMemObject(context.opencl.textures_mem_buffer);
@@ -103,14 +101,7 @@ RI_material *RI_new_material(){
 RI_actor *RI_new_actor(){
     RI_actor *new_actor = RI_malloc(sizeof(RI_actor));
 
-    if (context.defaults.default_actor){
-        *new_actor = *context.defaults.default_actor;
-    } else {
-        new_actor->position = (RI_vector_3){0, 0, 0};
-        new_actor->scale = (RI_vector_3){1, 1, 1};
-        new_actor->rotation = (RI_vector_4){1, 0, 0, 0};
-        new_actor->active = 1;
-    }
+    *new_actor = *context.defaults.default_actor;
 
     return new_actor;
 }
@@ -452,6 +443,8 @@ void RI_render(RI_scene *scene){
     debug("---FRAME START-------------------------------------------\n", 
         RI_DEBUG_FRAME_START_END_MARKERS
     );
+
+    context.defaults.default_texture = RI_load_image("textures/missing_texture.bmp");
 
     // transformer 
     
@@ -905,11 +898,10 @@ int RI_init(){
     
     if (!context.debug_flags)
         context.debug_flags = RI_DEBUG_ERRORS;
+        
 
-    context.defaults.default_actor = RI_new_actor();
-    
     // init OpenCL
-  
+        
     context.opencl.faces_to_render = RI_malloc(
         sizeof(RI_renderable_face) * context.opencl.length_of_renderable_faces_array
     );
@@ -1161,7 +1153,15 @@ int RI_init(){
     // // 33: uint32_t texture_index
     // clSetKernelArg(context.opencl.transformation_kernel, 33, sizeof(uint32_t), &texture_index);
 
+    context.defaults.default_actor = RI_malloc(sizeof(RI_actor));
+
     context.defaults.default_actor->mesh = RI_load_mesh("objects/error_object.obj");
+    context.defaults.default_actor->active = 1;
+    context.defaults.default_actor->material_index = 0;
+    context.defaults.default_actor->position = (RI_vector_3){0, 0, 0};
+    context.defaults.default_actor->rotation = (RI_vector_4){1, 0, 0, 0};
+    context.defaults.default_actor->scale = (RI_vector_3){1, 1, 1};
+    context.defaults.default_actor->texture = RI_load_image("textures/missing_texture.bmp");
 
     return 0;
 }

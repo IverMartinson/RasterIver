@@ -257,6 +257,7 @@ typedef struct {
 
 typedef struct {
     RI_actor *default_actor;
+    RI_texture* default_texture;
 } RI_defaults;
 
 typedef struct {
