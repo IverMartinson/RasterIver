@@ -1,5 +1,9 @@
 # RasterIver, a Rendering Engine
 
+<p align="center">
+   <img src="https://mynameisthe.com/f/1764251348447-ezgif-37eca14c267a2ac9.gif" alt="gif of silly example scene">
+</p>
+
 ## Roadmap
 
 ### By End of December, 2025

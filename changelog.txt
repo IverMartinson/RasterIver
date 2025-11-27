@@ -1,7 +1,0 @@
--added latest PitMap verison (bug fixes)
--new text obj
--added missing texture texture
--proper default object system
--added happy blue emoji texture
--new scene
--removed some extra debugging
