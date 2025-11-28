@@ -1,14 +1,14 @@
 # RasterIver, a Rendering Engine
 
 <p align="center">
-   <img src="https://mynameisthe.com/f/1764251348447-ezgif-37eca14c267a2ac9.gif" alt="gif of silly example scene">
+   <img src="https://mynameisthe.com/f/1764353133143-ezgif-692a8b4b3535e93c.gif" alt="gif of silly example scene"><br><i>17,700 polygon scene running at 100fps</i>
 </p>
 
 ## Roadmap
 
 ### By End of December, 2025
 
- - [x] Basic texture support **`finished on November 26, 2025`**
+ - [x] Basic texture support **`finished on November 26th, 2025`**
     - using custom image parser, PitMap
     - objects can have at least 1 texture
     - no animated textures yet
@@ -28,7 +28,7 @@
 
  - [ ] MTL support
  
- - [ ] Trianlge binning
+ - [x] Triangle binning **`finished on November 28th, 2025`**
 
 ### By End of March, 2026
 
