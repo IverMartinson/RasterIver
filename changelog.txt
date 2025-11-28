@@ -1,1 +1,3 @@
--added triangle tiling or whatever
+-new terrain object
+-new terrain texture
+-you can now make your own SDL event handler

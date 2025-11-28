@@ -23,7 +23,7 @@ int main(){
     context->opencl.tile_height = 36;
 
     RI_mesh *skybox_mesh = RI_load_mesh("objects/skybox.obj");
-    RI_mesh *gordon_mesh = RI_load_mesh("objects/gordon_freeman.obj");
+    RI_mesh *gordon_mesh = RI_load_mesh("objects/terrain.obj");
     RI_mesh *gordon_head_mesh = RI_load_mesh("objects/gordon_freeman_head.obj");
     RI_mesh *text_mesh = RI_load_mesh("objects/ri_is_cool_text.obj");
     RI_mesh *plane_mesh = RI_load_mesh("objects/plane.obj");
@@ -31,7 +31,7 @@ int main(){
     scene->actors = malloc(sizeof(RI_actor) * 5);
 
     RI_texture* skybox_texture = RI_load_image("textures/alley_skybox_3072x3072.bmp");
-    RI_texture* gordon_texture = RI_load_image("textures/gordon_body.bmp");
+    RI_texture* gordon_texture = RI_load_image("textures/terrain_texture.bmp");
     RI_texture* gordon_face_texture = RI_load_image("textures/gordon_face.bmp");
     RI_texture* emoji_texture = RI_load_image("textures/happy_blue_emoji.bmp");
 
@@ -57,8 +57,8 @@ int main(){
 
     scene->actors[2]->mesh = gordon_mesh;
     scene->actors[2]->texture = gordon_texture;
-    scene->actors[2]->scale = (RI_vector_3){1, 1, 1};
-    scene->actors[2]->position = (RI_vector_3){0, -60, 150};
+    scene->actors[2]->scale = (RI_vector_3){2000, 500, 2000};
+    scene->actors[2]->position = (RI_vector_3){0, -10, 150};
     // scene->actors[2]->active = 0;
 
     scene->actors[3]->mesh = text_mesh;
@@ -95,8 +95,7 @@ int main(){
         
         // scene->camera.FOV = context->current_frame;
         
-        RI_euler_rotation_to_quaternion(&scene->actors[0]->rotation, (RI_vector_3){0, rotation, 0});
-        RI_euler_rotation_to_quaternion(&scene->actors[4]->rotation, (RI_vector_3){-1.5 + rotation * .6, rotation, 1 + rotation * .6});
+        RI_euler_rotation_to_quaternion(&scene->camera.rotation, (RI_vector_3){0, rotation / 4, 0});
 
 
         rotation += delta_time;

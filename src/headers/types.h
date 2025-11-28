@@ -214,6 +214,7 @@ typedef struct {
     SDL_Renderer *renderer;
     SDL_Texture *frame_buffer_texture;
     uint32_t *frame_buffer;
+    void (*event_handler)(SDL_Event);
     int pitch;
 } RI_SDL;
 

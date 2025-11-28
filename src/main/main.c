@@ -870,17 +870,7 @@ void RI_tick(){
     SDL_Event event;
 
     while (SDL_PollEvent(&event)){
-        switch (event.type){
-            case SDL_QUIT: {
-                context.is_running = ri_false;
-
-                break;
-            }
-
-            default: {
-                break;
-            }
-        }
+        context.sdl.event_handler(event);
     }
 
     SDL_LockTexture(
@@ -915,8 +905,24 @@ void RI_tick(){
     return;
 }
 
+void RI_default_SDL_event_handler(SDL_Event event){
+    switch (event.type){
+        case SDL_QUIT: {
+            context.is_running = ri_false;
+
+            break;
+        }
+
+        default: {
+            break;
+        }
+    }
+
+    return;
+}
+
 RI_context *RI_get_context(){
-    context.sdl = (RI_SDL){NULL, NULL, NULL, NULL, -1};
+    context.sdl = (RI_SDL){NULL, NULL, NULL, NULL, &RI_default_SDL_event_handler, -1};
     context.opencl = (RI_CL){NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, 0, 0, 0, 1, 0, 0, 16, 16, 0, 0, 0};
     context.window = (RI_window){800, 800, 400, 400, "RasterIver Window", RI_ASPECT_MODE_LETTERBOX};
     
