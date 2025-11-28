@@ -224,6 +224,7 @@ typedef struct {
     cl_command_queue queue;
     cl_kernel rasterization_kernel;
     cl_kernel transformation_kernel;
+    cl_kernel tile_clear_kernel;
     cl_mem textures_mem_buffer;
     cl_mem renderable_faces_mem_buffer;
     cl_mem faces_mem_buffer;
@@ -231,6 +232,7 @@ typedef struct {
     cl_mem vertecies_mem_buffer;
     cl_mem normals_mem_buffer;
     cl_mem uvs_mem_buffer;
+    cl_mem tiles_mem_buffer;
     RI_renderable_face *faces_to_render;
     RI_face *faces;
     RI_temp_face *temp_faces;
@@ -245,6 +247,11 @@ typedef struct {
     int length_of_renderable_faces_array;
     int number_of_faces_just_rendered;
     int length_of_textures_array;
+    int tile_width;
+    int tile_height;
+    int lagest_face_count;
+    int num_h_tiles;
+    int num_v_tiles;
 } RI_CL;
 
 typedef struct {

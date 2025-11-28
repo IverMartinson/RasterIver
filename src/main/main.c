@@ -334,6 +334,55 @@ RI_mesh *RI_load_mesh(char *filename){
     new_mesh->face_count = object_face_count;
     new_mesh->face_index = previous_face_count;
 
+    if (object_face_count > context.opencl.lagest_face_count){
+        context.opencl.lagest_face_count = object_face_count;
+    
+        // rebuild tile array
+        if (context.opencl.tiles_mem_buffer) clReleaseMemObject(context.opencl.tiles_mem_buffer);
+
+        // # of horizontal tiles
+        int num_of_h_tiles = ceil((double)context.window.width / (double)context.opencl.tile_width);
+        // # of vertical tiles
+        int num_of_v_tiles = ceil((double)context.window.height / (double)context.opencl.tile_height);
+
+        context.opencl.num_h_tiles = num_of_h_tiles;
+        
+        context.opencl.num_v_tiles = num_of_v_tiles;
+
+        int tile_count = num_of_v_tiles * num_of_h_tiles + num_of_h_tiles;
+
+        // t width, t height, faces per tile,    {faces in this tile, ... faces} <- repeat for # of tiles
+        int tile_buffer_size = sizeof(uint32_t) * (5 + tile_count * (object_face_count + 1));
+
+        context.opencl.tiles_mem_buffer = clCreateBuffer(
+            context.opencl.context, 
+            CL_MEM_READ_WRITE, 
+            tile_buffer_size, 
+            NULL, NULL
+        );
+
+        uint32_t t_info[5] = {context.opencl.tile_width, context.opencl.tile_height, object_face_count, num_of_h_tiles, num_of_v_tiles};
+
+        clEnqueueWriteBuffer(
+            context.opencl.queue, 
+            context.opencl.tiles_mem_buffer, 
+            CL_TRUE, 
+            0, 
+            sizeof(uint32_t) * 5, 
+            t_info, 
+            0, NULL, NULL
+        );
+
+        clFinish(context.opencl.queue);
+
+        clSetKernelArg(context.opencl.tile_clear_kernel, 0, sizeof(cl_mem), &context.opencl.tiles_mem_buffer);
+
+        clSetKernelArg(context.opencl.rasterization_kernel, 9, sizeof(cl_mem), &context.opencl.tiles_mem_buffer);
+
+        // 34: uint32_t tiles_mem_buffer
+        clSetKernelArg(context.opencl.transformation_kernel, 34, sizeof(cl_mem), &context.opencl.tiles_mem_buffer);
+    }
+
     debug(
         "[Mesh Loader] Loaded mesh \"%s\"! %d faces, %d verticies, %d normals, %d uvs", 
         RI_DEBUG_MESH_LOADER_LOADED_MESH,
@@ -366,8 +415,7 @@ RI_mesh *RI_load_mesh(char *filename){
             0, NULL, NULL
         );
 
-    clFinish(context.opencl.queue);
-
+        clFinish(context.opencl.queue);
 
         clSetKernelArg(
             context.opencl.transformation_kernel, 
@@ -439,12 +487,45 @@ void RI_render(RI_scene *scene){
     clock_t start_time, end_time;
     
     start_time = clock();
-    
+  
+    int local_group_size_x = 16;
+    int local_group_size_y = 16;
+
     debug("---FRAME START-------------------------------------------\n", 
         RI_DEBUG_FRAME_START_END_MARKERS
     );
 
-    context.defaults.default_texture = RI_load_image("textures/missing_texture.bmp");
+    int local_c_size_x = (int)fmin(context.opencl.num_h_tiles, local_group_size_x);
+    int local_c_size_y = (int)fmin(context.opencl.num_v_tiles, local_group_size_y);
+
+    const size_t c_global_work_size[2] = {
+            local_c_size_x * ceil(context.opencl.num_h_tiles / (float)local_c_size_x), 
+            local_c_size_y * ceil(context.opencl.num_v_tiles / (float)local_c_size_y)
+        };
+
+    const size_t c_local_work_size[2] = {
+        (int)fmin(context.opencl.num_h_tiles, local_group_size_x), 
+        (int)fmin(context.opencl.num_v_tiles, local_group_size_y)
+    };
+
+    clerror = clEnqueueNDRangeKernel(
+        context.opencl.queue, 
+        context.opencl.tile_clear_kernel, 
+        2, 
+        NULL, 
+        c_global_work_size, 
+        c_local_work_size, 
+        0, NULL, &clevent
+    );
+
+    if (clerror != CL_SUCCESS) 
+        debug("error enqueing tile clear kernel (%d)", 
+            RI_DEBUG_TRANSFORMER_ERROR, 
+            clerror
+        );
+    
+    clFinish(context.opencl.queue);
+
 
     // transformer 
     
@@ -480,10 +561,7 @@ void RI_render(RI_scene *scene){
     clSetKernelArg(context.opencl.transformation_kernel, 27, sizeof(double), &scene->camera.rotation.y);
     // 28, double camera_r_z
     clSetKernelArg(context.opencl.transformation_kernel, 28, sizeof(double), &scene->camera.rotation.z);
-
-
-    int local_group_size_x = 16;
-    int local_group_size_y = 16;
+    
 
     // count faces
     scene->face_count = 0;
@@ -561,14 +639,14 @@ void RI_render(RI_scene *scene){
     for (int actor_index = 0; actor_index < scene->length_of_actors_array; ++actor_index){
         RI_actor *actor = scene->actors[actor_index];
         
+        if (scene->actors[actor_index]->mesh->face_count <= 0 || !scene->actors[actor_index]->active) continue;
+        
         debug("actor index: %d face count: %d", 
             RI_DEBUG_TRANSFORMER_CURRENT_ACTOR, 
             actor_index, 
             actor->mesh->face_count
         );
 
-        if (scene->actors[actor_index]->mesh->face_count <= 0) continue;
-        
         int face_sqrt = ceil(sqrt(scene->actors[actor_index]->mesh->face_count));
 
         int local_t_size = (int)fmin(face_sqrt, local_group_size_x);
@@ -667,7 +745,7 @@ void RI_render(RI_scene *scene){
         );
 
         if (clerror != CL_SUCCESS) 
-            debug("error enqueing kernel (%d)", 
+            debug("error enqueing transformation kernel (%d)", 
                 RI_DEBUG_TRANSFORMER_ERROR, 
                 clerror
             );
@@ -839,7 +917,7 @@ void RI_tick(){
 
 RI_context *RI_get_context(){
     context.sdl = (RI_SDL){NULL, NULL, NULL, NULL, -1};
-    context.opencl = (RI_CL){NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, 0, 0, 0, 1, 0, 0};
+    context.opencl = (RI_CL){NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, 0, 0, 0, 1, 0, 0, 16, 16, 0, 0, 0};
     context.window = (RI_window){800, 800, 400, 400, "RasterIver Window", RI_ASPECT_MODE_LETTERBOX};
     
     context.debug_flags = RI_DEBUG_ERRORS;
@@ -1007,6 +1085,13 @@ int RI_init(){
         return 1;
     }
 
+    context.opencl.tile_clear_kernel = clCreateKernel(rasterization_program, "clear_tile_array", &clerror);
+
+    if (clerror != CL_SUCCESS){
+        debug("couldn't create tile array clearer kernel", RI_DEBUG_OPENCL_ERROR);
+        return 1;
+    }
+
     // rasterizer
 
     context.opencl.renderable_faces_mem_buffer = clCreateBuffer(
@@ -1055,8 +1140,7 @@ int RI_init(){
     clSetKernelArg(context.opencl.rasterization_kernel, 6, sizeof(int), &context.window.half_height);
     clSetKernelArg(context.opencl.rasterization_kernel, 7, sizeof(int), &context.current_renderable_face_index);
     clSetKernelArg(context.opencl.rasterization_kernel, 8, sizeof(int), &context.current_split_renderable_face_index);
-
-    // transformer
+    clSetKernelArg(context.opencl.rasterization_kernel, 9, sizeof(cl_mem), &context.opencl.tiles_mem_buffer);
 
     // transformer
 
@@ -1152,7 +1236,10 @@ int RI_init(){
     // clSetKernelArg(context.opencl.transformation_kernel, 32, sizeof(uint16_t), &texture_height);
     // // 33: uint32_t texture_index
     // clSetKernelArg(context.opencl.transformation_kernel, 33, sizeof(uint32_t), &texture_index);
-
+    
+    // // 34: uint32_t tiles mem buffer
+    // clSetKernelArg(context.opencl.transformation_kernel, 34, sizeof(cl_mem), &context.opencl.tiles_mem_buffer);
+    
     context.defaults.default_actor = RI_malloc(sizeof(RI_actor));
 
     context.defaults.default_actor->mesh = RI_load_mesh("objects/error_object.obj");
@@ -1161,7 +1248,7 @@ int RI_init(){
     context.defaults.default_actor->position = (RI_vector_3){0, 0, 0};
     context.defaults.default_actor->rotation = (RI_vector_4){1, 0, 0, 0};
     context.defaults.default_actor->scale = (RI_vector_3){1, 1, 1};
-    context.defaults.default_actor->texture = RI_load_image("textures/missing_texture.bmp");
+    context.defaults.default_actor->texture = RI_load_image("textures/missing_texture.bmp");                                                                                                                                                   
 
     return 0;
 }

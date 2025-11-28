@@ -271,7 +271,22 @@ void global_quaternion_rotate(__global RI_vector_3 *position, RI_vector_4 rotati
     *position = (RI_vector_3){rotation.x, rotation.y, rotation.z};
 }
 
-__kernel void transformer(__global RI_face *faces, __global RI_renderable_face *renderable_faces, double actor_x, double actor_y, double actor_z, double actor_r_w, double actor_r_x, double actor_r_y, double actor_r_z, double actor_s_x, double actor_s_y, double actor_s_z, int has_normals, int has_uvs, int face_array_offset_index, int face_count, int width, int height, double horizontal_fov_factor, double vertical_fov_factor, float min_clip, float max_clip, double camera_x, double camera_y, double camera_z, double camera_r_w, double camera_r_x, double camera_r_y, double camera_r_z, int renderable_face_offset, int face_sqrt, ushort texture_width, ushort texture_height, uint texture_index){
+__kernel void clear_tile_array(__global uint* tiles){
+    uint num_faces_per_tile = tiles[2];
+    uint number_of_horizontal_tiles = tiles[3];
+    uint number_of_vertical_tiles = tiles[4];
+
+    int x = get_global_id(0); if (x >= number_of_horizontal_tiles) return;
+    int y = get_global_id(1); if (y >= number_of_vertical_tiles) return;
+
+    uint index = 5 + (y * number_of_horizontal_tiles + x) * (1 + num_faces_per_tile); 
+
+    tiles[index] = 0;
+
+    return;
+}
+
+__kernel void transformer(__global RI_face *faces, __global RI_renderable_face *renderable_faces, double actor_x, double actor_y, double actor_z, double actor_r_w, double actor_r_x, double actor_r_y, double actor_r_z, double actor_s_x, double actor_s_y, double actor_s_z, int has_normals, int has_uvs, int face_array_offset_index, int face_count, int width, int height, double horizontal_fov_factor, double vertical_fov_factor, float min_clip, float max_clip, double camera_x, double camera_y, double camera_z, double camera_r_w, double camera_r_x, double camera_r_y, double camera_r_z, int renderable_face_offset, int face_sqrt, ushort texture_width, ushort texture_height, uint texture_index, __global uint* tiles){
     int face_index = get_global_id(1) * face_sqrt + get_global_id(0); if (face_index >= face_count) return;
 
     RI_vector_3 current_actor_position = (RI_vector_3){actor_x, actor_y, actor_z};
@@ -582,24 +597,61 @@ __kernel void transformer(__global RI_face *faces, __global RI_renderable_face *
     if (pos_1->y > cur_r_face->max_screen_y) cur_r_face->max_screen_y = pos_1->y;
     if (pos_2->y > cur_r_face->max_screen_y) cur_r_face->max_screen_y = pos_2->y;
     cur_r_face->max_screen_y = min(cur_r_face->max_screen_y, (short)(height / 2)); 
-    
+
+    uint tile_width = tiles[0];
+    uint tile_height = tiles[1];
+    uint faces_per_tile = tiles[2];
+    uint number_of_horizontal_tiles = tiles[3];
+    uint number_of_vertical_tiles = tiles[4];
+
+    uint tile_x_min = fmin(fmax(floor((float)((float)(cur_r_face->min_screen_x + width / 2) / (float)tile_width)), 0), number_of_horizontal_tiles - 1);
+    uint tile_x_max = fmin(fmax(floor((float)((float)(cur_r_face->max_screen_x + width / 2) / (float)tile_width)), 0), number_of_horizontal_tiles - 1);    
+    uint tile_y_min = fmin(fmax(floor((float)((float)(cur_r_face->min_screen_y + height / 2) / (float)tile_height)), 0), number_of_vertical_tiles - 1);
+    uint tile_y_max = fmin(fmax(floor((float)((float)(cur_r_face->max_screen_y + height / 2) / (float)tile_height)), 0), number_of_vertical_tiles - 1);
+
+    for (uint y = tile_y_min; y <= tile_y_max; y++){
+        for (uint x = tile_x_min; x <= tile_x_max; x++){
+            uint tile_array_index = 5 + (y * number_of_horizontal_tiles + x) * (1 + faces_per_tile);
+
+            uint num_faces_in_cur_tile = atomic_fetch_add((volatile __global atomic_uint*)&tiles[tile_array_index], 1);
+
+            tiles[tile_array_index + num_faces_in_cur_tile + 1] = face_index * 2 + renderable_face_offset;
+        }
+    }
+
     return;
 }
 
-__kernel void rasterizer(__global RI_renderable_face *renderable_faces, __global uint* textures, __global uint *frame_buffer, int width, int height, int half_width, int half_height, int number_of_renderable_faces, int number_of_split_renderable_faces){
+__kernel void rasterizer(__global RI_renderable_face *renderable_faces, __global uint* textures, __global uint *frame_buffer, int width, int height, int half_width, int half_height, int number_of_renderable_faces, int number_of_split_renderable_faces, __global uint* tiles){
     int pixel_x = get_global_id(0); if (pixel_x >= width) return;
     int pixel_y = get_global_id(1); if (pixel_y >= height) return;
-    int idx = pixel_y * width + pixel_x;
+    int idx = (height - pixel_y) * width + pixel_x;
 
     int x = pixel_x - half_width;
-    int y = height - pixel_y - half_height;
+    int y = pixel_y - half_height;
+
+    uint tile_width = tiles[0];
+    uint tile_height = tiles[1];
+    uint faces_per_tile = tiles[2];
+    uint number_of_horizontal_tiles = tiles[3];
+    uint number_of_vertical_tiles = tiles[4];
+
+    uint tile_x = fmin(fmax(floor((float)(pixel_x / tile_width)), 0), number_of_horizontal_tiles);
+    uint tile_y = fmin(fmax(floor((float)(pixel_y / tile_height)), 0), number_of_vertical_tiles);
 
     double z = INFINITY;
 
     uint pixel_color = 0x11111111;
 
-    for (int face_i = 0; face_i < number_of_renderable_faces * 2; ++face_i){
-        __global RI_renderable_face *current_face = &renderable_faces[face_i];
+    uint tile_array_index = 5 + (tile_y * number_of_horizontal_tiles + tile_x) * (1 + faces_per_tile);
+
+    uint num_faces_in_cur_tile = tiles[tile_array_index];
+
+    // debug tiles
+    // if (num_faces_in_cur_tile > 0) pixel_color = 0x00FF00FF;
+
+    for (int face_i = 0; face_i < num_faces_in_cur_tile; ++face_i){
+        __global RI_renderable_face *current_face = &renderable_faces[tiles[tile_array_index + face_i + 1]];
         
         if (!current_face->should_render) continue;
         
@@ -657,6 +709,9 @@ __kernel void rasterizer(__global RI_renderable_face *renderable_faces, __global
         z = interpolated_z;
     }
     
+    // debug tiles
+    // if (pixel_x % tile_width == 0 || pixel_y % tile_height == 0) pixel_color = 0xFFFFFFFF;
+
     frame_buffer[idx] = pixel_color;
 
     return;

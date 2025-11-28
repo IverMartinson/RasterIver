@@ -19,6 +19,9 @@ int main(){
     scene->camera.FOV = 1.5;
     scene->camera.min_clip = 0.1;
 
+    context->opencl.tile_width = 64;
+    context->opencl.tile_height = 36;
+
     RI_mesh *skybox_mesh = RI_load_mesh("objects/skybox.obj");
     RI_mesh *gordon_mesh = RI_load_mesh("objects/gordon_freeman.obj");
     RI_mesh *gordon_head_mesh = RI_load_mesh("objects/gordon_freeman_head.obj");
@@ -37,33 +40,38 @@ int main(){
     scene->actors[2] = RI_new_actor();
     scene->actors[3] = RI_new_actor();
     scene->actors[4] = RI_new_actor();
-         
+
     context->window.aspect_mode = RI_ASPECT_MODE_LETTERBOX;
 
     scene->actors[0]->mesh = skybox_mesh;
     scene->actors[0]->texture = skybox_texture;
-    scene->actors[0]->scale = (RI_vector_3){10000, 10000, 10000};
+    scene->actors[0]->scale = (RI_vector_3){1000, 1000, 1000};
     scene->actors[0]->position = (RI_vector_3){0, 0, 0};
+// scene->actors[0]->active = 0;
 
     scene->actors[1]->mesh = gordon_head_mesh;
     scene->actors[1]->texture = gordon_face_texture;
     scene->actors[1]->scale = (RI_vector_3){1, 1, 1};
     scene->actors[1]->position = (RI_vector_3){0, -60, 150};
+// scene->actors[1]->active = 0;
 
     scene->actors[2]->mesh = gordon_mesh;
     scene->actors[2]->texture = gordon_texture;
     scene->actors[2]->scale = (RI_vector_3){1, 1, 1};
     scene->actors[2]->position = (RI_vector_3){0, -60, 150};
-    
+    // scene->actors[2]->active = 0;
+
     scene->actors[3]->mesh = text_mesh;
     // scene->actors[3]->texture = gordon_texture;
     scene->actors[3]->scale = (RI_vector_3){.4, .8, .8};
     scene->actors[3]->position = (RI_vector_3){0, 10, 150};
+// scene->actors[3]->active = 0;
 
     scene->actors[4]->mesh = plane_mesh;
     scene->actors[4]->texture = emoji_texture;
     scene->actors[4]->scale = (RI_vector_3){100, 50, 30};
-    scene->actors[4]->position = (RI_vector_3){100, 40, 180};
+    scene->actors[4]->position = (RI_vector_3){60, 40, 180};
+// scene->actors[4]->active = 0;
 
     RI_euler_rotation_to_quaternion(&scene->actors[0]->rotation, (RI_vector_3){0, 0, 0});
     RI_euler_rotation_to_quaternion(&scene->actors[1]->rotation, (RI_vector_3){0, 3.14159, 0});
@@ -87,7 +95,7 @@ int main(){
         
         // scene->camera.FOV = context->current_frame;
         
-        RI_euler_rotation_to_quaternion(&scene->actors[3]->rotation, (RI_vector_3){0, rotation, 0});
+        RI_euler_rotation_to_quaternion(&scene->actors[0]->rotation, (RI_vector_3){0, rotation, 0});
         RI_euler_rotation_to_quaternion(&scene->actors[4]->rotation, (RI_vector_3){-1.5 + rotation * .6, rotation, 1 + rotation * .6});
 
 

@@ -22,13 +22,15 @@
 
  - [ ] Normal maps
 
+ - [ ] occlusion culling
+
 ### By End of February, 2026
+
  - [ ] MTL support
+ 
+ - [ ] Trianlge binning
 
 ### By End of March, 2026
-
- - [ ] Rasterizer will use some sort of tree system for performance
-    - quad tree, K-D tree, et cetera
 
  - [ ] Custom TTF parser, SourParse, will be implemented
     - GPU font renderer
