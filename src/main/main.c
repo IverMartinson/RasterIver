@@ -922,7 +922,7 @@ void RI_default_SDL_event_handler(SDL_Event event){
 }
 
 RI_context *RI_get_context(){
-    context.sdl = (RI_SDL){NULL, NULL, NULL, NULL, &RI_default_SDL_event_handler, -1};
+    context.sdl = (RI_SDL){NULL, NULL, NULL, NULL, RI_default_SDL_event_handler, -1};
     context.opencl = (RI_CL){NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, 0, 0, 0, 1, 0, 0, 16, 16, 0, 0, 0};
     context.window = (RI_window){800, 800, 400, 400, "RasterIver Window", RI_ASPECT_MODE_LETTERBOX};
     

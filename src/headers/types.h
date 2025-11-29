@@ -177,6 +177,9 @@ typedef struct {
     RI_vector_2 uv_0, uv_1, uv_2;
     int16_t min_screen_x, max_screen_x, min_screen_y, max_screen_y;
     unsigned char should_render;
+    unsigned char is_split;
+    unsigned char is_transformed;
+    unsigned char is_shrunk;
     uint16_t texture_width, height;
     uint32_t texture_index;
 } RI_renderable_face;

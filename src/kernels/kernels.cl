@@ -1,5 +1,15 @@
 #pragma OPENCL EXTENSION cl_khr_fp64 : enable
 
+/* +++ BENEDICTIO CODICIS +++
+   May the segfaults sleep,
+   May the pointers align,
+   May the UB remain uninvoked,
+   And may this program return 0 in peace.
+
+    -PreistGPT
+*/
+
+
 typedef struct {
     double w;
     double x;
@@ -24,6 +34,9 @@ typedef struct {
     RI_vector_2 uv_0, uv_1, uv_2;
     short min_screen_x, max_screen_x, min_screen_y, max_screen_y;
     uchar should_render;
+    uchar is_split;
+    uchar is_transformed;
+    uchar is_shrunk;
     ushort texture_width, texture_height;
     uint texture_index;
 } RI_renderable_face;
@@ -72,6 +85,19 @@ void vector_2_times(RI_vector_2 *vector, double value){
 void global_vector_2_times(__global RI_vector_2 *vector, double value){
     vector->x *= value;
     vector->y *= value;
+}
+
+// set all values of a global vector 3
+void global_vector_3_memset(__global RI_vector_3 *vector, double value){
+    vector->x = value;
+    vector->y = value;
+    vector->z = value;
+}
+
+// set all values of a global vector 2
+void global_vector_2_memset(__global RI_vector_2 *vector, double value){
+    vector->x = value;
+    vector->y = value;
 }
 
 // set all values of a vector 3
@@ -210,7 +236,7 @@ void vector_2_lerp(RI_vector_2 vector_a, RI_vector_2 vector_b, RI_vector_2 *resu
 void global_vector_2_lerp(RI_vector_2 vector_a, RI_vector_2 vector_b, __global RI_vector_2 *result, double w1){
     double w0 = 1.0 - w1;
 
-    global_vector_2_times(result, 0);
+    global_vector_2_memset(result, 0);
 
     vector_2_times(&vector_a, w0);
     vector_2_times(&vector_b, w1);
@@ -235,7 +261,7 @@ void vector_3_lerp(RI_vector_3 vector_a, RI_vector_3 vector_b, RI_vector_3 *resu
 void global_vector_3_lerp(RI_vector_3 vector_a, RI_vector_3 vector_b, __global RI_vector_3 *result, double w1){
     double w0 = 1.0 - w1;
 
-    global_vector_3_times(result, 0);
+    global_vector_3_memset(result, 0);
 
     vector_3_times(&vector_a, w0);
     vector_3_times(&vector_b, w1);
@@ -298,11 +324,21 @@ __kernel void transformer(__global RI_face *faces, __global RI_renderable_face *
     __global RI_face *cur_face = &faces[face_index + face_array_offset_index];
 
     __global RI_renderable_face *cur_r_face = &renderable_faces[face_index * 2 + renderable_face_offset];
+    __global RI_renderable_face *cur_r_split_face = &renderable_faces[face_index * 2 + renderable_face_offset + 1];
 
-    // set split face not to render
-    renderable_faces[face_index * 2 + renderable_face_offset + 1].should_render = 0;
+      cur_r_face->should_render = 0;
+    cur_r_face->is_split = 0;
+    cur_r_face->is_shrunk = 0;
+    cur_r_face->is_transformed = 0;
+    cur_r_face->min_screen_x = -32767; cur_r_face->max_screen_x = 32767;
+    cur_r_face->min_screen_y = -32767; cur_r_face->max_screen_y = 32767;
 
-    cur_r_face->should_render = 1;
+    cur_r_split_face->should_render = 0;
+    cur_r_split_face->is_split = 0;
+    cur_r_split_face->is_shrunk = 0;
+    cur_r_split_face->is_transformed = 0;
+    cur_r_split_face->min_screen_x = -32767; cur_r_split_face->max_screen_x = 32767;
+    cur_r_split_face->min_screen_y = -32767; cur_r_split_face->max_screen_y = 32767;
 
     // cur_r_face->material = current_actor.material;
 
@@ -356,13 +392,11 @@ __kernel void transformer(__global RI_face *faces, __global RI_renderable_face *
     __global RI_vector_3 *pos_1 = &cur_r_face->position_1;
     __global RI_vector_3 *pos_2 = &cur_r_face->position_2;
 
-    int is_0_clipped = pos_0->z < min_clip;
-    int is_1_clipped = pos_1->z < min_clip;
-    int is_2_clipped = pos_2->z < min_clip;
+    int is_0_clipped = pos_0->z <= min_clip;
+    int is_1_clipped = pos_1->z <= min_clip;
+    int is_2_clipped = pos_2->z <= min_clip;
 
     int clip_count = is_0_clipped + is_1_clipped + is_2_clipped;
-
-    cur_r_face->should_render = 1;
 
     switch(clip_count){
         case 3: {// ignore polygon, it's behind the camera
@@ -371,68 +405,95 @@ __kernel void transformer(__global RI_face *faces, __global RI_renderable_face *
         }
 
         case 2:{ // shrink poylgon
-            __global RI_vector_3 *unclipped_point, *point_a, *point_b;
-            __global RI_vector_3 *unclipped_normal, *normal_a, *normal_b;
-            __global RI_vector_2 *unclipped_uv, *uv_a, *uv_b;
+            RI_vector_3 unclipped_point, point_a, point_b;
+            RI_vector_3 unclipped_normal, normal_a, normal_b;
+            RI_vector_2 unclipped_uv, uv_a, uv_b;
+
+            __global RI_vector_3 *result_a, *result_b;
+            __global RI_vector_3 *n_result_a, *n_result_b;
+            __global RI_vector_2 *u_result_a, *u_result_b;
 
             if (!is_0_clipped){ 
-                unclipped_point = &cur_r_face->position_0;
-                point_a = &cur_r_face->position_1;
-                point_b = &cur_r_face->position_2;
-                
-                unclipped_normal = &cur_r_face->normal_0;
-                normal_a = &cur_r_face->normal_1;
-                normal_b = &cur_r_face->normal_2;
-            
-                unclipped_uv = &cur_r_face->uv_0;
-                uv_a = &cur_r_face->uv_1;
-                uv_b = &cur_r_face->uv_2;
+                unclipped_point = cur_r_face->position_0;
+                point_a = cur_r_face->position_1;
+                result_a = &cur_r_face->position_1;
+                point_b = cur_r_face->position_2;
+                result_b = &cur_r_face->position_2;
+
+                unclipped_normal = cur_r_face->normal_0;
+                normal_a = cur_r_face->normal_1;                
+                n_result_a = &cur_r_face->normal_1;
+                normal_b = cur_r_face->normal_2;
+                n_result_b = &cur_r_face->normal_2;
+
+                unclipped_uv = cur_r_face->uv_0;                
+                u_result_a = &cur_r_face->uv_1;
+                uv_a = cur_r_face->uv_1;
+                uv_b = cur_r_face->uv_2;                
+                u_result_b = &cur_r_face->uv_2;
             }
             else if (!is_1_clipped){ 
-                unclipped_point = &cur_r_face->position_1;
-                point_a = &cur_r_face->position_2;
-                point_b = &cur_r_face->position_0;
-                
-                unclipped_normal = &cur_r_face->normal_1;
-                normal_a = &cur_r_face->normal_2;
-                normal_b = &cur_r_face->normal_0;
-            
-                unclipped_uv = &cur_r_face->uv_1;
-                uv_a = &cur_r_face->uv_2;
-                uv_b = &cur_r_face->uv_0;
+                unclipped_point = cur_r_face->position_1;
+                point_a = cur_r_face->position_2;
+                result_a = &cur_r_face->position_2;
+                point_b = cur_r_face->position_0;
+                result_b = &cur_r_face->position_0;
+
+                unclipped_normal = cur_r_face->normal_1;
+                normal_a = cur_r_face->normal_2;                
+                n_result_a = &cur_r_face->normal_2;
+                normal_b = cur_r_face->normal_0;
+                n_result_b = &cur_r_face->normal_0;
+
+                unclipped_uv = cur_r_face->uv_1;                
+                u_result_a = &cur_r_face->uv_2;
+                uv_a = cur_r_face->uv_2;
+                uv_b = cur_r_face->uv_0;                
+                u_result_b = &cur_r_face->uv_0;
             }
             else if (!is_2_clipped){ 
-                unclipped_point = &cur_r_face->position_2;
-                point_a = &cur_r_face->position_0;
-                point_b = &cur_r_face->position_1;
+                unclipped_point = cur_r_face->position_2;
+                point_a = cur_r_face->position_0;
+                result_a = &cur_r_face->position_0;
+                point_b = cur_r_face->position_1;
+                result_b = &cur_r_face->position_1;
+
+                unclipped_normal = cur_r_face->normal_2;
+                normal_a = cur_r_face->normal_0;                
+                n_result_a = &cur_r_face->normal_0;
+                normal_b = cur_r_face->normal_1;
+                n_result_b = &cur_r_face->normal_1;
                 
-                unclipped_normal = &cur_r_face->normal_2;
-                normal_a = &cur_r_face->normal_0;
-                normal_b = &cur_r_face->normal_1;
-            
-                unclipped_uv = &cur_r_face->uv_2;
-                uv_a = &cur_r_face->uv_0;
-                uv_b = &cur_r_face->uv_1;
+                unclipped_uv = cur_r_face->uv_2;                
+                u_result_a = &cur_r_face->uv_0;
+                uv_a = cur_r_face->uv_0;
+                uv_b = cur_r_face->uv_1;                
+                u_result_b = &cur_r_face->uv_1;
             }
         
-            double fraction_a_to_unclip = (min_clip - unclipped_point->z) / (point_a->z - unclipped_point->z);                          
-            double fraction_b_to_unclip = (min_clip - unclipped_point->z) / (point_b->z - unclipped_point->z);  
+            double fraction_a_to_unclip = clamp((min_clip - unclipped_point.z) / (point_a.z - unclipped_point.z), 0.0, 1.1);                          
+            double fraction_b_to_unclip = clamp((min_clip - unclipped_point.z) / (point_b.z - unclipped_point.z), 0.0, 1.1);  
 
-            global_vector_3_lerp(*unclipped_point, *point_a, point_a, fraction_a_to_unclip);
-            global_vector_3_lerp(*unclipped_point, *point_b, point_b, fraction_b_to_unclip);
+            global_vector_3_lerp(unclipped_point, point_a, result_a, fraction_a_to_unclip);
+            global_vector_3_lerp(unclipped_point, point_b, result_b, fraction_b_to_unclip);
 
-            global_vector_3_lerp(*unclipped_normal, *normal_a, normal_a, fraction_a_to_unclip);
-            global_vector_3_lerp(*unclipped_normal, *normal_b, normal_b, fraction_b_to_unclip);
+            global_vector_3_lerp(unclipped_normal, normal_a, n_result_a, fraction_a_to_unclip);
+            global_vector_3_lerp(unclipped_normal, normal_b, n_result_b, fraction_b_to_unclip);
 
-            global_vector_2_lerp(*unclipped_uv, *uv_a, uv_a, fraction_a_to_unclip);
-            global_vector_2_lerp(*unclipped_uv, *uv_b, uv_b, fraction_b_to_unclip);
+            global_vector_2_lerp(unclipped_uv, uv_a, u_result_a, fraction_a_to_unclip);
+            global_vector_2_lerp(unclipped_uv, uv_b, u_result_b, fraction_b_to_unclip);
 
-            break;}
+            cur_r_face->is_shrunk = 1;
+            cur_r_face->should_render = 1;
+
+            break;
+        }
 
         case 1: {// split polygon
             RI_vector_3 clipped_point, point_a, point_b;
             RI_vector_3 clipped_normal, normal_a, normal_b;
             RI_vector_2 clipped_uv, uv_a, uv_b;
+
 
             if (is_0_clipped){ 
                 clipped_point = cur_r_face->position_0;
@@ -493,8 +554,6 @@ __kernel void transformer(__global RI_face *faces, __global RI_renderable_face *
             // okay, now we have a quad (in clockwise order, point a, point b, new point b, new point a)
             // quads are easy to turn into tris >w<
 
-            __global RI_renderable_face *cur_r_split_face = &renderable_faces[face_index * 2 + renderable_face_offset + 1];
-
             // cur_r_split_face->parent_actor = current_actor;
 
             // cur_r_split_face->material = cur_r_face->material;
@@ -554,15 +613,23 @@ __kernel void transformer(__global RI_face *faces, __global RI_renderable_face *
             cur_r_split_face->max_screen_y = min(cur_r_split_face->max_screen_y, (short)(height / 2)); 
 
             cur_r_split_face->should_render = 1;
+            cur_r_face->should_render = 1;
 
             cur_r_split_face->texture_width = texture_width;
             cur_r_split_face->texture_height = texture_height;
             cur_r_split_face->texture_index = texture_index;
 
+            cur_r_split_face->is_split = 1;
+            cur_r_face->is_transformed = 1;
+
+
+
             break;
         }
 
         case 0:{ // no issues, ignore
+            cur_r_face->should_render = 1;
+
             break;
         }
     }
@@ -604,18 +671,76 @@ __kernel void transformer(__global RI_face *faces, __global RI_renderable_face *
     uint number_of_horizontal_tiles = tiles[3];
     uint number_of_vertical_tiles = tiles[4];
 
-    uint tile_x_min = fmin(fmax(floor((float)((float)(cur_r_face->min_screen_x + width / 2) / (float)tile_width)), 0), number_of_horizontal_tiles - 1);
-    uint tile_x_max = fmin(fmax(floor((float)((float)(cur_r_face->max_screen_x + width / 2) / (float)tile_width)), 0), number_of_horizontal_tiles - 1);    
-    uint tile_y_min = fmin(fmax(floor((float)((float)(cur_r_face->min_screen_y + height / 2) / (float)tile_height)), 0), number_of_vertical_tiles - 1);
-    uint tile_y_max = fmin(fmax(floor((float)((float)(cur_r_face->max_screen_y + height / 2) / (float)tile_height)), 0), number_of_vertical_tiles - 1);
+    uint tile_x_min = clamp(
+        (uint)floor((cur_r_face->min_screen_x + 0.5f * width) / tile_width),
+        0u,
+        number_of_horizontal_tiles - 1
+    );
+
+    uint tile_x_max = clamp(
+        (uint)floor((cur_r_face->max_screen_x + 0.5f * width) / tile_width),
+        0u,
+        number_of_horizontal_tiles - 1
+    );
+
+    uint tile_y_min = clamp(
+        (uint)floor((cur_r_face->min_screen_y + 0.5f * height) / tile_height),
+        0u,
+        number_of_vertical_tiles - 1
+    );
+
+    uint tile_y_max = clamp(
+        (uint)floor((cur_r_face->max_screen_y + 0.5f * height) / tile_height),
+        0u,
+        number_of_vertical_tiles - 1
+    );
+
+    if (cur_r_split_face->should_render){
+        uint split_tile_x_min = clamp(
+            (uint)floor((cur_r_split_face->min_screen_x + 0.5f * width) / tile_width),
+            0u,
+            number_of_horizontal_tiles - 1
+        );
+
+        uint split_tile_x_max = clamp(
+            (uint)floor((cur_r_split_face->max_screen_x + 0.5f * width) / tile_width),
+            0u,
+            number_of_horizontal_tiles - 1
+        );
+
+        uint split_tile_y_min = clamp(
+            (uint)floor((cur_r_split_face->min_screen_y + 0.5f * height) / tile_height),
+            0u,
+            number_of_vertical_tiles - 1
+        );
+
+        uint split_tile_y_max = clamp(
+            (uint)floor((cur_r_split_face->max_screen_y + 0.5f * height) / tile_height),
+            0u,
+            number_of_vertical_tiles - 1
+        );
+    
+        tile_x_min = min(tile_x_min, split_tile_x_min);
+        tile_x_max = max(tile_x_max, split_tile_x_max);
+        tile_y_min = min(tile_y_min, split_tile_y_min);
+        tile_y_max = max(tile_y_max, split_tile_y_max);
+    }
 
     for (uint y = tile_y_min; y <= tile_y_max; y++){
         for (uint x = tile_x_min; x <= tile_x_max; x++){
             uint tile_array_index = 5 + (y * number_of_horizontal_tiles + x) * (1 + faces_per_tile);
 
-            uint num_faces_in_cur_tile = atomic_fetch_add((volatile __global atomic_uint*)&tiles[tile_array_index], 1);
+            if (cur_r_split_face->should_render){
+                uint num_faces_in_cur_tile = atomic_fetch_add((volatile __global atomic_uint*)&tiles[tile_array_index], 2);
 
-            tiles[tile_array_index + num_faces_in_cur_tile + 1] = face_index * 2 + renderable_face_offset;
+                tiles[tile_array_index + num_faces_in_cur_tile + 1] = face_index * 2 + renderable_face_offset;
+                tiles[tile_array_index + num_faces_in_cur_tile + 2] = face_index * 2 + renderable_face_offset + 1;
+            }
+            else {
+                uint num_faces_in_cur_tile = atomic_fetch_add((volatile __global atomic_uint*)&tiles[tile_array_index], 1);
+
+                tiles[tile_array_index + num_faces_in_cur_tile + 1] = face_index * 2 + renderable_face_offset;
+            }
         }
     }
 
@@ -648,7 +773,7 @@ __kernel void rasterizer(__global RI_renderable_face *renderable_faces, __global
     uint num_faces_in_cur_tile = tiles[tile_array_index];
 
     // debug tiles
-    // if (num_faces_in_cur_tile > 0) pixel_color = 0x00FF00FF;
+    // if (num_faces_in_cur_tile > 0) pixel_color = 0x00AA00FF;
 
     for (int face_i = 0; face_i < num_faces_in_cur_tile; ++face_i){
         __global RI_renderable_face *current_face = &renderable_faces[tiles[tile_array_index + face_i + 1]];
@@ -705,6 +830,12 @@ __kernel void rasterizer(__global RI_renderable_face *renderable_faces, __global
             texel_y * current_face->texture_width + texel_x;
 
         pixel_color = textures[texel_index];
+
+        // debug clipped tris
+        // pixel_color = 0x777777FF;
+        // if (current_face->is_split) pixel_color |= 0x00FF00FF;
+        // if (current_face->is_shrunk) pixel_color |= 0xFFFFFFFF;
+        // if (current_face->is_transformed) pixel_color |= 0xFF00FFFF;
 
         z = interpolated_z;
     }

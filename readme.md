@@ -1,7 +1,7 @@
 # RasterIver, a Rendering Engine
 
 <p align="center">
-   <img src="https://mynameisthe.com/f/1764353133143-ezgif-692a8b4b3535e93c.gif" alt="gif of silly example scene"><br><i>17,700 polygon scene running at 100fps</i>
+   <img src="https://mynameisthe.com/f/1764353133143-ezgif-692a8b4b3535e93c.gif" alt="gif of silly example scene"> <br><i>17,700 polygon scene running at 100fps</i>
 </p>
 
 ## Roadmap
@@ -32,16 +32,7 @@
 
 ### By End of March, 2026
 
- - [ ] Custom TTF parser, SourParse, will be implemented
-    - GPU font renderer
-
  - [ ] Animated textures will support GIF
-
-### By End of April, 2026
-
- - [ ] Font renderer will use more efficent method
-    - maybe polygons?
-    - anything but the last implementation of ray-line intersection
 
 ### By End of June, 2026
 
