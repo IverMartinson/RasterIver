@@ -1,3 +1,2 @@
--added split faces (cur_r_split_face) to the triangle binning (or tiling? i havent picked what i want to call it yet) implementation
--fixed (?) issue where shrunk faces would get glitched positions and flash on screen
--removed font stuff from roadmap
+-added animated textures
+-latest version of PitMap (8bpp images that have no compression, debug mode)

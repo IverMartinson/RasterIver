@@ -34,4 +34,7 @@ RI_texture *RI_new_texture(int width, int height);
 // loads an image file as a texture
 RI_texture* RI_load_image(char* filename);
 
+// loads an image file as an animated texture
+RI_texture* RI_load_animation(char* filename, uint16_t frame_count);
+
 #endif

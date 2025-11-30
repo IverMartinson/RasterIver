@@ -29,6 +29,15 @@ typedef struct {
 } RI_vector_2;
 
 typedef struct {
+    ushort width;
+    ushort height; // actual height of the image INCLUDING all frames
+    uint index;
+    ushort frame_count;
+    ushort current_frame;
+    ushort frame_height; // height of each frame
+} RI_texture;
+
+typedef struct {
     RI_vector_3 position_0, position_1, position_2;
     RI_vector_3 normal_0, normal_1, normal_2;
     RI_vector_2 uv_0, uv_1, uv_2;
@@ -37,8 +46,7 @@ typedef struct {
     uchar is_split;
     uchar is_transformed;
     uchar is_shrunk;
-    ushort texture_width, texture_height;
-    uint texture_index;
+    RI_texture texture;
 } RI_renderable_face;
 
 typedef struct {
@@ -312,7 +320,7 @@ __kernel void clear_tile_array(__global uint* tiles){
     return;
 }
 
-__kernel void transformer(__global RI_face *faces, __global RI_renderable_face *renderable_faces, double actor_x, double actor_y, double actor_z, double actor_r_w, double actor_r_x, double actor_r_y, double actor_r_z, double actor_s_x, double actor_s_y, double actor_s_z, int has_normals, int has_uvs, int face_array_offset_index, int face_count, int width, int height, double horizontal_fov_factor, double vertical_fov_factor, float min_clip, float max_clip, double camera_x, double camera_y, double camera_z, double camera_r_w, double camera_r_x, double camera_r_y, double camera_r_z, int renderable_face_offset, int face_sqrt, ushort texture_width, ushort texture_height, uint texture_index, __global uint* tiles){
+__kernel void transformer(__global RI_face *faces, __global RI_renderable_face *renderable_faces, double actor_x, double actor_y, double actor_z, double actor_r_w, double actor_r_x, double actor_r_y, double actor_r_z, double actor_s_x, double actor_s_y, double actor_s_z, int has_normals, int has_uvs, int face_array_offset_index, int face_count, int width, int height, double horizontal_fov_factor, double vertical_fov_factor, float min_clip, float max_clip, double camera_x, double camera_y, double camera_z, double camera_r_w, double camera_r_x, double camera_r_y, double camera_r_z, int renderable_face_offset, int face_sqrt, ushort texture_width, ushort texture_height, uint texture_index, __global uint* tiles, ushort frame_count, ushort frame_height, ushort current_frame){
     int face_index = get_global_id(1) * face_sqrt + get_global_id(0); if (face_index >= face_count) return;
 
     RI_vector_3 current_actor_position = (RI_vector_3){actor_x, actor_y, actor_z};
@@ -356,9 +364,19 @@ __kernel void transformer(__global RI_face *faces, __global RI_renderable_face *
         cur_r_face->uv_2 = cur_face->uv_2;
     }
 
-    cur_r_face->texture_width = texture_width;
-    cur_r_face->texture_height = texture_height;
-    cur_r_face->texture_index = texture_index;
+    cur_r_face->texture.width = texture_width;
+    cur_r_face->texture.height = texture_height;
+    cur_r_face->texture.index = texture_index;
+    cur_r_face->texture.frame_count = frame_count;
+    cur_r_face->texture.current_frame = current_frame;
+    cur_r_face->texture.frame_height = frame_height;
+
+    cur_r_split_face->texture.width = texture_width;
+    cur_r_split_face->texture.height = texture_height;
+    cur_r_split_face->texture.index = texture_index;
+    cur_r_split_face->texture.frame_count = frame_count;
+    cur_r_split_face->texture.current_frame = current_frame;
+    cur_r_split_face->texture.frame_height = frame_height;
 
     // scale
     global_vector_3_hadamard(&cur_r_face->position_0, current_actor_scale);
@@ -463,7 +481,7 @@ __kernel void transformer(__global RI_face *faces, __global RI_renderable_face *
                 n_result_a = &cur_r_face->normal_0;
                 normal_b = cur_r_face->normal_1;
                 n_result_b = &cur_r_face->normal_1;
-                
+
                 unclipped_uv = cur_r_face->uv_2;                
                 u_result_a = &cur_r_face->uv_0;
                 uv_a = cur_r_face->uv_0;
@@ -615,9 +633,9 @@ __kernel void transformer(__global RI_face *faces, __global RI_renderable_face *
             cur_r_split_face->should_render = 1;
             cur_r_face->should_render = 1;
 
-            cur_r_split_face->texture_width = texture_width;
-            cur_r_split_face->texture_height = texture_height;
-            cur_r_split_face->texture_index = texture_index;
+            cur_r_split_face->texture.width = texture_width;
+            cur_r_split_face->texture.height = texture_height;
+            cur_r_split_face->texture.index = texture_index;
 
             cur_r_split_face->is_split = 1;
             cur_r_face->is_transformed = 1;
@@ -773,7 +791,7 @@ __kernel void rasterizer(__global RI_renderable_face *renderable_faces, __global
     uint num_faces_in_cur_tile = tiles[tile_array_index];
 
     // debug tiles
-    // if (num_faces_in_cur_tile > 0) pixel_color = 0x00AA00FF;
+    if (num_faces_in_cur_tile > 0) pixel_color = 0x00AA00FF;
 
     for (int face_i = 0; face_i < num_faces_in_cur_tile; ++face_i){
         __global RI_renderable_face *current_face = &renderable_faces[tiles[tile_array_index + face_i + 1]];
@@ -823,11 +841,11 @@ __kernel void rasterizer(__global RI_renderable_face *renderable_faces, __global
 
         RI_vector_3 interpolated_normal = {0};
         
-        uint texel_x = current_face->texture_width * ux;
-        uint texel_y = current_face->texture_height * uy;
+        uint texel_x = current_face->texture.width * ux;
+        uint texel_y = current_face->texture.frame_height * uy + current_face->texture.frame_height * (current_face->texture.current_frame % current_face->texture.frame_count);
 
-        uint texel_index = current_face->texture_index + 
-            texel_y * current_face->texture_width + texel_x;
+        uint texel_index = current_face->texture.index + 
+            texel_y * current_face->texture.width + texel_x;
 
         pixel_color = textures[texel_index];
 

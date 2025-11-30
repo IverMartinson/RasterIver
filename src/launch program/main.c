@@ -15,7 +15,7 @@ int main(){
     }
     
     RI_scene *scene = RI_new_scene();
-    context->debug_flags |= RI_DEBUG_TRANSFORMER_TIME | RI_DEBUG_RASTERIZER_TIME;
+    context->debug_flags |= RI_DEBUG_TRANSFORMER_TIME | RI_DEBUG_RASTERIZER_TIME | RI_DEBUG_PITMAP | RI_DEBUG_FRAME_START_END_MARKERS;
 
     scene->camera.FOV = 1.5;
     scene->camera.min_clip = 0.1;
@@ -33,7 +33,7 @@ int main(){
 
     RI_texture* skybox_texture = RI_load_image("textures/alley_skybox_3072x3072.bmp");
     RI_texture* gordon_texture = RI_load_image("textures/terrain_texture.bmp");
-    RI_texture* gordon_face_texture = RI_load_image("textures/gordon_face.bmp");
+    RI_texture* gordon_face_texture = RI_load_animation("textures/gordon_face_animated.bmp", 3);
     RI_texture* emoji_texture = RI_load_image("textures/gordon_body.bmp");
 
     scene->actors[0] = RI_new_actor();
@@ -52,19 +52,19 @@ scene->actors[0]->active = 0;
 
     scene->actors[1]->mesh = gordon_head_mesh;
     scene->actors[1]->texture = gordon_face_texture;
-    scene->actors[1]->scale = (RI_vector_3){1, 1, 1};
+    scene->actors[1]->scale = (RI_vector_3){3, 1, 1};
     scene->actors[1]->position = (RI_vector_3){-100, -40, 50};
 // scene->actors[1]->active = 0;
 
-    scene->actors[2]->mesh = plane_mesh;
+    scene->actors[2]->mesh = gordon_mesh;
     scene->actors[2]->texture = gordon_texture;
-    scene->actors[2]->scale = (RI_vector_3){2000, 5000, 2000};
-    scene->actors[2]->position = (RI_vector_3){0, -50, 2000};
+    scene->actors[2]->scale = (RI_vector_3){2000, 1000, 2000};
+    scene->actors[2]->position = (RI_vector_3){0, -150, 0};
     // scene->actors[2]->active = 0;
 
     scene->actors[3]->mesh = text_mesh;
     scene->actors[3]->texture = emoji_texture;
-    scene->actors[3]->scale = (RI_vector_3){1, 1, 1};
+    scene->actors[3]->scale = (RI_vector_3){3, 1, 1};
     scene->actors[3]->position = (RI_vector_3){-100, -40, 50};
 // scene->actors[3]->active = 0;
 
@@ -75,7 +75,7 @@ scene->actors[0]->active = 0;
 scene->actors[4]->active = 0;
 
     RI_euler_rotation_to_quaternion(&scene->actors[0]->rotation, (RI_vector_3){0, 0, 0});
-    RI_euler_rotation_to_quaternion(&scene->actors[1]->rotation, (RI_vector_3){0, 3.14159, 0});
+    // RI_euler_rotation_to_quaternion(&scene->actors[1]->rotation, (RI_vector_3){0, 3.14159, 0});
     RI_euler_rotation_to_quaternion(&scene->actors[2]->rotation, (RI_vector_3){0, 0.78539816339, 0});
 
     scene->length_of_actors_array = 5;
@@ -96,8 +96,11 @@ scene->actors[4]->active = 0;
         
         // scene->camera.FOV = context->current_frame;
         
-        RI_euler_rotation_to_quaternion(&scene->camera.rotation, (RI_vector_3){0, rotation / 4, 0});
-        // RI_euler_rotation_to_quaternion(&scene->actors[2]->rotation, (RI_vector_3){0, rotation / 4, 0});
+        scene->actors[1]->texture_frame++;
+
+        RI_euler_rotation_to_quaternion(&scene->camera.rotation, (RI_vector_3){0, .7 + rotation / 10, 0});
+        RI_euler_rotation_to_quaternion(&scene->actors[1]->rotation, (RI_vector_3){0, rotation / 4, 0});
+        RI_euler_rotation_to_quaternion(&scene->actors[3]->rotation, (RI_vector_3){0, rotation / 4, 0});
 // scene->actors[2]->position.z += delta_time;
 
         rotation += delta_time;

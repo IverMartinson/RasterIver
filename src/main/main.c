@@ -40,7 +40,7 @@ void debug(char *string, int debug_flag, ...){
 }
 
 RI_texture* RI_load_image(char* filename){
-    PM_image* image = PM_load_image(filename);
+    PM_image* image = PM_load_image(filename, context.debug_flags & RI_DEBUG_PITMAP == 0 ? 0 : 1);
 
     RI_texture* texture = RI_malloc(sizeof(RI_texture));
 
@@ -49,6 +49,10 @@ RI_texture* RI_load_image(char* filename){
     texture->width = image->width;
     texture->height = image->height;
     texture->index = previous_length_of_textures_array;
+
+    texture->frame_count = 1;
+    texture->frame_height = image->height;
+    texture->current_frame = 0;
 
     context.opencl.length_of_textures_array += image->width * image->height;
 
@@ -86,6 +90,20 @@ RI_texture* RI_load_image(char* filename){
 
     free(image->frame_buffer);
     free(image);
+
+    return texture;
+}
+
+RI_texture* RI_load_animation(char* filename, uint16_t frame_count){
+    RI_texture* texture = RI_load_image(filename);
+
+    if (texture->height % frame_count != 0){
+        printf("frame count is invalid, frame height doesn't divide evenly by %d", frame_count);
+        return NULL;
+    }
+
+    texture->frame_count = frame_count;
+    texture->frame_height = texture->height / frame_count;
 
     return texture;
 }
@@ -729,6 +747,13 @@ void RI_render(RI_scene *scene){
         // 33: uint32_t texture_index
         clSetKernelArg(context.opencl.transformation_kernel, 33, sizeof(uint32_t), &actor->texture->index);
 
+        // 35: uint16_t frame_count
+        clSetKernelArg(context.opencl.transformation_kernel, 35, sizeof(uint16_t), &actor->texture->frame_count);
+        // 36: uint16_t frame_height
+        clSetKernelArg(context.opencl.transformation_kernel, 36, sizeof(uint16_t), &actor->texture->frame_height);
+        // 37: uint32_t current_frame
+        clSetKernelArg(context.opencl.transformation_kernel, 37, sizeof(uint16_t), &actor->texture_frame);
+
         debug("running actor #%d's transformation kernel...", 
             RI_DEBUG_TRANSFORMER_MESSAGE, 
             actor_index
@@ -1246,6 +1271,13 @@ int RI_init(){
     // // 34: uint32_t tiles mem buffer
     // clSetKernelArg(context.opencl.transformation_kernel, 34, sizeof(cl_mem), &context.opencl.tiles_mem_buffer);
     
+    // // 35: uint16_t frame_count
+    // clSetKernelArg(context.opencl.transformation_kernel, 35, sizeof(uint16_t), &actor->texture->frame_count);
+    // // 36: uint16_t frame_height
+    // clSetKernelArg(context.opencl.transformation_kernel, 36, sizeof(uint16_t), &actor->texture->frame_height);
+    // // 37: uint32_t current_frame
+    // clSetKernelArg(context.opencl.transformation_kernel, 37, sizeof(uint32_t), &actor->texture->current_frame);
+
     context.defaults.default_actor = RI_malloc(sizeof(RI_actor));
 
     context.defaults.default_actor->mesh = RI_load_mesh("objects/error_object.obj");
@@ -1255,6 +1287,7 @@ int RI_init(){
     context.defaults.default_actor->rotation = (RI_vector_4){1, 0, 0, 0};
     context.defaults.default_actor->scale = (RI_vector_3){1, 1, 1};
     context.defaults.default_actor->texture = RI_load_image("textures/missing_texture.bmp");                                                                                                                                                   
+    context.defaults.default_actor->texture_frame = 0;
 
     return 0;
 }

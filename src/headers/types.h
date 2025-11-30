@@ -13,6 +13,9 @@ enum {
 enum {
     RI_DEBUG_NONE = 0,
 
+    // PitMap
+    RI_DEBUG_PITMAP = 1 << 29,
+
     // frame-level
     RI_DEBUG_FRAME_START_END_MARKERS     = 1 << 0,
     RI_DEBUG_TICK_TIME                   = 1 << 1,
@@ -112,8 +115,11 @@ typedef enum {
 
 typedef struct {
     uint16_t width;
-    uint16_t height;
+    uint16_t height; // actual height of the image INCLUDING all frames
     uint32_t index;
+    uint32_t frame_count;
+    uint16_t current_frame;
+    uint16_t frame_height; // height of each frame
 } RI_texture;
 
 typedef struct {
@@ -169,6 +175,7 @@ typedef struct {
     RI_texture* texture;
     int active;
     int material_index;
+    uint16_t texture_frame;
 } RI_actor;
 
 typedef struct {
@@ -180,8 +187,7 @@ typedef struct {
     unsigned char is_split;
     unsigned char is_transformed;
     unsigned char is_shrunk;
-    uint16_t texture_width, height;
-    uint32_t texture_index;
+    RI_texture texture;
 } RI_renderable_face;
 
 typedef struct {
