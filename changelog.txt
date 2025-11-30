@@ -1,4 +1,9 @@
--added animated textures
--latest version of PitMap (8bpp images that have no compression, debug mode)
--added issues.txt
--added another gif to the readme
+-rasterizer ignores 100% transparent pixels
+-added emoji gif
+-plane obj's UVs no longer flip when it's turned around
+-fixed "
+src/main/main.c:43:67: warning: suggest parentheses around comparison in operand of ‘&’ [-Wparentheses]
+   43 |     PM_image* image = PM_load_image(filename, context.debug_flags & RI_DEBUG_PITMAP == 0 ? 0 : 1);
+   "
+-updated example screen
+-added new gif to readme

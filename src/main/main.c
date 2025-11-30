@@ -40,7 +40,7 @@ void debug(char *string, int debug_flag, ...){
 }
 
 RI_texture* RI_load_image(char* filename){
-    PM_image* image = PM_load_image(filename, context.debug_flags & RI_DEBUG_PITMAP == 0 ? 0 : 1);
+    PM_image* image = PM_load_image(filename, (context.debug_flags & RI_DEBUG_PITMAP) == 0 ? 0 : 1);
 
     RI_texture* texture = RI_malloc(sizeof(RI_texture));
 

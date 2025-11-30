@@ -791,7 +791,7 @@ __kernel void rasterizer(__global RI_renderable_face *renderable_faces, __global
     uint num_faces_in_cur_tile = tiles[tile_array_index];
 
     // debug tiles
-    if (num_faces_in_cur_tile > 0) pixel_color = 0x00AA00FF;
+    // if (num_faces_in_cur_tile > 0) pixel_color = 0x00AA00FF;
 
     for (int face_i = 0; face_i < num_faces_in_cur_tile; ++face_i){
         __global RI_renderable_face *current_face = &renderable_faces[tiles[tile_array_index + face_i + 1]];
@@ -847,7 +847,10 @@ __kernel void rasterizer(__global RI_renderable_face *renderable_faces, __global
         uint texel_index = current_face->texture.index + 
             texel_y * current_face->texture.width + texel_x;
 
-        pixel_color = textures[texel_index];
+        if (textures[texel_index] & 0x000000FF){ // skip any pixel that is completly transparent
+            pixel_color = textures[texel_index];
+            z = interpolated_z;
+        }
 
         // debug clipped tris
         // pixel_color = 0x777777FF;
@@ -855,7 +858,6 @@ __kernel void rasterizer(__global RI_renderable_face *renderable_faces, __global
         // if (current_face->is_shrunk) pixel_color |= 0xFFFFFFFF;
         // if (current_face->is_transformed) pixel_color |= 0xFF00FFFF;
 
-        z = interpolated_z;
     }
     
     // debug tiles
