@@ -1,2 +1,4 @@
 -added animated textures
 -latest version of PitMap (8bpp images that have no compression, debug mode)
+-added issues.txt
+-added another gif to the readme

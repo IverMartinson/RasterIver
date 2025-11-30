@@ -52,8 +52,8 @@ scene->actors[0]->active = 0;
 
     scene->actors[1]->mesh = gordon_head_mesh;
     scene->actors[1]->texture = gordon_face_texture;
-    scene->actors[1]->scale = (RI_vector_3){3, 1, 1};
-    scene->actors[1]->position = (RI_vector_3){-100, -40, 50};
+    scene->actors[1]->scale = (RI_vector_3){3, 1, 3};
+    scene->actors[1]->position = (RI_vector_3){0, 900, -400};
 // scene->actors[1]->active = 0;
 
     scene->actors[2]->mesh = gordon_mesh;
@@ -64,8 +64,8 @@ scene->actors[0]->active = 0;
 
     scene->actors[3]->mesh = text_mesh;
     scene->actors[3]->texture = emoji_texture;
-    scene->actors[3]->scale = (RI_vector_3){3, 1, 1};
-    scene->actors[3]->position = (RI_vector_3){-100, -40, 50};
+    scene->actors[3]->scale = (RI_vector_3){3, 1, 3};
+    scene->actors[3]->position = (RI_vector_3){0, 900, -400};
 // scene->actors[3]->active = 0;
 
     scene->actors[4]->mesh = plane_mesh;
@@ -77,6 +77,10 @@ scene->actors[4]->active = 0;
     RI_euler_rotation_to_quaternion(&scene->actors[0]->rotation, (RI_vector_3){0, 0, 0});
     // RI_euler_rotation_to_quaternion(&scene->actors[1]->rotation, (RI_vector_3){0, 3.14159, 0});
     RI_euler_rotation_to_quaternion(&scene->actors[2]->rotation, (RI_vector_3){0, 0.78539816339, 0});
+
+    scene->camera.position = (RI_vector_3){0, 1000, -500};
+
+    RI_euler_rotation_to_quaternion(&scene->camera.rotation, (RI_vector_3){-.7, 0, 0});
 
     scene->length_of_actors_array = 5;
 
@@ -98,9 +102,9 @@ scene->actors[4]->active = 0;
         
         scene->actors[1]->texture_frame++;
 
-        RI_euler_rotation_to_quaternion(&scene->camera.rotation, (RI_vector_3){0, .7 + rotation / 10, 0});
-        RI_euler_rotation_to_quaternion(&scene->actors[1]->rotation, (RI_vector_3){0, rotation / 4, 0});
-        RI_euler_rotation_to_quaternion(&scene->actors[3]->rotation, (RI_vector_3){0, rotation / 4, 0});
+        // RI_euler_rotation_to_quaternion(&scene->camera.rotation, (RI_vector_3){0, .7 + rotation / 10, 0});
+        RI_euler_rotation_to_quaternion(&scene->actors[1]->rotation, (RI_vector_3){0, rotation / 4, 0.7});
+        RI_euler_rotation_to_quaternion(&scene->actors[3]->rotation, (RI_vector_3){0, rotation / 4, 0.7});
 // scene->actors[2]->position.z += delta_time;
 
         rotation += delta_time;
