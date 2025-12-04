@@ -35,8 +35,3 @@
 ### By End of March, 2026
 
  - [ ] Animated textures will support GIF
-
-### By End of June, 2026
-
- - [ ] PNG support
- - [ ] JPEG support
