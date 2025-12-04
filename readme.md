@@ -17,7 +17,7 @@
     - only BMP files
     - no bumpmap, normalmap, distortionmap, et cetera
 
- - [x] Animated textures support
+ - [x] Animated textures support **`finished on November 29th, 2025`**
     - similar to Minecraft's where a texture repeats itself inside itself and you just offset the y coord based off the frame
 
 ### By End of January, 2026
