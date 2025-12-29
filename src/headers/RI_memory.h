@@ -1,4 +1,4 @@
-#include "types.h"
+#include "RI_types.h"
 
 RI_context context;
 
@@ -32,7 +32,7 @@ void* written_RI_realloc(void *__ptr, size_t __size, const char *caller, int lin
             context.memory.allocation_table_length += 50;
             context.memory.allocation_search_limit += 50;
             
-            context.memory.allocation_table = RI_realloc(context.memory.allocation_table, sizeof(RI_memory_allocation) * context.memory.allocation_table_length);
+            context.memory.allocation_table = (RI_memory_allocation*)RI_realloc(context.memory.allocation_table, sizeof(RI_memory_allocation) * context.memory.allocation_table_length);
         }
 
         context.memory.allocation_table[context.memory.current_allocation_index].allocated = 1;
@@ -57,7 +57,7 @@ void* written_RI_malloc(size_t __size, const char *caller, int line, RI_context 
             context.memory.allocation_table_length += 50;
             context.memory.allocation_search_limit += 50;
             
-            context.memory.allocation_table = RI_realloc(context.memory.allocation_table, sizeof(RI_memory_allocation) * context.memory.allocation_table_length);
+            context.memory.allocation_table = (RI_memory_allocation*)RI_realloc(context.memory.allocation_table, sizeof(RI_memory_allocation) * context.memory.allocation_table_length);
         }
 
         context.memory.allocation_table[context.memory.current_allocation_index].allocated = 1;
@@ -82,7 +82,7 @@ void* written_RI_calloc(size_t __nmemb, size_t __size, const char *caller, int l
             context.memory.allocation_table_length += 50;
             context.memory.allocation_search_limit += 50;
             
-            context.memory.allocation_table = RI_realloc(context.memory.allocation_table, sizeof(RI_memory_allocation) * context.memory.allocation_table_length);
+            context.memory.allocation_table = (RI_memory_allocation*)RI_realloc(context.memory.allocation_table, sizeof(RI_memory_allocation) * context.memory.allocation_table_length);
         }
 
         context.memory.allocation_table[context.memory.current_allocation_index].allocated = 1;

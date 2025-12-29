@@ -1,8 +1,8 @@
 #ifndef RASTERIVER_H
 #define RASTERIVER_H
 
-#include "types.h"
-#include "functions.h"
-#include "math.h"
+#include "RI_types.h"
+#include "RI_functions.h"
+#include "RI_math.h"
 
 #endif

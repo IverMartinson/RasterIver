@@ -1,7 +1,7 @@
-#ifndef FUNCTIONS_H
-#define FUNCTIONS_H
+#ifndef RI_FUNCTIONS_H
+#define RI_FUNCTIONS_H
 
-#include "types.h"
+#include "RI_types.h"
 
 // returns the RI_context
 RI_context *RI_get_context();

@@ -3,7 +3,7 @@
 #include <CL/cl.h>
 #include <SDL2/SDL.h>
 #include "../headers/rasteriver.h"
-#include "../headers/memory.h"
+#include "../headers/RI_memory.h"
 #include "../headers/pitmap.h"
 #include <time.h>
 

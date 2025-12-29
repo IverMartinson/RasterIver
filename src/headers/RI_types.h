@@ -1,9 +1,9 @@
-#ifndef STRUCTS_H
-#define STRUCTS_H
+#ifndef RI_STRUCTS_H
+#define RI_STRUCTS_H
 
 #include <SDL2/SDL.h>
 #include <CL/cl.h>
-#include "math.h"
+#include "RI_math.h"
 
 enum {
     RI_ASPECT_MODE_STRETCH = 1 << 0,

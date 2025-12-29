@@ -1,3 +1,3 @@
--not freeing memory every i dont think
+-not freeing memory ever i dont think
 -i think polygons that are outside the frustum are still being added to the tiles, e.g., an object that is just off screen
--latest version of PitMap (images now read in the correct orientation)
+-sdl event handler should have va_list args system so you can put input in it
