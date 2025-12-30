@@ -6,6 +6,10 @@
    <img src="https://mynameisthe.com/f/1764474323607-gordon.gif" style="width: 512px"><br><i>example showcasing animated textures and triangle tiling (green boxes)</i><br><i>~400,000 tris, 14fps</i>
 </p>
 
+## Etymology
+Rasterizer -> Raster & izer -> Raster & Iver
+Iver is my name, which sounds similar to izer
+
 ## Roadmap
 
 ### By End of December, 2025
