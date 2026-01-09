@@ -7,8 +7,9 @@
 </p>
 
 ## Etymology
-Rasterizer -> Raster & izer -> Raster & Iver
-Iver is my name, which sounds similar to izer
+
+* Rasterizer -> Raster & izer -> Raster & Iver
+* Iver is my name, which sounds similar to izer
 
 ## Roadmap
 
