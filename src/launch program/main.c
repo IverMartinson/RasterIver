@@ -31,11 +31,11 @@ int main(){
 
     scene->actors = malloc(sizeof(RI_actor) * 5);
 
-    RI_texture* skybox_texture = RI_load_animation("textures/emoji_angry.bmp", 40);
+    RI_texture* skybox_texture = RI_load_gif("textures/test_gif_2.gif");
     RI_texture* gordon_texture = RI_load_image("textures/terrain_texture.bmp");
     RI_texture* gordon_face_texture = RI_load_animation("textures/gordon_face_animated.bmp", 3);
     RI_texture* emoji_texture = RI_load_image("textures/gordon_body.bmp");
-    RI_texture* iver_texture = RI_load_animation("textures/emoji_gif.bmp", 11);
+    RI_texture* iver_texture = RI_load_gif("textures/test.gif.gif");
     RI_texture* sky_texture = RI_load_image("textures/skybox_texture_4_cube_1024x1024.bmp");
 
     scene->actors[0] = RI_new_actor();

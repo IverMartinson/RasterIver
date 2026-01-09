@@ -108,6 +108,61 @@ RI_texture* RI_load_animation(char* filename, uint16_t frame_count){
     return texture;
 }
 
+RI_texture* RI_load_gif(char* filename){
+    PM_image* image = PM_load_image(filename, (context.debug_flags & RI_DEBUG_PITMAP) == 0 ? 0 : 1);
+
+    RI_texture* texture = RI_malloc(sizeof(RI_texture));
+
+    int previous_length_of_textures_array = context.opencl.length_of_textures_array;
+
+    texture->width = image->width;
+    texture->height = image->height;
+    texture->index = previous_length_of_textures_array;
+
+    texture->frame_count = image->frame_count;
+    texture->frame_height = image->frame_height;
+    texture->current_frame = 0;
+
+    context.opencl.length_of_textures_array += image->width * image->height;
+
+    context.opencl.textures = RI_realloc(context.opencl.textures, context.opencl.length_of_textures_array * sizeof(uint32_t));
+
+    memcpy(context.opencl.textures + previous_length_of_textures_array, image->frame_buffer, sizeof(uint32_t) * image->width * image->height);
+
+    if (context.opencl.textures_mem_buffer) clReleaseMemObject(context.opencl.textures_mem_buffer);
+
+    context.opencl.textures_mem_buffer = clCreateBuffer(
+        context.opencl.context, 
+        CL_MEM_READ_WRITE, 
+        sizeof(uint32_t) * context.opencl.length_of_textures_array, 
+        NULL, NULL
+    );
+    
+    clEnqueueWriteBuffer(
+        context.opencl.queue, 
+        context.opencl.textures_mem_buffer, 
+        CL_TRUE, 
+        0, 
+        sizeof(uint32_t) * context.opencl.length_of_textures_array, 
+        context.opencl.textures, 
+        0, NULL, NULL
+    );
+    
+    clFinish(context.opencl.queue);
+
+    clSetKernelArg(
+        context.opencl.rasterization_kernel, 
+        1, 
+        sizeof(cl_mem), 
+        &context.opencl.textures_mem_buffer
+    );
+
+    free(image->frame_buffer);
+    free(image);
+
+    return texture;
+}
+
 RI_material *RI_new_material(){
     RI_material *new_material = RI_malloc(sizeof(RI_material));
 

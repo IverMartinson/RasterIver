@@ -37,4 +37,7 @@ RI_texture* RI_load_image(char* filename);
 // loads an image file as an animated texture
 RI_texture* RI_load_animation(char* filename, uint16_t frame_count);
 
+// loads a gif file as an animated texture
+RI_texture* RI_load_gif(char* filename);
+
 #endif

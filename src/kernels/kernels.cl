@@ -841,7 +841,7 @@ __kernel void rasterizer(__global RI_renderable_face *renderable_faces, __global
 
         RI_vector_3 interpolated_normal = {0};
         
-        uint texel_x = current_face->texture.width * ux;
+        uint texel_x = current_face->texture.width - current_face->texture.width * ux;
         uint texel_y = current_face->texture.frame_height * uy + current_face->texture.frame_height * (current_face->texture.current_frame % current_face->texture.frame_count);
 
         uint texel_index = current_face->texture.index + 

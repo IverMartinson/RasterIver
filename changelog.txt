@@ -1,2 +1,4 @@
--added RI prefix to header files
--added etymology to readme
+-new PitMap (GIF parsing)
+-new function for loading a GIF
+-flipped X when reading UVs
+-new example scene using RI_load_gif
