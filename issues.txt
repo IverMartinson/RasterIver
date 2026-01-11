@@ -1,3 +1,0 @@
--not freeing memory ever i dont think
--i think polygons that are outside the frustum are still being added to the tiles, e.g., an object that is just off screen
--sdl event handler should have va_list args system so you can put input in it
