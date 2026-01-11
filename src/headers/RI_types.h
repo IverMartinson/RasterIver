@@ -173,6 +173,7 @@ typedef struct {
     RI_vector_3 scale;
     RI_mesh *mesh;
     RI_texture* texture;
+    RI_texture* normal_texture;
     int active;
     int material_index;
     uint16_t texture_frame;
@@ -188,6 +189,7 @@ typedef struct {
     unsigned char is_transformed;
     unsigned char is_shrunk;
     RI_texture texture;
+    RI_texture normal_texture;
 } RI_renderable_face;
 
 typedef struct {

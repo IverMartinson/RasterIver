@@ -13,6 +13,8 @@
 
 ## Roadmap
 
+### Roadmap is defunct due to new branch
+
 ### By End of December, 2025
 
  - [x] Basic texture support **`finished on November 26th, 2025`**
@@ -39,4 +41,4 @@
 
 ### By End of March, 2026
 
- - [ ] Animated textures will support GIF **`finished on January 9th, 2026`**
+ - [x] Animated textures will support GIF **`finished on January 9th, 2026`**
