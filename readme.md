@@ -39,4 +39,4 @@
 
 ### By End of March, 2026
 
- - [ ] Animated textures will support GIF
+ - [ ] Animated textures will support GIF **`finished on January 9th, 2026`**
