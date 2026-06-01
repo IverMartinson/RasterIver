@@ -417,16 +417,16 @@ void RI_render(RI_scene* scene, u8 camera_index, RI_window* window){
             MU_vec3d weights;
             float triangle_area = get_area_of_triangle(screen_point_a, screen_point_b, screen_point_c);
 
-            MU_vec2d bottom_left = {fmin(screen_point_a.x, fmin(screen_point_b.x, screen_point_c.x)),
-                                    fmin(screen_point_a.y, fmin(screen_point_b.y, screen_point_c.y))};
-            MU_vec2d top_right = {fmax(screen_point_a.x, fmax(screen_point_b.x, screen_point_c.x)),
-                                  fmax(screen_point_a.y, fmax(screen_point_b.y, screen_point_c.y))};
+            MU_vec2d bottom_left = {fmax(fmin(screen_point_a.x, fmin(screen_point_b.x, screen_point_c.x)), 0),
+                                    fmax(fmin(screen_point_a.y, fmin(screen_point_b.y, screen_point_c.y)), 0)};
+            MU_vec2d top_right = {fmin(fmax(screen_point_a.x, fmax(screen_point_b.x, screen_point_c.x)), window->width),
+                                  fmin(fmax(screen_point_a.y, fmax(screen_point_b.y, screen_point_c.y)), window->height)};
        
             if(triangle_area < 0)
                 continue;
 
-            for(int y = fmax((int)bottom_left.y, 0); y <= fmin((int)top_right.y, window->height); y++){
-                for(int x = fmax((int)bottom_left.x, 0); x <= fmin((int)top_right.x, window->width); x++){
+            for(int y = bottom_left.y; y <= top_right.y; y++){
+                for(int x = bottom_left.x; x <= top_right.x; x++){
                     MU_vec2d pixel = {x, y};
                     
                     weights = (MU_vec3d){
