@@ -27,5 +27,7 @@
         "queue": "c",
         "math.h": "c",
         "sdl.h": "c"
-    }
+    },
+    "gitlens.hovers.currentLine.enabled": false,
+    "gitlens.codeLens.enabled": false
 }

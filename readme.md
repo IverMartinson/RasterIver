@@ -1,4 +1,4 @@
-# RasterIver 4, a Rendering Engine
+# RasterIver 4, a Software Rendering Engine
 
 ## Etymology
 

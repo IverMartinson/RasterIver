@@ -1,0 +1,16 @@
+# Blender v3.4.1 OBJ File: ''
+# www.blender.org
+o fish
+v -2 0 0
+v 0 2 0
+v 2 0 0
+v 0 -2 0
+v 3 2 0
+v 3 -2 0
+s off
+f 1 2 3
+f 3 4 1
+f 5 6 3
+f 3 2 1
+f 1 4 3
+f 3 6 5
