@@ -17,8 +17,10 @@ int main(){
     RI_material* material = RI_new_material();
 
     actor_a->mesh = RI_load_mesh("objects/gordon.obj");
-    actor_b->mesh = RI_load_mesh("objects/gordon.obj");
+    actor_b->mesh = RI_load_mesh("objects/cube.obj");
     actor_c->mesh = RI_load_mesh("objects/gordon.obj");
+    
+    actor_b->material->texture = RI_load_image("textures/earth.bmp", 0, 0);
 
     // RI_add_actor_to_scence(scene, actor_a);
     RI_add_actor_to_scence(scene, actor_b);
@@ -26,26 +28,25 @@ int main(){
     
     actor_a->transform.position.z = 400;
     actor_a->transform.position.x = -200;
-    actor_b->transform.position.z = 300;
+    actor_b->transform.position.z = 400;
     actor_c->transform.position.z = 400;
     actor_c->transform.position.x = 200;
 
     ((RI_camera*)scene->cameras[0])->FOV = MU_PI_2;
-    ((RI_camera*)scene->cameras[0])->min_clip = 0.01;
+    ((RI_camera*)scene->cameras[0])->min_clip = 1;
     ((RI_camera*)scene->cameras[0])->max_clip = 10000;
 
     long int start, end;
     double fps = 0;
 
     float total_fps = 0;
-    u64 total_frames = 0;
 
     double delta_time = 0;
 
     while(1){
         start = clock();
         
-        actor_a->transform.rotation = MU_quaternion_rotate((MU_vec3d){1, 1, 0}, delta_time, actor_a->transform.rotation);
+        actor_a->transform.rotation = MU_quaternion_rotate((MU_vec3d){0.5, 1, 0}, delta_time, actor_a->transform.rotation);
         actor_b->transform.rotation = actor_a->transform.rotation;
         actor_c->transform.rotation = actor_a->transform.rotation;
         
@@ -57,10 +58,9 @@ int main(){
 
         delta_time = (double)(end - start) / (double)(CLOCKS_PER_SEC);
         fps = 1.0 / delta_time;
-
         total_fps += fps;
 
-        printf("frame %ld fps: %f average fps: %f\n", total_frames++, fps, total_fps / total_frames);
+        printf("frame %d fps: %f average fps: %f\n", scene->frames_rendered, fps, total_fps / scene->frames_rendered);
     }
 
     return 0;

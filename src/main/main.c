@@ -107,7 +107,7 @@ RI_material* RI_new_material(){
 }
 
 RI_texture* RI_load_image(char* file_path, u16 frame_height, u16 frame_count){
-    RI_texture* texture = PM_load_image(file_path, 0);
+    RI_texture* texture = PM_load_image(file_path, PM_ARGB, 0);
 
     if (!texture){
         throw(0, "image file not found \"%s\"", file_path);
@@ -142,7 +142,7 @@ RI_mesh* RI_load_mesh(char* file_path){
     FILE *file = fopen(file_path, "r");
 
     if (!file){
-        throw(0, "mesh not found \"%\"", file_path);
+        throw(0, "mesh not found \"%s\"", file_path);
         
         if (ri_context.default_mesh == NULL){
             throw(1, "there is no default mesh set \"%s\"", file_path);
@@ -249,6 +249,7 @@ RI_mesh* RI_load_mesh(char* file_path){
             
             mesh->triangles[current_triangle_index].u0 = uv_0_index - 1;
             mesh->triangles[current_triangle_index].u1 = uv_1_index - 1;
+            mesh->triangles[current_triangle_index].u2 = uv_2_index - 1;
 
             ++current_triangle_index;
         }
@@ -344,10 +345,12 @@ void write_pixel(RI_window* window, u16 x, u16 y, u32 color){
     *(u32*)((u8*)window->sdl_surface->pixels + y * window->sdl_pitch + x * sizeof(u32)) = color;
 }
 
-float get_area_of_triangle(MU_vec2d a, MU_vec2d b, MU_vec2d c){
+double get_area_of_triangle(MU_vec2d a, MU_vec2d b, MU_vec2d c){
     MU_vec2d bc = MU_2d_perpendicular(MU_2d_sub_2d(b,c));
     MU_vec2d ab = MU_2d_sub_2d(a,b);
-    float result = MU_2d_dot(bc, ab)/2.0;
+
+    double result = MU_2d_dot(bc, ab) / 2.0;
+    
     return result;
 }
 
@@ -393,7 +396,7 @@ void RI_render(RI_scene* scene, u8 camera_index, RI_window* window){
 
             out.x = out.x / w * window->half_width + window->half_width; 
             out.y = out.y / w * window->half_height + window->half_height; 
-            out.z = -out.z; 
+            out.z = w;
 
             actor->mesh->verticies[vth] = out;
         }
@@ -405,7 +408,10 @@ void RI_render(RI_scene* scene, u8 camera_index, RI_window* window){
             MU_vec3d v0 = actor->mesh->verticies[triangle->v0];
             MU_vec3d v1 = actor->mesh->verticies[triangle->v1];
             MU_vec3d v2 = actor->mesh->verticies[triangle->v2];
-
+            
+            MU_vec2d u0 = actor->mesh->uvs[triangle->u0];
+            MU_vec2d u1 = actor->mesh->uvs[triangle->u1];
+            MU_vec2d u2 = actor->mesh->uvs[triangle->u2];
 
             //transforming into screenspace
             MU_vec2d screen_point_a = {v0.x, v0.y};
@@ -430,16 +436,40 @@ void RI_render(RI_scene* scene, u8 camera_index, RI_window* window){
                     MU_vec2d pixel = {x, y};
                     
                     weights = (MU_vec3d){
-                        get_area_of_triangle(pixel, screen_point_b, screen_point_c),
-                        get_area_of_triangle(pixel, screen_point_c, screen_point_a),
-                        get_area_of_triangle(pixel, screen_point_a, screen_point_b)
+                        get_area_of_triangle(pixel, screen_point_b, screen_point_c) / triangle_area,
+                        get_area_of_triangle(pixel, screen_point_c, screen_point_a) / triangle_area,
+                        get_area_of_triangle(pixel, screen_point_a, screen_point_b) / triangle_area
                     };
                     
                     if (!(weights.x >= 0 && weights.y >= 0 && weights.z >= 0)){    
                         continue;
                     }
+                    
+                    double z = (weights.x / depths.x + weights.y / depths.y + weights.z / depths.z); 
 
-                    write_pixel(window, x, y, 0xFFFF00FF);
+                    double* z_buffer = &window->z_buffer[y * window->width + x];
+
+                    if (z >= *z_buffer)
+                        continue;
+
+                    *z_buffer = z;
+
+                    float ux = (weights.x * (u0.x / depths.x) + weights.y * (u1.x / depths.y) + weights.z * (u2.x / depths.z)) / z;
+                    float uy = (weights.x * (u0.y / depths.x) + weights.y * (u1.y / depths.y) + weights.z * (u2.y / depths.z)) / z;    
+
+                    if (ux < 0) ux += 1.0;
+                    if (uy < 0) uy += 1.0;
+
+                    RI_texture* texture = actor->material->texture;
+
+                    u32 texel_x = texture->width * (1.0 - ux);
+                    u32 texel_y = texture->frame_height * uy + texture->frame_height * (actor->material->current_frame % texture->frame_count);
+
+                    u32 texel_index = texel_y * texture->width + texel_x;
+                    
+                    double value = (z / 2.0);
+
+                    write_pixel(window, x, y, texture->frame_buffer[texel_index]);
                 }
             }            
         }
@@ -456,6 +486,7 @@ void RI_present(RI_window* window){
     SDL_UpdateWindowSurface(window->sdl_window);
 
     memset((u8*)window->sdl_surface->pixels, 0xFF, window->height * window->sdl_pitch);
+    memset(window->z_buffer, 0xFF, window->height * window->width * sizeof(double));
 }
 
 RI_window* RI_init_window(char* title, u16 width, u16 height){
@@ -478,7 +509,7 @@ RI_window* RI_init_window(char* title, u16 width, u16 height){
     window->half_width = width / 2;
     window->half_height = height / 2;
 
-    window->z_buffer = malloc(sizeof(u32) * width * height);
+    window->z_buffer = malloc(sizeof(double) * width * height);
 
     window->sdl_pitch = window->sdl_surface->pitch;
 
@@ -490,7 +521,7 @@ void RI_init(){
 
     ri_context.default_texture = RI_load_image("textures/missing_texture.bmp", 0, 0);
     ri_context.default_material = RI_new_material();
-    ri_context.default_mesh = RI_load_mesh("objects/error_object.obj");
+    ri_context.default_mesh = RI_load_mesh("objects/error.obj");
 
     ri_context.identity_matrix = MU_new_matrix(4, 4);
     ri_context.intermidiate_matrix_a = MU_new_matrix(4, 4);

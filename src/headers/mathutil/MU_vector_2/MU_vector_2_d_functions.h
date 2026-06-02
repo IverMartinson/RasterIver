@@ -103,7 +103,7 @@ void MU_d_div_2d_pointer(MU_vec2i *a, double scalar){
 // vector specific functions
 
 MU_vec2d MU_2d_perpendicular(MU_vec2d p){
-    return (MU_vec2d){p.y, -p.x};
+    return (MU_vec2d){-p.y, p.x};
 }
 
 double MU_2d_dot(MU_vec2d a, MU_vec2d b){

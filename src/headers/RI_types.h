@@ -16,7 +16,7 @@ typedef MU_vec2d RI_uv;
 typedef struct {
     u32 v0, v1, v2;
     u32 n0, n1, n2;
-    u32 u0, u1;
+    u32 u0, u1, u2;
 } RI_triangle;
 
 typedef struct {
@@ -33,8 +33,9 @@ typedef struct {
 typedef PM_image RI_texture;
 
 typedef struct {
-    RI_texture* texture;
+    RI_texture* texture; 
     RI_texture* normal_map;
+    u16 current_frame;
 } RI_material;
 
 typedef struct {
@@ -85,7 +86,7 @@ typedef struct {
     SDL_Renderer* sdl_renderer;
     SDL_Surface* sdl_surface; 
     int sdl_pitch;
-    u32* z_buffer;
+    double* z_buffer;
 } RI_window;
 
 typedef struct {
