@@ -319,7 +319,7 @@ void RI_rotation_matrix_from_transform(MU_matrix rotation, RI_transform* transfo
     );
 }
 
-void RI_scalar_matrix_from_transform(MU_matrix scalar, RI_transform* transform){
+void RI_scaling_matrix_from_transform(MU_matrix scalar, RI_transform* transform){
     MATSET(
     transform->scale.x, 0, 0, 0,    
     0, transform->scale.y, 0, 0,
@@ -378,7 +378,7 @@ void RI_render(RI_scene* scene, u8 camera_index, RI_window* window){
         
         RI_rotation_matrix_from_transform(actor->matricies.rotation_matrix, &transform);
 
-        RI_scalar_matrix_from_transform(actor->matricies.scaling_matrix, &transform);
+        RI_scaling_matrix_from_transform(actor->matricies.scaling_matrix, &transform);
         
         MU_4x4_x_4x4_to_c(actor->matricies.scaling_matrix,  actor->matricies.rotation_matrix,    ri_context.intermidiate_matrix_a);
         MU_4x4_x_4x4_to_c(ri_context.intermidiate_matrix_a, actor->matricies.translation_matrix, ri_context.intermidiate_matrix_b);
