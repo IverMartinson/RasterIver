@@ -63,10 +63,12 @@ typedef struct {
     RI_mesh* mesh;
     RI_transform transform;
     RI_actor_matricies matricies;
+    void** children;
+    RI_actor* parent;
 } RI_actor;
 
 typedef struct {
-    RI_transform transform;
+    RI_transform transform; 
     double min_clip, max_clip;
     double FOV;
 } RI_camera;

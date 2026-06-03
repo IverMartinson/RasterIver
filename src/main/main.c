@@ -42,6 +42,18 @@ void throw(u8 is_fatal, char* message, char* extra){
     return;
 }
 
+void RI_actor_become_child(RI_actor* actor, RI_actor* parent){
+    KT_append(&parent->children, actor);
+
+    actor->parent = parent;
+}
+
+void RI_actor_become_sibling(RI_actor* actor, RI_actor* sibling){
+    RI_actor* parent = sibling->parent;
+    
+    RI_actor_become_child(actor, parent);
+}
+
 void RI_add_actor_to_scence(RI_scene* scene, RI_actor* actor){
     KT_append(&scene->actors, actor);
 }
@@ -50,7 +62,9 @@ RI_actor* RI_new_actor(){
     RI_actor* actor = malloc(sizeof(RI_actor));
 
     actor->material = ri_context.default_material;
+    
     actor->mesh = ri_context.default_mesh;
+    
     actor->transform = (RI_transform){
         (MU_vec3d){0, 0, 0}, 
         (MU_vec3d){100, 100, 100}, 
@@ -61,12 +75,16 @@ RI_actor* RI_new_actor(){
             (MU_vec3d){0, 0, 1}
         }
     };
+
     actor->matricies = (RI_actor_matricies){
         MU_new_matrix(4, 4),
         MU_new_matrix(4, 4),
         MU_new_matrix(4, 4),
         MU_new_matrix(4, 4)
     };
+
+    actor->parent = NULL;
+    actor->children = KT_new_array(1);
 
     return actor;
 }

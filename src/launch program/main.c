@@ -4,7 +4,7 @@
 int main(){
     RI_init();
 
-    RI_window* window = RI_init_window("RASTERIVER 5.0 !!!!! (software edition)", 800, 800);
+    RI_window* window = RI_init_window("RASTERIVER 5.0 !!!!! (software edition)", 1200, 800);
 
     RI_scene* scene = RI_new_scene();
 
@@ -63,7 +63,7 @@ int main(){
         start = clock();
         
         actor_a->transform.rotation = MU_quaternion_rotate((MU_vec3d){0, 1, 0}, delta_time, actor_a->transform.rotation);
-        ((RI_camera*)scene->cameras[0])->transform.rotation = MU_quaternion_rotate((MU_vec3d){0, 0, 1}, delta_time, ((RI_camera*)scene->cameras[0])->transform.rotation);
+        ((RI_camera*)scene->cameras[0])->transform.rotation = MU_quaternion_rotate((MU_vec3d){0, 1, 0}, delta_time, ((RI_camera*)scene->cameras[0])->transform.rotation);
         actor_b->transform.rotation = actor_a->transform.rotation;
         actor_c->transform.rotation = actor_a->transform.rotation;
         actor_d->transform.rotation = actor_a->transform.rotation;
