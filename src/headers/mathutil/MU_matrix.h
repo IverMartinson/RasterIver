@@ -141,6 +141,30 @@ MU_matrix MU_matrix_transpose(MU_matrix matrix){
     return transposed_matrix;
 }
 
+MU_matrix MU_matrix_transpose_to_c(MU_matrix a, MU_matrix c){
+    MU_matrix_size size = MU_get_matrix_size(a);
+
+    for (u32 y = 0; y < size.rows; y++){
+        for (u32 x = 0; x < size.columns; x++){
+            c[y][x] = a[x][y];
+        }
+    }
+
+    return c;
+}
+
+MU_matrix MU_matrix_copy_a_to_c(MU_matrix a, MU_matrix c){
+    MU_matrix_size size = MU_get_matrix_size(a);
+
+    for (u32 y = 0; y < size.rows; y++){
+        for (u32 x = 0; x < size.columns; x++){
+            c[x][y] = a[x][y];
+        }
+    }
+
+    return c;
+}
+
 MU_matrix MU_matrix_add(MU_matrix a, MU_matrix b){
     MU_matrix_size size_a = MU_get_matrix_size(a);
     MU_matrix_size size_b = MU_get_matrix_size(b);
@@ -246,7 +270,7 @@ MU_matrix MU_matrix_mul_assign(MU_matrix a, MU_matrix b){
         product_matrix[current_collum][current_row] = sum;
     }
 
-    memcpy(a, product_matrix, sizeof(double) * product_length);
+    memcpy(a, product_matrix, sizeof(double*) * product_length);
 
     MU_free_matrix(product_matrix);
 
@@ -267,10 +291,18 @@ MU_matrix MU_4x4_x_4x1(MU_matrix a, MU_matrix b){
 MU_matrix MU_4x4_x_4x4(MU_matrix b, MU_matrix a) {
     MU_matrix c = MU_new_matrix(4, 4);
 
-    for (int i = 0; i < 4; i++)
-        for (int j = 0; j < 4; j++) {
-            for (int k = 0; k < 4; k++)
-                c[j][i] += a[i][k] * b[k][j];
+    for(u32 i = 0; i < 16; i++){
+        //getting coords in the product matrix from the index
+        MU_vec2u current_coords = MU_index_to_coords(i, 4);
+        u32 current_collum = current_coords.x;
+        u32 current_row = current_coords.y;
+
+        double sum = 0;
+        for(u32 p = 0; p < 4; p++){
+            sum += a[p][current_row] * b[current_collum][p];
+        }
+
+        c[current_collum][current_row] = sum;
     }
 
     return c;
@@ -295,7 +327,7 @@ void MU_4x4_x_4x4_to_c(MU_matrix a, MU_matrix b, MU_matrix c) {
 void MU_4x4_clear_matrix(MU_matrix matrix){
     for (int i = 0; i < 4; i++)
         for (int j = 0; j < 4; j++)
-            matrix[j][j] = 0;
+            matrix[j][i] = 0;
 }
 
 #endif

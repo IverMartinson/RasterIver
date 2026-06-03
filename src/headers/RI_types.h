@@ -97,6 +97,7 @@ typedef struct {
     MU_matrix identity_matrix;
     MU_matrix intermidiate_matrix_a;
     MU_matrix intermidiate_matrix_b;
+    MU_matrix intermidiate_matrix_c;
 } RI_context;
 
 #endif
