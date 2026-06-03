@@ -76,6 +76,7 @@ RI_scene* RI_new_scene(){
     scene->cameras = KT_new_array(1);
     scene->frames_rendered = 0;
     scene->camera_rotation_matrix = MU_new_matrix(4, 4);
+    scene->camera_translation_matrix = MU_new_matrix(4, 4);
     scene->perspective_matrix = MU_new_matrix(4, 4);
 
     return scene;
@@ -365,14 +366,15 @@ void RI_render(RI_scene* scene, u8 camera_index, RI_window* window){
     
     RI_rotation_matrix_from_transform(scene->camera_rotation_matrix, &camera->transform);
     scene->camera_rotation_matrix = MU_matrix_transpose(scene->camera_rotation_matrix);
+    
+    RI_translation_matrix_from_transform(scene->camera_translation_matrix, &camera->transform);
+    // scene->camera_translation_matrix = MU_matrix_transpose(scene->camera_translation_matrix);
 
     RI_perspective_matrix_from_camera(scene->perspective_matrix, camera, (double)window->width / (double)window->height);
 
     for (u32 ath = 0; ath < KT_get_size(&scene->actors); ath++){
         RI_actor* actor = scene->actors[ath];
         RI_transform transform = actor->transform;
-
-        MU_3d_sub_3d_pointer(&transform.position, &camera->transform.position);
 
         RI_translation_matrix_from_transform(actor->matricies.translation_matrix, &transform);
         
@@ -381,9 +383,17 @@ void RI_render(RI_scene* scene, u8 camera_index, RI_window* window){
         RI_scaling_matrix_from_transform(actor->matricies.scaling_matrix, &transform);
         
         MU_4x4_x_4x4_to_c(actor->matricies.scaling_matrix,  actor->matricies.rotation_matrix,    ri_context.intermidiate_matrix_a);
+        MU_print_matrix(ri_context.intermidiate_matrix_a);
         MU_4x4_x_4x4_to_c(ri_context.intermidiate_matrix_a, actor->matricies.translation_matrix, ri_context.intermidiate_matrix_b);
-        MU_4x4_x_4x4_to_c(ri_context.intermidiate_matrix_b, scene->camera_rotation_matrix,       ri_context.intermidiate_matrix_a);
-        MU_4x4_x_4x4_to_c(ri_context.intermidiate_matrix_a, scene->perspective_matrix,           actor->matricies.final_matrix);
+        MU_print_matrix(ri_context.intermidiate_matrix_b);
+        MU_4x4_x_4x4_to_c(ri_context.intermidiate_matrix_b, scene->camera_translation_matrix,    ri_context.intermidiate_matrix_a);
+        MU_print_matrix(ri_context.intermidiate_matrix_a);
+        MU_4x4_x_4x4_to_c(ri_context.intermidiate_matrix_a, scene->camera_rotation_matrix,       ri_context.intermidiate_matrix_b);
+        MU_print_matrix(ri_context.intermidiate_matrix_b);
+        MU_4x4_x_4x4_to_c(ri_context.intermidiate_matrix_b, scene->perspective_matrix,           actor->matricies.final_matrix);
+        MU_print_matrix(actor->matricies.final_matrix);
+
+        printf("eeg\n");
 
         for (u32 vth = 0; vth < actor->mesh->vertex_count; vth++){
             MU_vec3d in = actor->mesh->original_verticies[vth];

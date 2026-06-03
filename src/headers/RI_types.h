@@ -76,6 +76,7 @@ typedef struct {
     void** cameras; // KT dynamic array
     u32 frames_rendered;
     MU_matrix camera_rotation_matrix;
+    MU_matrix camera_translation_matrix;
     MU_matrix perspective_matrix;
 } RI_scene;
 
