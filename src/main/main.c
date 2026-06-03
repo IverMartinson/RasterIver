@@ -425,8 +425,8 @@ void RI_render(RI_scene* scene, u8 camera_index, RI_window* window){
 
             MU_vec2d bottom_left = {fmax(fmin(screen_point_a.x, fmin(screen_point_b.x, screen_point_c.x)), 0),
                                     fmax(fmin(screen_point_a.y, fmin(screen_point_b.y, screen_point_c.y)), 0)};
-            MU_vec2d top_right = {fmin(fmax(screen_point_a.x, fmax(screen_point_b.x, screen_point_c.x)), window->width),
-                                  fmin(fmax(screen_point_a.y, fmax(screen_point_b.y, screen_point_c.y)), window->height)};
+            MU_vec2d top_right = {fmin(fmax(screen_point_a.x, fmax(screen_point_b.x, screen_point_c.x)), window->width - 1),
+                                  fmin(fmax(screen_point_a.y, fmax(screen_point_b.y, screen_point_c.y)), window->height - 1)};
        
             if(triangle_area < 0)
                 continue;
@@ -465,7 +465,7 @@ void RI_render(RI_scene* scene, u8 camera_index, RI_window* window){
                     u32 texel_x = texture->width * (1.0 - ux);
                     u32 texel_y = texture->frame_height * uy + texture->frame_height * (actor->material->current_frame % texture->frame_count);
 
-                    u32 texel_index = texel_y * texture->width + texel_x;
+                    u32 texel_index = (texel_y * texture->width + texel_x) % (texture->width * texture->height - 1);
                     
                     double value = (z / 2.0);
 
