@@ -13,6 +13,8 @@ void RI_add_actor_to_scence(RI_scene* scene, RI_actor* actor);
 
 RI_texture* RI_load_image(char* file_path, u16 frame_height, u16 frame_count);
 
+RI_actor* RI_load_multi_object_mesh(char* file_path);
+
 RI_mesh* RI_load_mesh(char* file_path);
 
 void RI_render(RI_scene* scene, u8 camera_index, RI_window* window);

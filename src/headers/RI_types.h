@@ -28,9 +28,32 @@ typedef struct {
     RI_uv* uvs;
     u32 triangle_count;
     u32 vertex_count;
+    u32 normal_count;
+    u32 uv_count;
 } RI_mesh;
 
 typedef PM_image RI_texture;
+
+typedef struct {
+    char* name;
+    double ns; // shininess exponent
+    MU_vec3d ka; // ambient
+    MU_vec3d kd; // diffuse
+    MU_vec3d ks; // specular
+    MU_vec3d ke; // emission
+    double ni; // optical density
+    double d; // dissolve
+    u8 illum; // illumination model
+    RI_texture* map_Ka; // ambient map
+    RI_texture* map_Kd; // diffuse map
+                        // main texture/albedo map
+    RI_texture* map_Ks; // specular map
+    RI_texture* map_Ns; // optical density map
+    RI_texture* map_d; // dissolve map
+    RI_texture* disp; // displacement map
+    RI_texture* decal; // deform map
+    RI_texture* bump; // bump map
+} RI_mtl; 
 
 typedef struct {
     RI_texture* texture; 
@@ -64,7 +87,8 @@ typedef struct {
     RI_transform transform;
     RI_actor_matricies matricies;
     void** children;
-    RI_actor* parent;
+    void* parent;
+    u8 hidden;
 } RI_actor;
 
 typedef struct {

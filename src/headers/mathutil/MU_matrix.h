@@ -270,6 +270,10 @@ MU_matrix MU_matrix_mul_assign(MU_matrix a, MU_matrix b){
         product_matrix[current_collum][current_row] = sum;
     }
 
+    memcpy(a, product_matrix, sizeof(double*) * product_length);
+
+    MU_free_matrix(product_matrix);
+
     return a;
 }
 
