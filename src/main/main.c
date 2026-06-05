@@ -288,6 +288,164 @@ RI_mtl* get_obj_mtl(char* line, u16 offset, RI_mtl* materials, u16 material_coun
     return NULL;
 }
 
+RI_mesh* RI_load_mesh(char* file_path){
+    RI_mesh* mesh = malloc(sizeof(RI_mesh));
+
+    FILE *file = fopen(file_path, "r");
+
+    if (!file){
+        throw(0, "mesh not found \"%s\"", file_path);
+        
+        if (ri_context.default_mesh == NULL){
+            throw(1, "there is no default mesh set \"%s\"", file_path);
+        }else
+            return ri_context.default_mesh;
+    }
+    
+    char line[512];
+
+    // see how much stuff there is
+
+    u32 triangle_count = 0;
+    u32 vertex_count = 0;
+    u32 normal_count = 0;
+    u32 uv_count = 0;
+
+    while (fgets(line, sizeof(line), file)) {
+        if (line[0] == 'f' && line[1] == ' ') { // triangle
+            ++triangle_count;
+        }
+        else if (line[0] == 'v'){
+            if (line[1] == ' ') { // vertex
+                ++vertex_count;
+            }
+            else if (line[1] == 'n') { // normal
+                ++normal_count;
+            }
+            else if (line[1] == 't') { // UV
+                ++uv_count;
+            }
+        }
+    }
+
+    rewind(file);
+    // allocate space for the stuff
+
+    mesh->triangles = malloc(sizeof(RI_triangle) * triangle_count);
+    mesh->original_verticies = malloc(sizeof(RI_vertex) * vertex_count);
+    mesh->verticies = malloc(sizeof(RI_vertex) * vertex_count);
+    mesh->original_normals = malloc(sizeof(RI_normal) * normal_count);
+    mesh->normals = malloc(sizeof(RI_normal) * normal_count);
+    mesh->uvs = malloc(sizeof(RI_uv) * uv_count);
+
+    u32 current_triangle_index = 0;
+    u32 current_vertex_index = 0;
+    u32 current_normal_index = 0;
+    u32 current_uv_index = 0;
+
+    // read stuff
+    while (fgets(line, sizeof(line), file)) {
+        if (line[0] == 'f' && line[1] == ' ') {
+            u32 vertex_0_index, 
+                vertex_1_index, 
+                vertex_2_index, 
+                normal_0_index, 
+                normal_1_index, 
+                normal_2_index, 
+                uv_0_index, 
+                uv_1_index, 
+                uv_2_index
+            ;
+
+            // might have position normal & uv
+            u8 matches = sscanf(line, "f %d/%d/%d %d/%d/%d %d/%d/%d/", 
+                &vertex_0_index, &uv_0_index, &normal_0_index, 
+                &vertex_1_index, &uv_1_index, &normal_1_index, 
+                &vertex_2_index, &uv_2_index, &normal_2_index);
+
+            if (matches != 9){
+                vertex_0_index = -1;
+                vertex_1_index = -1;
+                vertex_2_index = -1;
+                
+                normal_0_index = -1;
+                normal_1_index = -1;
+                normal_2_index = -1;
+                
+                uv_0_index = -1;
+                uv_1_index = -1;
+                uv_2_index = -1;
+
+                // just has position and normals
+                if (strchr(line, '/')){
+                    sscanf(line, "f %d//%d %d//%d %d//%d", 
+                        &vertex_0_index, &normal_0_index, 
+                        &vertex_1_index, &normal_1_index, 
+                        &vertex_2_index, &normal_2_index);
+                }
+                else { // only has position
+                    sscanf(line, "f %d %d %d", 
+                        &vertex_0_index, 
+                        &vertex_1_index, 
+                        &vertex_2_index);
+                }
+            }
+
+            mesh->triangles[current_triangle_index].v0 = vertex_0_index - 1;
+            mesh->triangles[current_triangle_index].v1 = vertex_1_index - 1;
+            mesh->triangles[current_triangle_index].v2 = vertex_2_index - 1;
+
+            mesh->triangles[current_triangle_index].n0 = normal_0_index - 1;
+            mesh->triangles[current_triangle_index].n1 = normal_1_index - 1;
+            mesh->triangles[current_triangle_index].n2 = normal_2_index - 1;
+            
+            mesh->triangles[current_triangle_index].u0 = uv_0_index - 1;
+            mesh->triangles[current_triangle_index].u1 = uv_1_index - 1;
+            mesh->triangles[current_triangle_index].u2 = uv_2_index - 1;
+
+            ++current_triangle_index;
+        }
+        else if (line[0] == 'v' && line[1] == ' ') {
+            double x, y, z;
+            
+            sscanf(line, "v %lf %lf %lf", &x, &y, &z);
+
+            mesh->original_verticies[current_vertex_index].x = x;
+            mesh->original_verticies[current_vertex_index].y = y;
+            mesh->original_verticies[current_vertex_index].z = z;
+
+            ++current_vertex_index;
+        } 
+        else if (line[0] == 'v' && line[1] == 'n') {
+            double x, y, z;
+            
+            sscanf(line, "vn %lf %lf %lf", &x, &y, &z);
+
+            mesh->original_normals[current_normal_index].x = x;
+            mesh->original_normals[current_normal_index].y = y;
+            mesh->original_normals[current_normal_index].z = z;
+
+            ++current_normal_index;
+        }
+        else if (line[0] == 'v' && line[1] == 't') {
+            double x, y, z;
+
+            sscanf(line, "vt %lf %lf %lf", &x, &y, &z);
+
+            mesh->uvs[current_uv_index].x = x;
+            mesh->uvs[current_uv_index].y = y;
+            // UVS are almost always 2D so we don't need Z (the type itself is a vector 2f, not 3f) 
+
+            ++current_uv_index;
+        } 
+    }
+
+    mesh->triangle_count = triangle_count;
+    mesh->vertex_count = vertex_count;
+
+    return mesh;
+}
+
 RI_actor* RI_load_multi_object_mesh(char* file_path){
     FILE *file = fopen(file_path, "r");
 
