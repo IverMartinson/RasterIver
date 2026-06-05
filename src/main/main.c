@@ -857,7 +857,7 @@ void render_actor(RI_scene* scene, RI_window* window, RI_actor* actor){
                 if (ux < 0) ux += 1.0;
                 if (uy < 0) uy += 1.0;
 
-                RI_texture* texture = actor->material->texture;
+                RI_texture* texture = actor->material->texture == NULL ? ri_context.default_texture : actor->material->texture;
 
                 u32 texel_x = texture->width * (ux);
                 u32 texel_y = texture->frame_height * (1.0 - uy) + texture->frame_height * (actor->material->current_frame % texture->frame_count);

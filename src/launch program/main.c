@@ -11,10 +11,15 @@ int main(){
     scene->cameras[0] = RI_new_camera();
 
     RI_actor* actor_a = RI_load_multi_object_mesh("objects/terrorist.obj");
+    RI_actor* actor_b = RI_load_multi_object_mesh("objects/counterterrorist.obj");
 
-    RI_add_actor_to_scence(scene, actor_a);
+    // RI_add_actor_to_scence(scene, actor_a);
+    RI_add_actor_to_scence(scene, actor_b);
 
     actor_a->transform.position.z = 400;
+    actor_a->transform.position.x = -100;
+    actor_b->transform.position.z = 400;
+    actor_b->transform.position.x = 100;
 
     ((RI_camera*)scene->cameras[0])->FOV = MU_PI_4;
     ((RI_camera*)scene->cameras[0])->min_clip = 1;
