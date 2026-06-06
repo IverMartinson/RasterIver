@@ -102,6 +102,12 @@ void MU_d_div_2d_pointer(MU_vec2i *a, double scalar){
 
 // vector specific functions
 
+MU_vec2d MU_vec2d_lerp(MU_vec2d a, MU_vec2d b, double t){
+    double i = 1.0 - t;
+    
+    return (MU_vec2d){a.x * i + b.x * t, a.y * i + b.y * t};
+}
+
 MU_vec2d MU_2d_perpendicular(MU_vec2d p){
     return (MU_vec2d){-p.y, p.x};
 }

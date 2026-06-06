@@ -20,9 +20,16 @@ typedef struct {
 } RI_triangle;
 
 typedef struct {
+    MU_vec3d v0, v1, v2;
+    MU_vec3d n0, n1, n2;
+    MU_vec2d u0, u1, u2;
+} RI_renderable_triangle; 
+
+typedef struct {
+    RI_renderable_triangle* renderable_triangles;
     RI_triangle* triangles;
     RI_vertex* original_verticies;
-    RI_vertex* verticies;
+    MU_vec4d* verticies;
     RI_normal* original_normals;
     RI_normal* normals;
     RI_uv* uvs;

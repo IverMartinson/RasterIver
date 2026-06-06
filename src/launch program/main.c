@@ -10,16 +10,13 @@ int main(){
 
     scene->cameras[0] = RI_new_camera();
 
-    RI_actor* actor_a = RI_load_multi_object_mesh("objects/terrorist.obj");
-    RI_actor* actor_b = RI_load_multi_object_mesh("objects/counterterrorist.obj");
+    RI_actor* actor_a = RI_load_multi_object_mesh("objects/gordon_freeman.obj");
 
     // RI_add_actor_to_scence(scene, actor_a);
-    RI_add_actor_to_scence(scene, actor_b);
+    RI_add_actor_to_scence(scene, actor_a);
 
     actor_a->transform.position.z = 400;
-    actor_a->transform.position.x = -100;
-    actor_b->transform.position.z = 400;
-    actor_b->transform.position.x = 100;
+    actor_a->transform.position.x = 0;
 
     ((RI_camera*)scene->cameras[0])->FOV = MU_PI_4;
     ((RI_camera*)scene->cameras[0])->min_clip = 1;
@@ -32,7 +29,6 @@ int main(){
 
     double delta_time = 0;
     double delta_time_acc = 0;
-
     
     ((RI_camera*)scene->cameras[0])->transform.rotation = MU_quaternion_rotate((MU_vec3d){0, 1, 0}, MU_PI_2, actor_a->transform.rotation);
 

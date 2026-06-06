@@ -108,7 +108,17 @@ void MU_d_div_3d_pointer(double scalar, MU_vec3d *a){
     a->z = scalar / a->z;
 }
 
+MU_vec3d MU_vec4d_to_vec3d(MU_vec4d vector){
+    return (MU_vec3d){vector.x, vector.y, vector.z};
+}
+
 // vector specific functions
+
+MU_vec3d MU_vec3d_lerp(MU_vec3d a, MU_vec3d b, double t){
+    double i = 1.0 - t;
+    
+    return (MU_vec3d){a.x * i + b.x * t, a.y * i + b.y * t, a.z * i + b.z * t};
+}
 
 double MU_3d_dot(MU_vec3d a, MU_vec3d b){
     return (a.x*b.x + a.y*b.y + a.z*b.z);

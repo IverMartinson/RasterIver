@@ -332,6 +332,7 @@ RI_mesh* RI_load_mesh(char* file_path){
     // allocate space for the stuff
 
     mesh->triangles = malloc(sizeof(RI_triangle) * triangle_count);
+    mesh->renderable_triangles = malloc(sizeof(RI_renderable_triangle) * triangle_count * 2);
     mesh->original_verticies = malloc(sizeof(RI_vertex) * vertex_count);
     mesh->verticies = malloc(sizeof(RI_vertex) * vertex_count);
     mesh->original_normals = malloc(sizeof(RI_normal) * normal_count);
@@ -537,6 +538,7 @@ RI_actor* RI_load_multi_object_mesh(char* file_path){
 
     if (missing_object_marker){ // allocate arrays if no object markers
         mesh->triangles = malloc(sizeof(RI_triangle) * mesh->triangle_count);
+        mesh->renderable_triangles = malloc(sizeof(RI_renderable_triangle) * mesh->triangle_count * 2);   
         mesh->original_verticies = malloc(sizeof(RI_vertex) * mesh->vertex_count);
         mesh->verticies = malloc(sizeof(RI_vertex) * mesh->vertex_count);
         mesh->original_normals = malloc(sizeof(RI_normal) * mesh->normal_count);
@@ -563,6 +565,7 @@ RI_actor* RI_load_multi_object_mesh(char* file_path){
             mesh = meshes[current_mesh_index];
 
             mesh->triangles = malloc(sizeof(RI_triangle) * mesh->triangle_count);
+            mesh->renderable_triangles = malloc(sizeof(RI_renderable_triangle) * mesh->triangle_count * 2);   
             mesh->original_verticies = malloc(sizeof(RI_vertex) * mesh->vertex_count);
             mesh->verticies = malloc(sizeof(RI_vertex) * mesh->vertex_count);
             mesh->original_normals = malloc(sizeof(RI_normal) * mesh->normal_count);
@@ -761,7 +764,72 @@ double get_area_of_triangle(MU_vec2d a, MU_vec2d b, MU_vec2d c){
 
 #include <stdio.h>
 
-void render_actor(RI_scene* scene, RI_window* window, RI_actor* actor){
+void render_triangle(RI_renderable_triangle triangle){
+    //transforming into screenspace
+    MU_vec2d screen_point_a = {triangle.v0.x, triangle.v0.y};
+    MU_vec2d screen_point_b = {triangle.v1.x, triangle.v1.y};
+    MU_vec2d screen_point_c = {triangle.v2.x, triangle.v2.y};
+
+    MU_vec3d depths = {triangle.v0.z, triangle.v1.z, triangle.v2.z};
+
+    if (triangle.v0.z >= 0 || triangle.v1.z >= 0 || triangle.v2.z >= 0)
+        return;
+
+    MU_vec3d weights;
+    float triangle_area = get_area_of_triangle(screen_point_a, screen_point_b, screen_point_c);
+
+    MU_vec2d bottom_left = {fmax(fmin(screen_point_a.x, fmin(screen_point_b.x, screen_point_c.x)), 0),
+                            fmax(fmin(screen_point_a.y, fmin(screen_point_b.y, screen_point_c.y)), 0)};
+    MU_vec2d top_right = {fmin(fmax(screen_point_a.x, fmax(screen_point_b.x, screen_point_c.x)), window->width - 1),
+                            fmin(fmax(screen_point_a.y, fmax(screen_point_b.y, screen_point_c.y)), window->height - 1)};
+
+    if(triangle_area < 0)
+        return;
+
+    for(int y = bottom_left.y; y <= top_right.y; y++){
+        for(int x = bottom_left.x; x <= top_right.x; x++){
+            MU_vec2d pixel = {x, y};
+            
+            weights = (MU_vec3d){
+                get_area_of_triangle(pixel, screen_point_b, screen_point_c) / triangle_area,
+                get_area_of_triangle(pixel, screen_point_c, screen_point_a) / triangle_area,
+                get_area_of_triangle(pixel, screen_point_a, screen_point_b) / triangle_area
+            };
+            
+            if (!(weights.x >= 0 && weights.y >= 0 && weights.z >= 0)){    
+                continue;
+            }
+            
+            double z = (weights.x / depths.x + weights.y / depths.y + weights.z / depths.z); 
+
+            double* z_buffer = &window->z_buffer[y * window->width + x];
+
+            if (z >= *z_buffer)
+                continue;
+
+            *z_buffer = z;
+
+            float ux = (weights.x * (u0.x / depths.x) + weights.y * (u1.x / depths.y) + weights.z * (u2.x / depths.z)) / z;
+            float uy = (weights.x * (u0.y / depths.x) + weights.y * (u1.y / depths.y) + weights.z * (u2.y / depths.z)) / z;    
+
+            if (ux < 0) ux += 1.0;
+            if (uy < 0) uy += 1.0;
+
+            RI_texture* texture = actor->material->texture == NULL ? ri_context.default_texture : actor->material->texture;
+
+            u32 texel_x = texture->width * (ux);
+            u32 texel_y = texture->frame_height * (1.0 - uy) + texture->frame_height * (actor->material->current_frame % texture->frame_count);
+
+            u32 texel_index = (texel_y * texture->width + texel_x) % (texture->width * texture->height - 1);
+            
+            double value = (z / 2.0);
+
+            write_pixel(window, x, y, texture->frame_buffer[texel_index]);
+        }
+    }   
+}
+
+void render_actor(RI_scene* scene, RI_window* window, RI_camera* camera, RI_actor* actor){
     if (actor->hidden)
         return;
     
@@ -781,94 +849,286 @@ void render_actor(RI_scene* scene, RI_window* window, RI_actor* actor){
 
     for (u32 vth = 0; vth < actor->mesh->vertex_count; vth++){
         MU_vec3d in = actor->mesh->original_verticies[vth];
-        MU_vec3d out;
+        MU_vec4d out;
         
-        out.x = in.x *   actor->matricies.final_matrix[0][0] + in.y * actor->matricies.final_matrix[0][1] + in.z * actor->matricies.final_matrix[0][2] + actor->matricies.final_matrix[0][3];
-        out.y = in.x *   actor->matricies.final_matrix[1][0] + in.y * actor->matricies.final_matrix[1][1] + in.z * actor->matricies.final_matrix[1][2] + actor->matricies.final_matrix[1][3];
-        out.z = in.x *   actor->matricies.final_matrix[2][0] + in.y * actor->matricies.final_matrix[2][1] + in.z * actor->matricies.final_matrix[2][2] + actor->matricies.final_matrix[2][3];
-        float w = in.x * actor->matricies.final_matrix[3][0] + in.y * actor->matricies.final_matrix[3][1] + in.z * actor->matricies.final_matrix[3][2] + actor->matricies.final_matrix[3][3];
+        out.x = in.x * actor->matricies.final_matrix[0][0] + in.y * actor->matricies.final_matrix[0][1] + in.z * actor->matricies.final_matrix[0][2] + actor->matricies.final_matrix[0][3];
+        out.y = in.x * actor->matricies.final_matrix[1][0] + in.y * actor->matricies.final_matrix[1][1] + in.z * actor->matricies.final_matrix[1][2] + actor->matricies.final_matrix[1][3];
+        out.z = in.x * actor->matricies.final_matrix[2][0] + in.y * actor->matricies.final_matrix[2][1] + in.z * actor->matricies.final_matrix[2][2] + actor->matricies.final_matrix[2][3];
+        out.w = in.x * actor->matricies.final_matrix[3][0] + in.y * actor->matricies.final_matrix[3][1] + in.z * actor->matricies.final_matrix[3][2] + actor->matricies.final_matrix[3][3];
 
-        out.x = out.x / w * window->half_width + window->half_width; 
-        out.y = out.y / w * window->half_height + window->half_height; 
-        out.z = w;
+        // out.x = out.x / w * window->half_width + window->half_width; 
+        // out.y = out.y / w * window->half_height + window->half_height; 
+        // out.z = w;
 
         actor->mesh->verticies[vth] = out;
     }
 
+    u32 triangle_count = 0;
 
     for (u32 tth = 0; tth < actor->mesh->triangle_count; tth++){
         RI_triangle* triangle = &actor->mesh->triangles[tth];
         
-        MU_vec3d v0 = actor->mesh->verticies[triangle->v0];
-        MU_vec3d v1 = actor->mesh->verticies[triangle->v1];
-        MU_vec3d v2 = actor->mesh->verticies[triangle->v2];
+        MU_vec4d v0 = actor->mesh->verticies[triangle->v0];
+        MU_vec4d v1 = actor->mesh->verticies[triangle->v1];
+        MU_vec4d v2 = actor->mesh->verticies[triangle->v2];
         
+        MU_vec3d n0 = actor->mesh->normals[triangle->n0];
+        MU_vec3d n1 = actor->mesh->normals[triangle->n1];
+        MU_vec3d n2 = actor->mesh->normals[triangle->n2];
+
         MU_vec2d u0 = actor->mesh->uvs[triangle->u0];
         MU_vec2d u1 = actor->mesh->uvs[triangle->u1];
         MU_vec2d u2 = actor->mesh->uvs[triangle->u2];
 
-        //transforming into screenspace
-        MU_vec2d screen_point_a = {v0.x, v0.y};
-        MU_vec2d screen_point_b = {v1.x, v1.y};
-        MU_vec2d screen_point_c = {v2.x, v2.y};
+        u8 is_0_clipped = v0.z <= camera->min_clip;
+        u8 is_1_clipped = v1.z <= camera->min_clip;
+        u8 is_2_clipped = v2.z <= camera->min_clip;
 
-        MU_vec3d depths = {v0.z, v1.z, v2.z};
-
-        if (v0.z >= 0 || v1.z >= 0 || v2.z >= 0)
-            continue;
-
-        MU_vec3d weights;
-        float triangle_area = get_area_of_triangle(screen_point_a, screen_point_b, screen_point_c);
-
-        MU_vec2d bottom_left = {fmax(fmin(screen_point_a.x, fmin(screen_point_b.x, screen_point_c.x)), 0),
-                                fmax(fmin(screen_point_a.y, fmin(screen_point_b.y, screen_point_c.y)), 0)};
-        MU_vec2d top_right = {fmin(fmax(screen_point_a.x, fmax(screen_point_b.x, screen_point_c.x)), window->width - 1),
-                                fmin(fmax(screen_point_a.y, fmax(screen_point_b.y, screen_point_c.y)), window->height - 1)};
+        int clip_count = is_0_clipped + is_1_clipped + is_2_clipped;
     
-        if(triangle_area < 0)
-            continue;
+        RI_renderable_triangle r_triangle;
+        RI_renderable_triangle r_split_triangle;
 
-        for(int y = bottom_left.y; y <= top_right.y; y++){
-            for(int x = bottom_left.x; x <= top_right.x; x++){
-                MU_vec2d pixel = {x, y};
-                
-                weights = (MU_vec3d){
-                    get_area_of_triangle(pixel, screen_point_b, screen_point_c) / triangle_area,
-                    get_area_of_triangle(pixel, screen_point_c, screen_point_a) / triangle_area,
-                    get_area_of_triangle(pixel, screen_point_a, screen_point_b) / triangle_area
-                };
-                
-                if (!(weights.x >= 0 && weights.y >= 0 && weights.z >= 0)){    
-                    continue;
-                }
-                
-                double z = (weights.x / depths.x + weights.y / depths.y + weights.z / depths.z); 
-
-                double* z_buffer = &window->z_buffer[y * window->width + x];
-
-                if (z >= *z_buffer)
-                    continue;
-
-                *z_buffer = z;
-
-                float ux = (weights.x * (u0.x / depths.x) + weights.y * (u1.x / depths.y) + weights.z * (u2.x / depths.z)) / z;
-                float uy = (weights.x * (u0.y / depths.x) + weights.y * (u1.y / depths.y) + weights.z * (u2.y / depths.z)) / z;    
-
-                if (ux < 0) ux += 1.0;
-                if (uy < 0) uy += 1.0;
-
-                RI_texture* texture = actor->material->texture == NULL ? ri_context.default_texture : actor->material->texture;
-
-                u32 texel_x = texture->width * (ux);
-                u32 texel_y = texture->frame_height * (1.0 - uy) + texture->frame_height * (actor->material->current_frame % texture->frame_count);
-
-                u32 texel_index = (texel_y * texture->width + texel_x) % (texture->width * texture->height - 1);
-                
-                double value = (z / 2.0);
-
-                write_pixel(window, x, y, texture->frame_buffer[texel_index]);
+        switch(clip_count){
+            case 3: {// ignore polygon, it's behind the camera
+                return;
+                break;
             }
-        }            
+
+            case 2:{ // shrink poylgon
+                MU_vec3d unclipped_point, point_a, point_b;
+                MU_vec3d unclipped_normal, normal_a, normal_b;
+                MU_vec2d unclipped_uv, uv_a, uv_b;
+
+                MU_vec3d result_a, result_b;
+                MU_vec3d n_result_a, n_result_b;
+                MU_vec2d u_result_a, u_result_b;
+
+                if (!is_0_clipped){ 
+                    unclipped_point = MU_vec4d_to_vec3d(v0);
+                    point_a = MU_vec4d_to_vec3d(v1);
+                    result_a = MU_vec4d_to_vec3d(v1);
+                    point_b = MU_vec4d_to_vec3d(v2);
+                    result_b = MU_vec4d_to_vec3d(v2);
+
+                    unclipped_normal = n0;
+                    normal_a = n1;                
+                    n_result_a = n1;
+                    normal_b = n2;
+                    n_result_b = n2;
+
+                    unclipped_uv = u0;                
+                    u_result_a = u1;
+                    uv_a = u1;
+                    uv_b = u2;                
+                    u_result_b = u2;
+                }
+                else if (!is_1_clipped){ 
+                    unclipped_point = MU_vec4d_to_vec3d(v1);
+                    point_a = MU_vec4d_to_vec3d(v2);
+                    result_a = MU_vec4d_to_vec3d(v2);
+                    point_b = MU_vec4d_to_vec3d(v0);
+                    result_b = MU_vec4d_to_vec3d(v0);
+
+                    unclipped_normal = n1;
+                    normal_a = n2;                
+                    n_result_a = n2;
+                    normal_b = n0;
+                    n_result_b = n0;
+
+                    unclipped_uv = u1;                
+                    u_result_a = u2;
+                    uv_a = u2;
+                    uv_b = u0;                
+                    u_result_b = u0;
+                }
+                else if (!is_2_clipped){ 
+                    unclipped_point = MU_vec4d_to_vec3d(v2);
+                    point_a = MU_vec4d_to_vec3d(v0);
+                    result_a = MU_vec4d_to_vec3d(v0);
+                    point_b = MU_vec4d_to_vec3d(v1);
+                    result_b = MU_vec4d_to_vec3d(v1);
+
+                    unclipped_normal = n2;
+                    normal_a = n0;                
+                    n_result_a = n0;
+                    normal_b = n1;
+                    n_result_b = n1;
+
+                    unclipped_uv = u2;                
+                    u_result_a = u0;
+                    uv_a = u0;
+                    uv_b = u1;                
+                    u_result_b = u1;
+                }
+            
+                double fraction_a_to_unclip = clamp((camera->min_clip - unclipped_point.z) / (point_a.z - unclipped_point.z), 0.0, 1.1);                          
+                double fraction_b_to_unclip = clamp((camera->min_clip - unclipped_point.z) / (point_b.z - unclipped_point.z), 0.0, 1.1);  
+
+                result_a = MU_vec3d_lerp(unclipped_point, point_a, fraction_a_to_unclip);
+                result_b = MU_vec3d_lerp(unclipped_point, point_b, fraction_b_to_unclip);
+
+                n_result_a = MU_vec3d_lerp(unclipped_normal, normal_a, fraction_a_to_unclip);
+                n_result_b = MU_vec3d_lerp(unclipped_normal, normal_b, fraction_b_to_unclip);
+
+                u_result_a = MU_vec2d_lerp(unclipped_uv, uv_a, fraction_a_to_unclip);
+                u_result_b = MU_vec2d_lerp(unclipped_uv, uv_b, fraction_b_to_unclip);
+
+                break;
+            }
+
+            case 1: {// split polygon
+                MU_vec3d clipped_point, point_a, point_b;
+                MU_vec3d clipped_normal, normal_a, normal_b;
+                MU_vec2d clipped_uv, uv_a, uv_b;
+
+
+                if (is_0_clipped){ 
+                    clipped_point = MU_vec4d_to_vec3d(v0);
+                    point_a = MU_vec4d_to_vec3d(v1);
+                    point_b = MU_vec4d_to_vec3d(v2);
+                    
+                    clipped_normal = n0;
+                    normal_a = n1;
+                    normal_b = n2;
+                
+                    clipped_uv = u0;
+                    uv_a = u1;
+                    uv_b = u2;
+                }
+                else if (is_1_clipped){ 
+                    clipped_point = MU_vec4d_to_vec3d(v1);
+                    point_a = MU_vec4d_to_vec3d(v2);
+                    point_b = MU_vec4d_to_vec3d(v0);
+                    
+                    clipped_normal = n1;
+                    normal_a = n2;
+                    normal_b = n0;
+                
+                    clipped_uv = u1;
+                    uv_a = u2;
+                    uv_b = u0;
+                }
+                else if (is_2_clipped){ 
+                    clipped_point = MU_vec4d_to_vec3d(v2);
+                    point_a = MU_vec4d_to_vec3d(v0);
+                    point_b = MU_vec4d_to_vec3d(v1);
+                    
+                    clipped_normal = n2;
+                    normal_a = n0;
+                    normal_b = n1;
+                
+                    clipped_uv = u2;
+                    uv_a = u0;
+                    uv_b = u1;
+                }
+
+                double fraction_a_to_clip = (camera->min_clip - clipped_point.z) / (point_a.z - clipped_point.z);                        
+                double fraction_b_to_clip = (camera->min_clip - clipped_point.z) / (point_b.z - clipped_point.z);                        
+
+                MU_vec3d new_point_a, new_point_b;  // the new points that move along the polygon's edge to match the z value of min_clip.
+                MU_vec3d new_normal_a, new_normal_b;  // they come from the clipped point which was originally only 1
+                MU_vec2d new_uv_a, new_uv_b;
+
+                vector_3_lerp(clipped_point, point_a, &new_point_a, fraction_a_to_clip);
+                vector_3_lerp(clipped_point, point_b, &new_point_b, fraction_b_to_clip);
+                
+                vector_3_lerp(clipped_normal, normal_a, &new_normal_a, fraction_a_to_clip);
+                vector_3_lerp(clipped_normal, normal_b, &new_normal_b, fraction_b_to_clip);
+                
+                vector_2_lerp(clipped_uv, uv_a, &new_uv_a, fraction_a_to_clip);
+                vector_2_lerp(clipped_uv, uv_b, &new_uv_b, fraction_b_to_clip);
+
+                r_triangle.v0 = point_a;
+                r_triangle.v1 = point_b;
+                r_triangle.v2 = new_point_a;
+
+                r_triangle.v0.x /= v0.w;
+                r_triangle.v1.x /= v1.w;
+                r_triangle.v2.x /= v2.w;
+
+                r_triangle.v0.y /= v0.w;
+                r_triangle.v1.y /= v1.w;
+                r_triangle.v2.y /= v2.w;
+
+                r_triangle.n0 = normal_a;
+                r_triangle.n1 = normal_b;
+                r_triangle.n2 = new_normal_a;
+                
+                r_triangle.u0 = uv_a;
+                r_triangle.u1 = uv_b;
+                r_triangle.u2 = new_uv_a;
+
+                r_split_triangle.v0 = point_b;
+                r_split_triangle.v1 = new_point_b;
+                r_split_triangle.v2 = new_point_a;
+
+                r_split_triangle.v0.x /= v0.w;
+                r_split_triangle.v1.x /= v1.w;
+                r_split_triangle.v2.x /= v2.w;
+
+                r_split_triangle.v0.y /= v0.w;
+                r_split_triangle.v1.y /= v1.w;
+                r_split_triangle.v2.y /= v2.w;
+
+                r_split_triangle.n0 = normal_b;
+                r_triangle.n1 = new_normal_b;
+                r_split_triangle.n2 = new_normal_a;
+                
+                r_split_triangle.u0 = uv_;
+                r_split_triangle.u1 = new_uv_;
+                r_split_triangle.u2 = new_uv_;                
+
+                r_split_triangle->position_0.x = r_split_triangle->position_0.x / r_split_triangle->position_0.z * horizontal_fov_factor;
+                r_split_triangle->position_0.y = r_split_triangle->position_0.y / r_split_triangle->position_0.z * vertical_fov_factor;
+                
+                r_split_triangle->position_1.x = r_split_triangle->position_1.x / r_split_triangle->position_1.z * horizontal_fov_factor;
+                r_split_triangle->position_1.y = r_split_triangle->position_1.y / r_split_triangle->position_1.z * vertical_fov_factor;
+
+                r_split_triangle->position_2.x = r_split_triangle->position_2.x / r_split_triangle->position_2.z * horizontal_fov_factor;
+                r_split_triangle->position_2.y = r_split_triangle->position_2.y / r_split_triangle->position_2.z * vertical_fov_factor;
+
+                r_split_triangle->min_screen_x = r_split_triangle->position_0.x; 
+                if (r_split_triangle->position_1.x < r_split_triangle->min_screen_x) r_split_triangle->min_screen_x = r_split_triangle->position_1.x;
+                if (r_split_triangle->position_2.x < r_split_triangle->min_screen_x) r_split_triangle->min_screen_x = r_split_triangle->position_2.x;
+                r_split_triangle->min_screen_x = max(r_split_triangle->min_screen_x, (short)(-width / 2)); 
+
+                r_split_triangle->max_screen_x = r_split_triangle->position_0.x; 
+                if (r_split_triangle->position_1.x > r_split_triangle->max_screen_x) r_split_triangle->max_screen_x = r_split_triangle->position_1.x;
+                if (r_split_triangle->position_2.x > r_split_triangle->max_screen_x) r_split_triangle->max_screen_x = r_split_triangle->position_2.x;
+                r_split_triangle->max_screen_x = min(r_split_triangle->max_screen_x, (short)(width / 2)); 
+
+                r_split_triangle->min_screen_y = r_split_triangle->position_0.y; 
+                if (r_split_triangle->position_1.y < r_split_triangle->min_screen_y) r_split_triangle->min_screen_y = r_split_triangle->position_1.y;
+                if (r_split_triangle->position_2.y < r_split_triangle->min_screen_y) r_split_triangle->min_screen_y = r_split_triangle->position_2.y;
+                r_split_triangle->min_screen_y = max(r_split_triangle->min_screen_y, (short)(-height / 2)); 
+
+                r_split_triangle->max_screen_y = r_split_triangle->position_0.y; 
+                if (r_split_triangle->position_1.y > r_split_triangle->max_screen_y) r_split_triangle->max_screen_y = r_split_triangle->position_1.y;
+                if (r_split_triangle->position_2.y > r_split_triangle->max_screen_y) r_split_triangle->max_screen_y = r_split_triangle->position_2.y;
+                r_split_triangle->max_screen_y = min(r_split_triangle->max_screen_y, (short)(height / 2)); 
+
+                r_split_triangle->should_render = 1;
+                r_triangle->should_render = 1;
+
+                r_split_triangle->texture.width = texture_width;
+                r_split_triangle->texture.height = texture_height;
+                r_split_triangle->texture.index = texture_index;
+
+                r_split_triangle->is_split = 1;
+                r_triangle->is_transformed = 1;
+
+
+
+                break;
+            }
+
+            case 0:{ // no issues, ignore
+                
+
+                break;
+            }
+        }         
     }
 }
 
@@ -893,7 +1153,7 @@ void RI_render(RI_scene* scene, u8 camera_index, RI_window* window){
         render_actor(scene, window, actor);
     
         for (u32 cth = 0; cth < KT_get_size(&actor->children); cth++){
-            render_actor(scene, window, actor->children[cth]);
+            render_actor(scene, window, camera, actor->children[cth]);
         }
     }
 
